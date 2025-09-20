@@ -92,8 +92,8 @@ export default function AuthScreen() {
               <View style={styles.iconContainer}>
                 <Church size={48} color="#FFFFFF" />
               </View>
-              <Text style={styles.title}>Church Directory</Text>
-              <Text style={styles.subtitle}>Connect with your church family</Text>
+              <Text style={styles.title}>EBC Connect</Text>
+              <Text style={styles.subtitle}>Edna Baptist Church Community</Text>
             </View>
 
             <View style={styles.formContainer}>

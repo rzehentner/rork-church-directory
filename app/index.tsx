@@ -51,14 +51,14 @@ export default function IndexScreen() {
             <View style={styles.iconBackground}>
               <Home size={48} color="#FFFFFF" />
             </View>
-            <Text style={styles.appName}>Family Connect</Text>
-            <Text style={styles.tagline}>Stay connected with your community</Text>
+            <Text style={styles.appName}>EBC Connect</Text>
+            <Text style={styles.tagline}>Edna Baptist Church Community</Text>
           </View>
           
           <View style={styles.loadingSection}>
             <ActivityIndicator size="large" color="#7C3AED" />
             <Text style={styles.loadingText}>
-              {authLoading || userLoading ? 'Loading your family...' : 'Welcome back!'}
+              {authLoading || userLoading ? 'Loading your church family...' : 'Welcome back!'}
             </Text>
           </View>
         </Animated.View>
