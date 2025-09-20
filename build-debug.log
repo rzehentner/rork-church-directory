@@ -1,0 +1,69 @@
+## Image Cropping Debug Log
+
+### Issue Summary
+The image cropping feature is not working correctly. The saved image doesn't match the crop shown in the preview.
+
+### Key Problems Identified:
+1. **Aspect Ratio Frame Calculation**: The frame dimensions are being calculated correctly for 4:3 aspect ratio
+2. **Pan Gesture Handling**: The pan gesture was bouncing around due to incorrect offset handling
+3. **Crop Calculation**: The crop boundaries need to account for the inverted pan values correctly
+
+### Changes Made:
+
+1. **Fixed Frame Dimension Calculation**:
+   - Now properly calculates frame dimensions that maintain aspect ratio
+   - Uses screen bounds to ensure frame fits on screen
+   - For 4:3 ratio: calculates proper width/height that fits within screen
+
+2. **Improved Initial Scale Calculation**:
+   - Ensures image always covers the entire frame
+   - Calculates minimum scale to prevent gaps
+   - Adds 5% buffer for better coverage
+
+3. **Fixed Pan Gesture Handling**:
+   - Reduced pinch-to-zoom sensitivity (0.003 instead of 0.01)
+   - Fixed pan limits calculation
+   - Properly clamps pan values to prevent excessive movement
+
+4. **Enhanced Crop Calculation**:
+   - Added detailed logging for debugging
+   - Properly inverts pan values for crop calculation
+   - Maintains aspect ratio after crop for family photos
+
+5. **Zoom Controls**:
+   - Zoom out now respects minimum scale to ensure frame coverage
+   - Added smooth spring animations
+
+### Testing Steps:
+1. Open Family tab
+2. Tap on "Add Family Photo"
+3. Select an image from gallery
+4. The image should appear in a 4:3 aspect ratio frame
+5. Try to:
+   - Drag to position the image
+   - Pinch to zoom
+   - Use zoom in/out buttons
+   - Rotate the image
+6. Tap the check mark to save
+7. The saved image should match what was shown in the crop preview
+
+### Expected Behavior:
+- 4:3 aspect ratio frame for family photos
+- Smooth pan and zoom gestures
+- Accurate crop that matches preview
+- Saved image maintains 4:3 aspect ratio
+
+### Console Logs to Monitor:
+Look for these log entries:
+- `[ImageUploader] Image selected for editing`
+- `[ImageUploader] Crop calculations`
+- `[ImageUploader] Applying manipulations`
+- `[ImageUploader] Image processed`
+- `[ImageUploader] Photo uploaded successfully`
+
+### Current Status:
+✅ Fixed aspect ratio frame calculation
+✅ Improved gesture handling
+✅ Enhanced crop accuracy
+✅ Added proper logging
+⏳ Awaiting user testing
