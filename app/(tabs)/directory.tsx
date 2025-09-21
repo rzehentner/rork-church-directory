@@ -562,7 +562,10 @@ export default function DirectoryScreen() {
   // Load tags for all visible people
   useEffect(() => {
     const loadPersonTags = async () => {
-      if (!filteredData || filteredData.length === 0) return;
+      if (!filteredData || filteredData.length === 0) {
+        setPersonTags({});
+        return;
+      }
       
       console.log('🏷️ Loading tags for people in directory...');
       
@@ -590,6 +593,12 @@ export default function DirectoryScreen() {
         
         console.log(`🔍 Loading tags for ${validPeople.length} valid people out of ${filteredData.length} total`);
         
+        // If no valid people, clear tags and return
+        if (validPeople.length === 0) {
+          setPersonTags({});
+          return;
+        }
+        
         const tagPromises = validPeople.map(async (person) => {
           try {
             const personWithTags = await getPersonWithTags(person.person_id);
@@ -615,7 +624,7 @@ export default function DirectoryScreen() {
         
         const newPersonTags: Record<string, Tag[]> = {};
         results.forEach(({ personId, tags }) => {
-          if (personId) {
+          if (personId && personId !== 'null' && personId !== 'undefined') {
             newPersonTags[personId] = tags;
           }
         });
@@ -630,6 +639,8 @@ export default function DirectoryScreen() {
         });
       } catch (error) {
         console.error('❌ Error loading person tags:', error);
+        // Set empty tags on error to prevent infinite loading
+        setPersonTags({});
       }
     };
     

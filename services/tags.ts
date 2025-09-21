@@ -177,11 +177,12 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
     }
     
     // Get the person's tags using the person_with_tags view
+    // Use maybeSingle() instead of single() to handle cases where the person has no tags
     const { data: personWithTagsData, error: tagsError } = await supabase
       .from('person_with_tags')
       .select('*')
       .eq('id', personId)
-      .single();
+      .maybeSingle();
     
     let tags: Tag[] = [];
     
