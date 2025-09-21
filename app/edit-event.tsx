@@ -12,11 +12,12 @@ import {
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { MapPin, Trash2 } from 'lucide-react-native'
-import { getEvent, updateEvent, setEventTags, eventImageUrl } from '@/services/events'
+import { getEvent, updateEvent, setEventTags, getEventTags, eventImageUrl } from '@/services/events'
 import { uploadEventImage } from '@/utils/uploadEventImage'
 import { useToast } from '@/hooks/toast-context'
 import { useMe } from '@/hooks/me-context'
 import { supabase } from '@/lib/supabase'
+import EventTagPicker from '@/components/EventTagPicker'
 
 type Event = {
   id: string
@@ -66,7 +67,11 @@ export default function EditEventScreen() {
 
   const loadEvent = async (eventId: string) => {
     try {
-      const eventData = await getEvent(eventId)
+      const [eventData, eventTags] = await Promise.all([
+        getEvent(eventId),
+        getEventTags(eventId)
+      ])
+      
       setEvent(eventData)
       setTitle(eventData.title)
       setDescription(eventData.description || '')
@@ -77,6 +82,7 @@ export default function EditEventScreen() {
       setIsPublic(eventData.is_public)
       setSelectedRoles(eventData.roles_allowed || [])
       setCurrentImagePath(eventData.image_path)
+      setSelectedTags(eventTags.map(tag => tag.id))
     } catch (error) {
       console.error('Failed to load event:', error)
       showToast('error', 'Failed to load event')
@@ -114,9 +120,7 @@ export default function EditEventScreen() {
 
       await updateEvent(event.id, updateData)
 
-      if (!isPublic && selectedTags.length > 0) {
-        await setEventTags(event.id, selectedTags)
-      }
+      await setEventTags(event.id, selectedTags)
 
       if (imageUri) {
         await uploadEventImage(imageUri, event.id)
@@ -398,12 +402,12 @@ export default function EditEventScreen() {
                   </View>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Target Audience Tags</Text>
-                  <Text style={styles.switchDescription}>
-                    Tag selection will be available in a future update
-                  </Text>
-                </View>
+                <EventTagPicker
+                  selectedTagIds={selectedTags}
+                  onTagsChange={setSelectedTags}
+                  disabled={false}
+                  testId="edit-event-tag-picker"
+                />
               </>
             )}
           </View>

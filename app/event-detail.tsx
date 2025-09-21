@@ -9,10 +9,11 @@ import {
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3 } from 'lucide-react-native'
-import { listUpcomingEvents, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
+import { listUpcomingEvents, rsvpEvent, eventImageUrl, getEventTags, type RSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useToast } from '@/hooks/toast-context'
 import { useMe } from '@/hooks/me-context'
+import { type Tag } from '@/services/tags'
 
 type Event = {
   id: string
@@ -29,6 +30,7 @@ type Event = {
 export default function EventDetailScreen() {
   const { id } = useLocalSearchParams()
   const [event, setEvent] = useState<Event | null>(null)
+  const [eventTags, setEventTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const { showToast } = useToast()
   const { myRole } = useMe()
@@ -38,6 +40,11 @@ export default function EventDetailScreen() {
       const events = await listUpcomingEvents()
       const foundEvent = events.find(e => e.id === id) as Event | undefined
       setEvent(foundEvent || null)
+      
+      if (foundEvent) {
+        const tags = await getEventTags(foundEvent.id)
+        setEventTags(tags as Tag[])
+      }
     } catch (error) {
       console.error('Failed to load event:', error)
       showToast('error', 'Failed to load event')
@@ -171,6 +178,25 @@ export default function EventDetailScreen() {
             <View style={styles.descriptionContainer}>
               <Text style={styles.descriptionTitle}>Description</Text>
               <Text style={styles.description}>{event.description}</Text>
+            </View>
+          )}
+          
+          {eventTags.length > 0 && (
+            <View style={styles.tagsContainer}>
+              <Text style={styles.tagsTitle}>Event Tags</Text>
+              <View style={styles.tagsRow}>
+                {eventTags.map((tag) => (
+                  <View 
+                    key={tag.id} 
+                    style={[
+                      styles.tagChip,
+                      { backgroundColor: tag.color || '#7C3AED' }
+                    ]}
+                  >
+                    <Text style={styles.tagText}>{tag.name}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           )}
 
@@ -362,5 +388,29 @@ const styles = StyleSheet.create({
   editButton: {
     padding: 8,
     borderRadius: 8,
+  },
+  tagsContainer: {
+    marginBottom: 24,
+  },
+  tagsTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tagChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  tagText: {
+    fontSize: 14,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
 })

@@ -133,6 +133,42 @@ export async function setEventTags(eventId: string, tagIds: string[]) {
   }
 }
 
+export async function getEventTags(eventId: string) {
+  const { data, error } = await supabase
+    .from('event_audience_tags')
+    .select(`
+      tag_id,
+      tags (
+        id,
+        name,
+        color,
+        namespace
+      )
+    `)
+    .eq('event_id', eventId)
+  if (error) throw error
+  
+  const tags: {
+    id: string
+    name: string
+    color: string | null
+    namespace: string | null
+  }[] = []
+  
+  for (const row of data ?? []) {
+    if (row.tags) {
+      tags.push(row.tags as unknown as {
+        id: string
+        name: string
+        color: string | null
+        namespace: string | null
+      })
+    }
+  }
+  
+  return tags
+}
+
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const base = process.env.EXPO_PUBLIC_SUPABASE_URL!

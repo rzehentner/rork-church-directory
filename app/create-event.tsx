@@ -15,6 +15,7 @@ import { createEvent, setEventTags } from '@/services/events'
 import { uploadEventImage } from '@/utils/uploadEventImage'
 import { useToast } from '@/hooks/toast-context'
 import { useUser } from '@/hooks/user-context'
+import EventTagPicker from '@/components/EventTagPicker'
 
 
 
@@ -68,7 +69,7 @@ export default function CreateEventScreen() {
 
       const event = await createEvent(eventData)
 
-      if (!isPublic && selectedTags.length > 0) {
+      if (selectedTags.length > 0) {
         await setEventTags(event.id, selectedTags)
       }
 
@@ -284,12 +285,12 @@ export default function CreateEventScreen() {
                   </View>
                 </View>
 
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Target Audience Tags</Text>
-                  <Text style={styles.switchDescription}>
-                    Tag selection will be available in a future update
-                  </Text>
-                </View>
+                <EventTagPicker
+                  selectedTagIds={selectedTags}
+                  onTagsChange={setSelectedTags}
+                  disabled={false}
+                  testId="create-event-tag-picker"
+                />
               </>
             )}
           </View>

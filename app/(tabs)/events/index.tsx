@@ -29,7 +29,7 @@ type Event = {
   location: string | null
   image_path: string | null
   my_rsvp: RSVP | null
-  audience_tags?: Tag[]
+  audience_tags: string[]
 }
 
 type EventFilter = {
@@ -147,7 +147,7 @@ export default function EventsScreen() {
           return false
         }
         // Check if event has any of the selected tags
-        return event.audience_tags.some(tag => filters.tagIds.includes(tag.id))
+        return event.audience_tags.some(tagId => filters.tagIds.includes(tagId))
       })
     }
     
