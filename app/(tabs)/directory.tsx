@@ -225,7 +225,7 @@ export default function DirectoryScreen() {
           
           // Transform to match expected format and filter out invalid records
           viewData = personsData?.filter((person: any) => {
-            // Only include persons with valid IDs
+            // Only include persons with valid IDs and valid family relationships
             const hasValidId = person.id && 
                               person.id !== 'null' && 
                               person.id !== 'undefined' && 
@@ -233,15 +233,41 @@ export default function DirectoryScreen() {
                               person.id.trim() !== '' &&
                               /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.id);
             
-            if (!hasValidId) {
-              console.warn('⚠️ Filtering out person with invalid ID:', {
+            // Also validate family_id if it exists
+            const hasValidFamilyId = !person.family_id || (
+              person.family_id !== 'null' && 
+              person.family_id !== 'undefined' && 
+              typeof person.family_id === 'string' &&
+              person.family_id.trim() !== '' &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.family_id)
+            );
+            
+            // Validate families data if it exists
+            const hasValidFamilyData = !person.families || (
+              person.families.id && 
+              person.families.id !== 'null' && 
+              person.families.id !== 'undefined' && 
+              typeof person.families.id === 'string' &&
+              person.families.id.trim() !== '' &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.families.id)
+            );
+            
+            const isValid = hasValidId && hasValidFamilyId && hasValidFamilyData;
+            
+            if (!isValid) {
+              console.warn('⚠️ Filtering out person with invalid data:', {
                 id: person.id,
+                family_id: person.family_id,
+                families_id: person.families?.id,
                 first_name: person.first_name,
-                last_name: person.last_name
+                last_name: person.last_name,
+                hasValidId,
+                hasValidFamilyId,
+                hasValidFamilyData
               });
             }
             
-            return hasValidId;
+            return isValid;
           }).map((person: any) => ({
             person_id: person.id,
             first_name: person.first_name,
@@ -541,39 +567,31 @@ export default function DirectoryScreen() {
       console.log('🏷️ Loading tags for people in directory...');
       
       try {
-        const tagPromises = filteredData.map(async (person) => {
+        // Pre-filter people with valid IDs to avoid making invalid API calls
+        const validPeople = filteredData.filter(person => {
+          const isValid = person.person_id && 
+                         person.person_id !== 'null' && 
+                         person.person_id !== 'undefined' && 
+                         typeof person.person_id === 'string' &&
+                         person.person_id.trim() !== '' &&
+                         person.person_id !== 'invalid' &&
+                         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.person_id);
+          
+          if (!isValid) {
+            console.warn(`⚠️ Skipping person with invalid ID:`, {
+              person_id: person.person_id,
+              first_name: person.first_name,
+              last_name: person.last_name
+            });
+          }
+          
+          return isValid;
+        });
+        
+        console.log(`🔍 Loading tags for ${validPeople.length} valid people out of ${filteredData.length} total`);
+        
+        const tagPromises = validPeople.map(async (person) => {
           try {
-            // Validate person_id before making the call
-            if (!person.person_id || 
-                person.person_id === 'null' || 
-                person.person_id === 'undefined' || 
-                person.person_id.trim() === '' ||
-                person.person_id === 'invalid') {
-              console.warn(`⚠️ Invalid person_id for person:`, {
-                person_id: person.person_id,
-                first_name: person.first_name,
-                last_name: person.last_name
-              });
-              return {
-                personId: person.person_id || 'invalid',
-                tags: []
-              };
-            }
-            
-            // Additional UUID format validation
-            const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-            if (!uuidRegex.test(person.person_id)) {
-              console.warn(`⚠️ Invalid UUID format for person_id:`, {
-                person_id: person.person_id,
-                first_name: person.first_name,
-                last_name: person.last_name
-              });
-              return {
-                personId: person.person_id,
-                tags: []
-              };
-            }
-            
             const personWithTags = await getPersonWithTags(person.person_id);
             return {
               personId: person.person_id,
@@ -587,7 +605,7 @@ export default function DirectoryScreen() {
               last_name: person.last_name
             });
             return {
-              personId: person.person_id || 'invalid',
+              personId: person.person_id,
               tags: []
             };
           }
@@ -597,11 +615,7 @@ export default function DirectoryScreen() {
         
         const newPersonTags: Record<string, Tag[]> = {};
         results.forEach(({ personId, tags }) => {
-          if (personId && 
-              personId !== 'invalid' && 
-              personId !== 'null' && 
-              personId !== 'undefined' &&
-              personId.trim() !== '') {
+          if (personId) {
             newPersonTags[personId] = tags;
           }
         });
@@ -609,8 +623,9 @@ export default function DirectoryScreen() {
         setPersonTags(newPersonTags);
         
         console.log('✅ Person tags loaded:', {
-          peopleCount: results.length,
-          validPeople: Object.keys(newPersonTags).length,
+          totalPeople: filteredData.length,
+          validPeople: validPeople.length,
+          peopleWithTags: Object.keys(newPersonTags).length,
           totalTags: results.reduce((sum, r) => sum + r.tags.length, 0)
         });
       } catch (error) {
