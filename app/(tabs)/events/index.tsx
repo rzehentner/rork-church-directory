@@ -42,7 +42,7 @@ export default function EventsScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'upcoming' | 'selected'>('upcoming')
-  const [showFilters, setShowFilters] = useState(false)
+  const [showFilters, setShowFilters] = useState(true)
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [filters, setFilters] = useState<EventFilter>({
     rsvpStatus: 'all',
