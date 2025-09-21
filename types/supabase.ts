@@ -91,6 +91,146 @@ export interface Database {
           home_phone?: string | null;
         };
       };
+      tags: {
+        Row: {
+          id: string;
+          name: string;
+          namespace: string | null;
+          color: string | null;
+          description: string | null;
+          self_assignable: boolean;
+          assign_min_role: 'member' | 'leader' | 'admin';
+          is_active: boolean;
+          parent_id: string | null;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          name: string;
+          namespace?: string | null;
+          color?: string | null;
+          description?: string | null;
+          self_assignable?: boolean;
+          assign_min_role?: 'member' | 'leader' | 'admin';
+          is_active?: boolean;
+          parent_id?: string | null;
+        };
+        Update: {
+          name?: string;
+          namespace?: string | null;
+          color?: string | null;
+          description?: string | null;
+          self_assignable?: boolean;
+          assign_min_role?: 'member' | 'leader' | 'admin';
+          is_active?: boolean;
+          parent_id?: string | null;
+          updated_at?: string | null;
+        };
+      };
+      person_tags: {
+        Row: {
+          person_id: string;
+          tag_id: string;
+          created_at: string;
+        };
+        Insert: {
+          person_id: string;
+          tag_id: string;
+        };
+        Update: {};
+      };
+      event_audience_tags: {
+        Row: {
+          event_id: string;
+          tag_id: string;
+          created_at: string;
+        };
+        Insert: {
+          event_id: string;
+          tag_id: string;
+        };
+        Update: {};
+      };
+      events: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          start_at: string;
+          end_at: string;
+          is_all_day: boolean;
+          location: string | null;
+          image_path: string | null;
+          is_public: boolean;
+          roles_allowed: ('admin'|'leader'|'member'|'visitor')[] | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          title: string;
+          description?: string | null;
+          start_at: string;
+          end_at: string;
+          is_all_day?: boolean;
+          location?: string | null;
+          image_path?: string | null;
+          is_public?: boolean;
+          roles_allowed?: ('admin'|'leader'|'member'|'visitor')[] | null;
+        };
+        Update: {
+          title?: string;
+          description?: string | null;
+          start_at?: string;
+          end_at?: string;
+          is_all_day?: boolean;
+          location?: string | null;
+          image_path?: string | null;
+          is_public?: boolean;
+          roles_allowed?: ('admin'|'leader'|'member'|'visitor')[] | null;
+          updated_at?: string | null;
+        };
+      };
+      event_rsvps: {
+        Row: {
+          event_id: string;
+          person_id: string;
+          status: 'going' | 'maybe' | 'declined';
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          event_id: string;
+          person_id: string;
+          status: 'going' | 'maybe' | 'declined';
+        };
+        Update: {
+          status?: 'going' | 'maybe' | 'declined';
+          updated_at?: string | null;
+        };
+      };
+      announcements: {
+        Row: {
+          id: string;
+          title: string;
+          content: string;
+          is_urgent: boolean;
+          created_by: string;
+          created_at: string;
+          updated_at: string | null;
+        };
+        Insert: {
+          title: string;
+          content: string;
+          is_urgent?: boolean;
+        };
+        Update: {
+          title?: string;
+          content?: string;
+          is_urgent?: boolean;
+          updated_at?: string | null;
+        };
+      };
     };
     Views: {
       family_directory_display: {
@@ -122,6 +262,46 @@ export interface Database {
           last_name: string | null;
         };
       };
+      person_with_tags: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          family_id: string | null;
+          first_name: string;
+          last_name: string;
+          email: string | null;
+          phone: string | null;
+          date_of_birth: string | null;
+          is_head_of_family: boolean;
+          is_spouse: boolean;
+          photo_url: string | null;
+          created_at: string;
+          tag_names: string[] | null;
+        };
+      };
+      events_for_me: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          start_at: string;
+          end_at: string;
+          is_all_day: boolean;
+          location: string | null;
+          image_path: string | null;
+          is_public: boolean;
+          roles_allowed: ('admin'|'leader'|'member'|'visitor')[] | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string | null;
+          my_rsvp: 'going' | 'maybe' | 'declined' | null;
+          audience_tags: {
+            id: string;
+            name: string;
+            color: string | null;
+          }[] | null;
+        };
+      };
     };
     Functions: {
       create_family_for_self: {
@@ -138,6 +318,45 @@ export interface Database {
       join_family_with_token: {
         Args: {
           p_token: string;
+        };
+        Returns: string;
+      };
+      tag_subject: {
+        Args: {
+          p_kind: string;
+          p_subject_id: string;
+          p_tag_name: string;
+        };
+        Returns: boolean;
+      };
+      untag_subject: {
+        Args: {
+          p_kind: string;
+          p_subject_id: string;
+          p_tag_name: string;
+        };
+        Returns: boolean;
+      };
+      get_subjects_by_tags: {
+        Args: {
+          p_kind: string;
+          p_tag_names: string[];
+          p_match_all: boolean;
+        };
+        Returns: {
+          subject_id: string;
+        }[];
+      };
+      rsvp_event: {
+        Args: {
+          p_event_id: string;
+          p_status: 'going' | 'maybe' | 'declined';
+        };
+        Returns: boolean;
+      };
+      get_event_ics: {
+        Args: {
+          p_event_id: string;
         };
         Returns: string;
       };
