@@ -6,6 +6,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Image,
+  RefreshControl,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { Plus, MapPin, Clock, Calendar as CalendarIcon } from 'lucide-react-native'
@@ -196,7 +197,14 @@ export default function EventsScreen() {
         renderItem={renderEvent}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
-
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={['#7C3AED']}
+            tintColor="#7C3AED"
+          />
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <CalendarIcon size={48} color="#9CA3AF" />
