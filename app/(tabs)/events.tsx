@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -10,10 +10,11 @@ import {
 } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { Plus, MapPin, Clock, Calendar as CalendarIcon } from 'lucide-react-native'
-import { listUpcomingEvents, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
+import { listUpcomingEvents, listEventsForDate, listEventsForDateRange, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
+import Calendar from '@/components/Calendar'
 
 type Event = {
   id: string
@@ -28,38 +29,63 @@ type Event = {
 }
 
 export default function EventsScreen() {
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
+  const [allEvents, setAllEvents] = useState<Event[]>([])
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([])
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+
   const [refreshing, setRefreshing] = useState(false)
+  const [viewMode, setViewMode] = useState<'upcoming' | 'selected'>('upcoming')
   const { profile } = useUser()
   const { showToast } = useToast()
   const isStaff = profile?.role === 'admin' || profile?.role === 'leader'
 
-  const loadEvents = async () => {
+  const loadAllEvents = useCallback(async () => {
     try {
-      const data = await listUpcomingEvents()
-      setEvents(data as Event[])
+      const currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
+      const nextMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 2, 0)
+      const data = await listEventsForDateRange(currentMonth, nextMonth)
+      setAllEvents(data as Event[])
+      
+      if (viewMode === 'upcoming') {
+        const upcomingData = await listUpcomingEvents()
+        setFilteredEvents(upcomingData as Event[])
+      } else {
+        const selectedData = await listEventsForDate(selectedDate)
+        setFilteredEvents(selectedData as Event[])
+      }
     } catch (error) {
       console.error('Failed to load events:', error)
       showToast('error', 'Failed to load events')
     } finally {
-      setLoading(false)
       setRefreshing(false)
+    }
+  }, [selectedDate, viewMode, showToast])
+
+  const loadEventsForSelectedDate = async (date: Date) => {
+    try {
+      const data = await listEventsForDate(date)
+      setFilteredEvents(data as Event[])
+    } catch (error) {
+      console.error('Failed to load events for date:', error)
+      showToast('error', 'Failed to load events for selected date')
     }
   }
 
   useEffect(() => {
-    loadEvents()
-  }, [])
+    loadAllEvents()
+  }, [loadAllEvents])
 
   const handleRefresh = () => {
     setRefreshing(true)
-    loadEvents()
+    loadAllEvents()
   }
 
   const handleRSVP = async (eventId: string, status: RSVP) => {
     try {
-      setEvents(prev => prev.map(event => 
+      setFilteredEvents(prev => prev.map(event => 
+        event.id === eventId ? { ...event, my_rsvp: status } : event
+      ))
+      setAllEvents(prev => prev.map(event => 
         event.id === eventId ? { ...event, my_rsvp: status } : event
       ))
       
@@ -67,7 +93,10 @@ export default function EventsScreen() {
       showToast('success', `RSVP updated to ${status}`)
     } catch (error) {
       console.error('Failed to update RSVP:', error)
-      setEvents(prev => prev.map(event => 
+      setFilteredEvents(prev => prev.map(event => 
+        event.id === eventId ? { ...event, my_rsvp: null } : event
+      ))
+      setAllEvents(prev => prev.map(event => 
         event.id === eventId ? { ...event, my_rsvp: null } : event
       ))
       showToast('error', 'Failed to update RSVP')
@@ -193,7 +222,7 @@ export default function EventsScreen() {
       />
       
       <FlatList
-        data={events}
+        data={filteredEvents}
         renderItem={renderEvent}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
@@ -205,11 +234,70 @@ export default function EventsScreen() {
             tintColor="#7C3AED"
           />
         }
+        ListHeaderComponent={
+          <View>
+            <Calendar
+              events={allEvents}
+              selectedDate={selectedDate}
+              onDateSelect={(date) => {
+                setSelectedDate(date)
+                setViewMode('selected')
+                loadEventsForSelectedDate(date)
+              }}
+              onMonthChange={(date) => {
+                const newSelectedDate = new Date(date.getFullYear(), date.getMonth(), selectedDate.getDate())
+                setSelectedDate(newSelectedDate)
+              }}
+            />
+            
+            <View style={styles.viewModeToggle}>
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  viewMode === 'upcoming' && styles.toggleButtonActive
+                ]}
+                onPress={() => {
+                  setViewMode('upcoming')
+                  loadAllEvents()
+                }}
+              >
+                <Text style={[
+                  styles.toggleButtonText,
+                  viewMode === 'upcoming' && styles.toggleButtonTextActive
+                ]}>
+                  Upcoming
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[
+                  styles.toggleButton,
+                  viewMode === 'selected' && styles.toggleButtonActive
+                ]}
+                onPress={() => {
+                  setViewMode('selected')
+                  loadEventsForSelectedDate(selectedDate)
+                }}
+              >
+                <Text style={[
+                  styles.toggleButtonText,
+                  viewMode === 'selected' && styles.toggleButtonTextActive
+                ]}>
+                  {selectedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <CalendarIcon size={48} color="#9CA3AF" />
-            <Text style={styles.emptyText}>No upcoming events</Text>
-            <Text style={styles.emptySubtext}>Check back later for new events</Text>
+            <Text style={styles.emptyText}>
+              {viewMode === 'upcoming' ? 'No upcoming events' : `No events on ${selectedDate.toLocaleDateString()}`}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              {viewMode === 'upcoming' ? 'Check back later for new events' : 'Try selecting a different date'}
+            </Text>
           </View>
         }
       />
@@ -344,5 +432,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#9CA3AF',
     marginTop: 4,
+  },
+  viewModeToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    padding: 4,
+    marginBottom: 16,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  toggleButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  toggleButtonTextActive: {
+    color: '#7C3AED',
+    fontWeight: '600',
   },
 })

@@ -13,6 +13,32 @@ export async function listUpcomingEvents(limit = 100) {
   return data ?? []
 }
 
+export async function listEventsForDateRange(startDate: Date, endDate: Date) {
+  const { data, error } = await supabase
+    .from('events_for_me')
+    .select('*')
+    .gte('start_at', startDate.toISOString())
+    .lte('end_at', endDate.toISOString())
+    .order('start_at', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
+export async function listEventsForDate(date: Date) {
+  const startOfDay = new Date(date)
+  startOfDay.setHours(0, 0, 0, 0)
+  const endOfDay = new Date(date)
+  endOfDay.setHours(23, 59, 59, 999)
+  
+  const { data, error } = await supabase
+    .from('events_for_me')
+    .select('*')
+    .or(`and(start_at.lte.${endOfDay.toISOString()},end_at.gte.${startOfDay.toISOString()})`)
+    .order('start_at', { ascending: true })
+  if (error) throw error
+  return data ?? []
+}
+
 export async function rsvpEvent(eventId: string, status: RSVP) {
   const { data, error } = await supabase.rpc('rsvp_event', {
     p_event_id: eventId,
