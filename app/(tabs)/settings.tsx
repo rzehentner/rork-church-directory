@@ -14,6 +14,8 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { supabase } from '@/lib/supabase';
 import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint } from 'lucide-react-native';
+import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
+import { NotificationPreferences } from '@/lib/notification-preferences';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
@@ -22,6 +24,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
   const [isEnablingBiometric, setIsEnablingBiometric] = useState(false);
   
   const isPending = profile?.role === 'pending';
@@ -51,7 +54,10 @@ export default function SettingsScreen() {
 
   const toggleNotifications = () => {
     setNotificationsEnabled(!notificationsEnabled);
-    // TODO: Save notification preference to AsyncStorage or backend
+  };
+
+  const handleNotificationPreferencesChange = (preferences: NotificationPreferences) => {
+    console.log('Notification preferences updated:', preferences);
   };
 
   const toggleBiometric = async () => {
@@ -224,7 +230,7 @@ export default function SettingsScreen() {
                 <View style={styles.settingContent}>
                   <Text style={styles.settingLabel}>Push Notifications</Text>
                   <Text style={styles.settingDescription}>
-                    Receive updates about family events
+                    Receive updates about church events and announcements
                   </Text>
                 </View>
               </View>
@@ -236,6 +242,15 @@ export default function SettingsScreen() {
               />
             </View>
           </View>
+          
+          {/* Detailed Notification Preferences */}
+          {notificationsEnabled && (
+            <View style={styles.preferencesContainer}>
+              <NotificationPreferencesSection 
+                onPreferencesChange={handleNotificationPreferencesChange}
+              />
+            </View>
+          )}
         </View>
 
         {/* Actions Section */}
@@ -439,5 +454,8 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  preferencesContainer: {
+    marginTop: 16,
   },
 });
