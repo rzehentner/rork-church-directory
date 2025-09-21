@@ -8,10 +8,11 @@ import {
   ScrollView,
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react-native'
+import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3 } from 'lucide-react-native'
 import { listUpcomingEvents, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useToast } from '@/hooks/toast-context'
+import { useMe } from '@/hooks/me-context'
 
 type Event = {
   id: string
@@ -30,6 +31,7 @@ export default function EventDetailScreen() {
   const [event, setEvent] = useState<Event | null>(null)
   const [loading, setLoading] = useState(true)
   const { showToast } = useToast()
+  const { myRole } = useMe()
 
   const loadEvent = async () => {
     try {
@@ -121,9 +123,23 @@ export default function EventDetailScreen() {
     )
   }
 
+  const canEdit = myRole === 'admin' || myRole === 'leader'
+
   return (
     <View style={styles.container}>
-      <Stack.Screen options={{ title: event.title }} />
+      <Stack.Screen 
+        options={{ 
+          title: event.title,
+          headerRight: canEdit ? () => (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push(`/edit-event?id=${event.id}`)}
+            >
+              <Edit3 size={20} color="#7C3AED" />
+            </TouchableOpacity>
+          ) : undefined
+        }} 
+      />
       
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         {event.image_path && (
@@ -342,5 +358,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7C3AED',
     fontWeight: '500',
+  },
+  editButton: {
+    padding: 8,
+    borderRadius: 8,
   },
 })

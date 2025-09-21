@@ -13,6 +13,16 @@ export async function listUpcomingEvents(limit = 100) {
   return data ?? []
 }
 
+export async function getEvent(eventId: string) {
+  const { data, error } = await supabase
+    .from('events_for_me')
+    .select('*')
+    .eq('id', eventId)
+    .single()
+  if (error) throw error
+  return data
+}
+
 export async function listEventsForDateRange(startDate: Date, endDate: Date) {
   const { data, error } = await supabase
     .from('events_for_me')
