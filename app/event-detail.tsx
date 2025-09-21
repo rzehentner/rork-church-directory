@@ -1,0 +1,346 @@
+import React, { useState, useEffect } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+} from 'react-native'
+import { Stack, router, useLocalSearchParams } from 'expo-router'
+import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react-native'
+import { listUpcomingEvents, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
+import { addEventToDevice } from '@/utils/calendar'
+import { useToast } from '@/hooks/toast-context'
+
+type Event = {
+  id: string
+  title: string
+  description: string | null
+  start_at: string
+  end_at: string
+  is_all_day: boolean
+  location: string | null
+  image_path: string | null
+  my_rsvp: RSVP | null
+}
+
+export default function EventDetailScreen() {
+  const { id } = useLocalSearchParams()
+  const [event, setEvent] = useState<Event | null>(null)
+  const [loading, setLoading] = useState(true)
+  const { showToast } = useToast()
+
+  const loadEvent = async () => {
+    try {
+      const events = await listUpcomingEvents()
+      const foundEvent = events.find(e => e.id === id) as Event | undefined
+      setEvent(foundEvent || null)
+    } catch (error) {
+      console.error('Failed to load event:', error)
+      showToast('error', 'Failed to load event')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (id) {
+      loadEvent()
+    }
+  }, [id])
+
+  const handleRSVP = async (status: RSVP) => {
+    if (!event) return
+    
+    try {
+      setEvent(prev => prev ? { ...prev, my_rsvp: status } : null)
+      await rsvpEvent(event.id, status)
+      showToast('success', `RSVP updated to ${status}`)
+    } catch (error) {
+      console.error('Failed to update RSVP:', error)
+      setEvent(prev => prev ? { ...prev, my_rsvp: null } : null)
+      showToast('error', 'Failed to update RSVP')
+    }
+  }
+
+  const handleAddToCalendar = async () => {
+    if (!event) return
+    
+    try {
+      await addEventToDevice(event)
+      showToast('success', 'Event added to calendar')
+    } catch (error) {
+      console.error('Failed to add to calendar:', error)
+      showToast('error', 'Failed to add to calendar')
+    }
+  }
+
+  const formatEventTime = (event: Event) => {
+    const start = new Date(event.start_at)
+    const end = new Date(event.end_at)
+    
+    if (event.is_all_day) {
+      return start.toLocaleDateString()
+    }
+    
+    const sameDay = start.toDateString() === end.toDateString()
+    if (sameDay) {
+      return `${start.toLocaleDateString()} • ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    }
+    
+    return `${start.toLocaleString()} - ${end.toLocaleString()}`
+  }
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Event Details' }} />
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading...</Text>
+        </View>
+      </View>
+    )
+  }
+
+  if (!event) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: 'Event Not Found' }} />
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>Event not found</Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <ArrowLeft size={20} color="#7C3AED" />
+            <Text style={styles.backButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: event.title }} />
+      
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {event.image_path && (
+          <Image 
+            source={{ uri: eventImageUrl(event.image_path)! }} 
+            style={styles.eventImage}
+            resizeMode="cover"
+          />
+        )}
+        
+        <View style={styles.content}>
+          <Text style={styles.title}>{event.title}</Text>
+          
+          <View style={styles.metaContainer}>
+            <View style={styles.metaRow}>
+              <Clock size={20} color="#6B7280" />
+              <Text style={styles.metaText}>{formatEventTime(event)}</Text>
+            </View>
+            
+            {event.location && (
+              <View style={styles.metaRow}>
+                <MapPin size={20} color="#6B7280" />
+                <Text style={styles.metaText}>{event.location}</Text>
+              </View>
+            )}
+          </View>
+
+          {event.description && (
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.descriptionTitle}>Description</Text>
+              <Text style={styles.description}>{event.description}</Text>
+            </View>
+          )}
+
+          <View style={styles.actionsContainer}>
+            <Text style={styles.rsvpTitle}>Will you be attending?</Text>
+            <View style={styles.rsvpContainer}>
+              {(['going', 'maybe', 'declined'] as const).map((status) => (
+                <TouchableOpacity
+                  key={status}
+                  style={[
+                    styles.rsvpButton,
+                    event.my_rsvp === status && styles.rsvpButtonActive,
+                    status === 'going' && event.my_rsvp === status && styles.rsvpButtonGoing,
+                    status === 'maybe' && event.my_rsvp === status && styles.rsvpButtonMaybe,
+                    status === 'declined' && event.my_rsvp === status && styles.rsvpButtonDeclined,
+                  ]}
+                  onPress={() => handleRSVP(status)}
+                >
+                  <Text style={[
+                    styles.rsvpButtonText,
+                    event.my_rsvp === status && styles.rsvpButtonTextActive
+                  ]}>
+                    {status === 'going' ? 'Going' : status === 'maybe' ? 'Maybe' : 'Cannot Go'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            
+            <TouchableOpacity
+              style={styles.calendarButton}
+              onPress={handleAddToCalendar}
+            >
+              <CalendarIcon size={20} color="#7C3AED" />
+              <Text style={styles.calendarButtonText}>Add to Calendar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  scrollView: {
+    flex: 1,
+  },
+  eventImage: {
+    width: '100%',
+    height: 250,
+  },
+  content: {
+    padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginBottom: 16,
+  },
+  metaContainer: {
+    marginBottom: 24,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  metaText: {
+    fontSize: 16,
+    color: '#6B7280',
+    marginLeft: 12,
+    flex: 1,
+  },
+  descriptionContainer: {
+    marginBottom: 32,
+  },
+  descriptionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  description: {
+    fontSize: 16,
+    color: '#4B5563',
+    lineHeight: 24,
+  },
+  actionsContainer: {
+    gap: 16,
+  },
+  rsvpTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  rsvpContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 16,
+  },
+  rsvpButton: {
+    flex: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#D1D5DB',
+    alignItems: 'center',
+  },
+  rsvpButtonActive: {
+    borderColor: '#7C3AED',
+  },
+  rsvpButtonGoing: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  rsvpButtonMaybe: {
+    backgroundColor: '#F59E0B',
+    borderColor: '#F59E0B',
+  },
+  rsvpButtonDeclined: {
+    backgroundColor: '#EF4444',
+    borderColor: '#EF4444',
+  },
+  rsvpButtonText: {
+    fontSize: 16,
+    color: '#6B7280',
+    fontWeight: '600',
+  },
+  rsvpButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  calendarButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#7C3AED',
+    gap: 12,
+  },
+  calendarButtonText: {
+    fontSize: 16,
+    color: '#7C3AED',
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  errorText: {
+    fontSize: 18,
+    color: '#EF4444',
+    marginBottom: 20,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    gap: 8,
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#7C3AED',
+    fontWeight: '500',
+  },
+})

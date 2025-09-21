@@ -20,7 +20,9 @@
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to access your microphone",
-        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID."
+        "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID.",
+        "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar",
+        "NSRemindersUsageDescription": "Allow $(PRODUCT_NAME) to access your reminders"
       },
       "entitlements": {
         "com": {
@@ -45,7 +47,10 @@
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE",
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "INTERNET"
       ]
     },
     "web": {
@@ -68,6 +73,12 @@
         "expo-local-authentication",
         {
           "faceIDPermission": "Allow $(PRODUCT_NAME) to use Face ID."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "The app needs to access your calendar."
         }
       ]
     ],

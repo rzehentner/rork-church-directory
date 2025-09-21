@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Users, Home, Shield, Settings, Bell } from "lucide-react-native";
+import { Users, Home, Shield, Settings, Bell, Calendar } from "lucide-react-native";
 import React from "react";
 import { useUser } from "@/hooks/user-context";
 
@@ -42,6 +42,13 @@ export default function TabLayout() {
         options={{
           title: "Announcements",
           tabBarIcon: ({ color }) => <Bell size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{
+          title: "Events",
+          tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
         }}
       />
       {isAdmin && (
