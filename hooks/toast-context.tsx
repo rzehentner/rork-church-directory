@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import Toast, { ToastType } from '@/components/Toast';
 import NetInfo from '@react-native-community/netinfo';
+import { Platform } from 'react-native';
 
 interface ToastState {
   id: string;
@@ -93,18 +94,44 @@ const [ToastProvider, useToast] = createContextHook(() => {
     showError('No internet connection. Please check your network and try again.');
   }, [showError]);
 
-  // Monitor network connectivity
+  // Monitor network connectivity (skip on web to prevent hydration issues)
   React.useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener((state: any) => {
-      const offline = !state.isConnected;
-      setIsOffline(offline);
-      
-      if (offline) {
-        showWarning('You are offline. Some features may not work properly.');
-      }
-    });
+    if (Platform.OS === 'web') {
+      // On web, assume online for now to prevent hydration issues
+      setIsOffline(false);
+      return;
+    }
 
-    return unsubscribe;
+    let mounted = true;
+    
+    const setupNetInfo = async () => {
+      try {
+        const unsubscribe = NetInfo.addEventListener((state: any) => {
+          if (!mounted) return;
+          
+          const offline = !state.isConnected;
+          setIsOffline(offline);
+          
+          if (offline) {
+            showWarning('You are offline. Some features may not work properly.');
+          }
+        });
+
+        return unsubscribe;
+      } catch (error) {
+        console.warn('NetInfo setup failed:', error);
+        if (mounted) {
+          setIsOffline(false);
+        }
+      }
+    };
+
+    const cleanup = setupNetInfo();
+    
+    return () => {
+      mounted = false;
+      cleanup?.then(unsubscribe => unsubscribe?.());
+    };
   }, [showWarning]);
 
   return useMemo(() => ({

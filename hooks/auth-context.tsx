@@ -29,36 +29,68 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
 
   useEffect(() => {
+    let mounted = true;
+    
     const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setSession(session);
-      setUser(session?.user ?? null);
-      
-      if (Platform.OS !== 'web') {
-        const compatible = await LocalAuthentication.hasHardwareAsync();
-        const enrolled = await LocalAuthentication.isEnrolledAsync();
-        setIsBiometricAvailable(compatible && enrolled);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
         
-        const biometricData = await AsyncStorage.getItem('biometric_credentials');
-        setIsBiometricEnabled(!!biometricData);
+        if (!mounted) return;
+        
+        setSession(session);
+        setUser(session?.user ?? null);
+        
+        if (Platform.OS !== 'web') {
+          try {
+            const compatible = await LocalAuthentication.hasHardwareAsync();
+            const enrolled = await LocalAuthentication.isEnrolledAsync();
+            
+            if (mounted) {
+              setIsBiometricAvailable(compatible && enrolled);
+            }
+            
+            const biometricData = await AsyncStorage.getItem('biometric_credentials');
+            
+            if (mounted) {
+              setIsBiometricEnabled(!!biometricData);
+            }
+          } catch (error) {
+            console.warn('Biometric setup failed:', error);
+            if (mounted) {
+              setIsBiometricAvailable(false);
+              setIsBiometricEnabled(false);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization failed:', error);
+      } finally {
+        if (mounted) {
+          setIsLoading(false);
+        }
       }
-      
-      setIsLoading(false);
     };
     
     initAuth();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+      if (!mounted) return;
+      
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Handle session storage safely
       if (session) {
-        AsyncStorage.setItem('session', JSON.stringify(session));
+        AsyncStorage.setItem('session', JSON.stringify(session)).catch(console.warn);
       } else {
-        AsyncStorage.removeItem('session');
+        AsyncStorage.removeItem('session').catch(console.warn);
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

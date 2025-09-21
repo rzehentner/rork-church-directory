@@ -11,6 +11,7 @@ export default function IndexScreen() {
   const { profile, person, isLoading: userLoading } = useUser();
   const [showSplash, setShowSplash] = useState(true);
   const [fadeAnim] = useState(new Animated.Value(0));
+  const [forceReady, setForceReady] = useState(false);
 
   useEffect(() => {
     // Fade in animation
@@ -25,11 +26,21 @@ export default function IndexScreen() {
       setShowSplash(false);
     }, 2000);
 
-    return () => clearTimeout(splashTimer);
+    // Force ready after maximum wait time to prevent infinite loading
+    const forceTimer = setTimeout(() => {
+      console.warn('Forcing app ready due to timeout');
+      setForceReady(true);
+      setShowSplash(false);
+    }, 10000);
+
+    return () => {
+      clearTimeout(splashTimer);
+      clearTimeout(forceTimer);
+    };
   }, [fadeAnim]);
 
   useEffect(() => {
-    if (!authLoading && !userLoading && !showSplash) {
+    if ((!authLoading && !userLoading && !showSplash) || forceReady) {
       if (user) {
         // Check if user is a visitor (pending) without a complete profile
         if (profile?.role === 'pending' && (!person || !person.first_name || !person.last_name)) {
@@ -41,9 +52,9 @@ export default function IndexScreen() {
         router.replace('/(auth)/login');
       }
     }
-  }, [user, profile, person, authLoading, userLoading, showSplash]);
+  }, [user, profile, person, authLoading, userLoading, showSplash, forceReady]);
 
-  if (authLoading || userLoading || showSplash) {
+  if ((authLoading || userLoading || showSplash) && !forceReady) {
     return (
       <SafeAreaView style={styles.container}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
