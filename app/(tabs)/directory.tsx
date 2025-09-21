@@ -1297,7 +1297,7 @@ export default function DirectoryScreen() {
               <View style={styles.familyHeader}>
                 <View style={styles.familyHeaderContent}>
                   {/* Family Photo */}
-                  {!isUnassigned && familyInfo.family_id && familyImages.familyPhotos[familyInfo.family_id] ? (
+                  {!isUnassigned && familyInfo.family_id && familyImages.familyPhotos[familyInfo.family_id] && familyImages.familyPhotos[familyInfo.family_id]!.trim() !== '' ? (
                     <Image
                       source={{ uri: familyImages.familyPhotos[familyInfo.family_id]! }}
                       style={styles.familyPhoto}
@@ -1368,7 +1368,7 @@ export default function DirectoryScreen() {
                   {members.filter(member => member?.person_id).map((member) => (
                     <View key={member.person_id} style={styles.memberCard}>
                       {/* Member Avatar */}
-                      {familyImages.memberAvatars[member.person_id] ? (
+                      {familyImages.memberAvatars[member.person_id] && familyImages.memberAvatars[member.person_id]!.trim() !== '' ? (
                         <Image
                           source={{ uri: familyImages.memberAvatars[member.person_id]! }}
                           style={styles.memberAvatarImage}
@@ -1445,7 +1445,7 @@ export default function DirectoryScreen() {
               <View key={person.person_id} style={styles.personCard}>
                 <View style={styles.personCardContent}>
                   {/* Person Avatar */}
-                  {familyImages.memberAvatars[person.person_id] ? (
+                  {familyImages.memberAvatars[person.person_id] && familyImages.memberAvatars[person.person_id]!.trim() !== '' ? (
                     <Image
                       source={{ uri: familyImages.memberAvatars[person.person_id]! }}
                       style={styles.personAvatarImage}

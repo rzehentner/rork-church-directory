@@ -111,6 +111,12 @@ export async function getSignedUrl(key: string, ttlSeconds = 3600): Promise<stri
       return null;
     }
     
+    // Ensure we never return empty strings
+    if (!data.signedUrl || data.signedUrl.trim() === '') {
+      console.log('Signed URL is empty, returning null:', key);
+      return null;
+    }
+    
     return data.signedUrl;
   } catch (err) {
     console.error('Error in getSignedUrl:', err);
