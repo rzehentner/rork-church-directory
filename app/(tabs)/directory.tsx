@@ -223,8 +223,26 @@ export default function DirectoryScreen() {
           
           if (personsError) throw personsError;
           
-          // Transform to match expected format
-          viewData = personsData?.map((person: any) => ({
+          // Transform to match expected format and filter out invalid records
+          viewData = personsData?.filter((person: any) => {
+            // Only include persons with valid IDs
+            const hasValidId = person.id && 
+                              person.id !== 'null' && 
+                              person.id !== 'undefined' && 
+                              typeof person.id === 'string' &&
+                              person.id.trim() !== '' &&
+                              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.id);
+            
+            if (!hasValidId) {
+              console.warn('⚠️ Filtering out person with invalid ID:', {
+                id: person.id,
+                first_name: person.first_name,
+                last_name: person.last_name
+              });
+            }
+            
+            return hasValidId;
+          }).map((person: any) => ({
             person_id: person.id,
             first_name: person.first_name,
             last_name: person.last_name,
