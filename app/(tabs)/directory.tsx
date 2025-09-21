@@ -360,27 +360,11 @@ export default function DirectoryScreen() {
       }
 
       try {
-        console.log('🔍 Filtering by tags:', { 
-          selectedTagIds, 
-          matchAllTags,
-          availableTagsCount: availableTags?.length || 0
-        });
-        
         // Use the actual database function to find people by tags
         const personIds = await findPeopleByTags(selectedTagIds, matchAllTags);
-        
-        console.log('✅ Filtered person IDs:', {
-          count: personIds.length,
-          ids: personIds
-        });
-        setFilteredPersonIds(personIds);
+        setFilteredPersonIds(personIds || []);
       } catch (error) {
         console.error('❌ Error filtering by tags:', error);
-        console.error('❌ Error details:', {
-          message: error instanceof Error ? error.message : 'Unknown error',
-          selectedTagIds,
-          matchAllTags
-        });
         // Fallback to empty results on error
         setFilteredPersonIds([]);
       }
@@ -498,6 +482,12 @@ export default function DirectoryScreen() {
     if (!directoryData) return [];
 
     let filtered = directoryData.filter((entry) => {
+      // Validate entry has required fields
+      if (!entry || !entry.person_id) {
+        console.warn('⚠️ Skipping invalid entry:', entry);
+        return false;
+      }
+
       const searchLower = searchQuery.toLowerCase();
       const matchesSearch = (
         (entry.first_name?.toLowerCase() || '').includes(searchLower) ||
@@ -514,46 +504,17 @@ export default function DirectoryScreen() {
       
       // Apply user role filter if selected (admin only)
       if (selectedUserRole && isAdmin) {
-        console.log('🔍 Role filter check:', {
-          personId: entry.person_id,
-          personName: `${entry.first_name} ${entry.last_name}`,
-          selectedUserRole,
-          entryUserRole: entry.user_role,
-          hasUserAccount: !!entry.user_id,
-          adminUsersListCount: adminUsersList.length
-        });
-        
         // Check if this person is in the admin users list (which is already filtered by role)
         const isInAdminList = adminUsersList.some(adminUser => 
           adminUser.person_id === entry.person_id
         );
         
         if (!isInAdminList) {
-          console.log('❌ Person not in admin users list for selected role');
           return false;
         }
-        
-        console.log('✅ Person found in admin users list, including in results');
       }
       
       return matchesSearch;
-    });
-
-    console.log('🔍 Filtered data:', {
-      totalEntries: directoryData?.length || 0,
-      searchQuery,
-      selectedTagsCount: selectedTagIds.length,
-      selectedUserRole,
-      filteredPersonIdsCount: filteredPersonIds.length,
-      filteredPersonIds: filteredPersonIds.slice(0, 5), // Show first 5 for debugging
-      finalFilteredCount: filtered.length,
-      sampleFilteredEntries: filtered.slice(0, 3).map(e => ({ 
-        person_id: e.person_id, 
-        name: `${e.first_name} ${e.last_name}`,
-        user_role: e.user_role,
-        has_user_account: !!e.user_id,
-        matchesFilter: selectedTagIds.length === 0 || filteredPersonIds.includes(e.person_id)
-      }))
     });
 
     return filtered;
@@ -567,12 +528,10 @@ export default function DirectoryScreen() {
         return;
       }
       
-      console.log('🏷️ Loading tags for people in directory...');
-      
       try {
         // Pre-filter people with valid IDs to avoid making invalid API calls
         const validPeople = filteredData.filter(person => {
-          const isValid = person.person_id && 
+          const isValid = person?.person_id && 
                          person.person_id !== 'null' && 
                          person.person_id !== 'undefined' && 
                          typeof person.person_id === 'string' &&
@@ -580,18 +539,8 @@ export default function DirectoryScreen() {
                          person.person_id !== 'invalid' &&
                          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.person_id);
           
-          if (!isValid) {
-            console.warn(`⚠️ Skipping person with invalid ID:`, {
-              person_id: person.person_id,
-              first_name: person.first_name,
-              last_name: person.last_name
-            });
-          }
-          
           return isValid;
         });
-        
-        console.log(`🔍 Loading tags for ${validPeople.length} valid people out of ${filteredData.length} total`);
         
         // If no valid people, clear tags and return
         if (validPeople.length === 0) {
@@ -599,47 +548,40 @@ export default function DirectoryScreen() {
           return;
         }
         
-        const tagPromises = validPeople.map(async (person) => {
-          try {
-            const personWithTags = await getPersonWithTags(person.person_id);
-            return {
-              personId: person.person_id,
-              tags: personWithTags.tags || []
-            };
-          } catch (error) {
-            console.warn(`⚠️ Failed to load tags for person ${person.person_id}:`, {
-              error: error instanceof Error ? error.message : 'Unknown error',
-              person_id: person.person_id,
-              first_name: person.first_name,
-              last_name: person.last_name
-            });
-            return {
-              personId: person.person_id,
-              tags: []
-            };
-          }
-        });
-        
-        const results = await Promise.all(tagPromises);
-        
+        // Limit concurrent requests to prevent overwhelming the server
+        const batchSize = 10;
         const newPersonTags: Record<string, Tag[]> = {};
-        results.forEach(({ personId, tags }) => {
-          if (personId && personId !== 'null' && personId !== 'undefined') {
-            newPersonTags[personId] = tags;
-          }
-        });
+        
+        for (let i = 0; i < validPeople.length; i += batchSize) {
+          const batch = validPeople.slice(i, i + batchSize);
+          
+          const batchPromises = batch.map(async (person) => {
+            try {
+              const personWithTags = await getPersonWithTags(person.person_id);
+              return {
+                personId: person.person_id,
+                tags: personWithTags.tags || []
+              };
+            } catch (error) {
+              return {
+                personId: person.person_id,
+                tags: []
+              };
+            }
+          });
+          
+          const batchResults = await Promise.all(batchPromises);
+          
+          batchResults.forEach(({ personId, tags }) => {
+            if (personId && personId !== 'null' && personId !== 'undefined') {
+              newPersonTags[personId] = tags;
+            }
+          });
+        }
         
         setPersonTags(newPersonTags);
-        
-        console.log('✅ Person tags loaded:', {
-          totalPeople: filteredData.length,
-          validPeople: validPeople.length,
-          peopleWithTags: Object.keys(newPersonTags).length,
-          totalTags: results.reduce((sum, r) => sum + r.tags.length, 0)
-        });
       } catch (error) {
         console.error('❌ Error loading person tags:', error);
-        // Set empty tags on error to prevent infinite loading
         setPersonTags({});
       }
     };
@@ -1339,6 +1281,8 @@ export default function DirectoryScreen() {
         {viewMode === 'family' ? (
           // Family View
           Object.entries(groupedFamilies).map(([familyKey, members]) => {
+          if (!members || members.length === 0) return null;
+          
           const isExpanded = expandedFamilies.has(familyKey);
           const familyInfo = members[0];
           const isUnassigned = familyKey === '[Unassigned]';
@@ -1421,7 +1365,7 @@ export default function DirectoryScreen() {
 
               {isExpanded && (
                 <View style={styles.membersContainer}>
-                  {members.map((member) => (
+                  {members.filter(member => member?.person_id).map((member) => (
                     <View key={member.person_id} style={styles.memberCard}>
                       {/* Member Avatar */}
                       {familyImages.memberAvatars[member.person_id] ? (
@@ -1497,7 +1441,7 @@ export default function DirectoryScreen() {
         ) : (
           // Person View
           <View style={styles.personListContainer}>
-            {sortedPersons.map((person) => (
+            {sortedPersons.filter(person => person?.person_id).map((person) => (
               <View key={person.person_id} style={styles.personCard}>
                 <View style={styles.personCardContent}>
                   {/* Person Avatar */}

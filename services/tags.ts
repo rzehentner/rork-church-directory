@@ -144,18 +144,14 @@ export async function getMyPerson(): Promise<Person> {
  * Get a person with their tags
  */
 export async function getPersonWithTags(personId: string): Promise<PersonWithTags> {
-  console.log('👤 Fetching person with tags:', personId);
-  
   // Validate personId more strictly
   if (!personId || personId === 'null' || personId === 'undefined' || personId.trim() === '' || personId === 'invalid') {
-    console.error('❌ Invalid personId provided:', personId);
     throw new Error('Invalid person ID');
   }
   
   // Additional UUID format validation
   const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (!uuidRegex.test(personId)) {
-    console.error('❌ Invalid UUID format for personId:', personId);
     throw new Error('Invalid person ID format');
   }
   
@@ -168,7 +164,6 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
       .single();
     
     if (personError) {
-      console.error('❌ Error fetching person:', personError);
       throw personError;
     }
     
@@ -186,10 +181,7 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
     
     let tags: Tag[] = [];
     
-    if (tagsError) {
-      console.error('❌ Error fetching person tags:', tagsError);
-      console.log('⚠️ Continuing with empty tags for person:', person.first_name);
-    } else if (personWithTagsData?.tag_names && Array.isArray(personWithTagsData.tag_names)) {
+    if (!tagsError && personWithTagsData?.tag_names && Array.isArray(personWithTagsData.tag_names)) {
       // Get full tag details for each tag name
       const { data: tagDetails, error: tagDetailsError } = await supabase
         .from('tags')
@@ -197,9 +189,7 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
         .in('name', personWithTagsData.tag_names)
         .eq('is_active', true);
       
-      if (tagDetailsError) {
-        console.error('❌ Error fetching tag details:', tagDetailsError);
-      } else {
+      if (!tagDetailsError) {
         tags = tagDetails || [];
       }
     }
@@ -209,10 +199,8 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
       tags
     };
     
-    console.log('✅ Person with tags fetched:', person.first_name, tags.length);
     return personWithTags;
   } catch (error) {
-    console.error('❌ Failed to fetch person with tags:', error);
     throw error;
   }
 }
@@ -297,8 +285,6 @@ export async function removeTagFromPerson(personId: string, tagId: string): Prom
  * Find people by tags
  */
 export async function findPeopleByTags(tagIds: string[], matchAll: boolean = false): Promise<string[]> {
-  console.log('🔍 Finding people by tags:', { tagIds, matchAll });
-  
   if (tagIds.length === 0) {
     return [];
   }
@@ -311,12 +297,10 @@ export async function findPeopleByTags(tagIds: string[], matchAll: boolean = fal
       .in('id', tagIds);
     
     if (tagError || !tags) {
-      console.error('❌ Error fetching tag names:', tagError);
       throw tagError || new Error('Failed to fetch tag names');
     }
     
     const tagNames = tags.map(tag => tag.name);
-    console.log('🏷️ Tag names to search for:', tagNames);
     
     // Use the RPC function to find people by tags
     const { data, error } = await supabase.rpc('get_subjects_by_tags', {
@@ -326,27 +310,10 @@ export async function findPeopleByTags(tagIds: string[], matchAll: boolean = fal
     });
     
     if (error) {
-      console.error('❌ Error finding people by tags:', error);
-      console.error('❌ RPC call details:', {
-        function: 'get_subjects_by_tags',
-        params: {
-          p_kind: 'person',
-          p_tag_names: tagNames,
-          p_match_all: matchAll
-        },
-        error: error
-      });
       throw error;
     }
     
     const rpcResults = data || [];
-    console.log('✅ RPC results received:', {
-      tagIds,
-      tagNames,
-      matchAll,
-      count: rpcResults.length,
-      rawData: rpcResults
-    });
     
     // Extract subject_id from each result object
     const personIds = rpcResults.map((result: any) => {
@@ -355,25 +322,12 @@ export async function findPeopleByTags(tagIds: string[], matchAll: boolean = fal
       } else if (typeof result === 'string') {
         return result;
       } else {
-        console.warn('⚠️ Unexpected result format:', result);
         return String(result);
       }
-    });
-    
-    console.log('🔄 Extracted person IDs:', {
-      count: personIds.length,
-      personIds: personIds.slice(0, 5) // Show first 5 for debugging
-    });
+    }).filter((id: string) => id && id !== 'null' && id !== 'undefined');
     
     return personIds;
   } catch (error) {
-    console.error('❌ Failed to find people by tags:', error);
-    console.error('❌ Full error details:', {
-      error,
-      tagIds,
-      matchAll,
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
     throw error;
   }
 }
