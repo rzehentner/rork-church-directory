@@ -236,15 +236,20 @@ export default function EventsScreen() {
         }
         ListHeaderComponent={
           <View>
+            <View style={styles.debugContainer}>
+              <Text>Debug: Calendar should render here. Events count: {allEvents.length}</Text>
+            </View>
             <Calendar
               events={allEvents}
               selectedDate={selectedDate}
               onDateSelect={(date) => {
+                console.log('Date selected:', date)
                 setSelectedDate(date)
                 setViewMode('selected')
                 loadEventsForSelectedDate(date)
               }}
               onMonthChange={(date) => {
+                console.log('Month changed:', date)
                 const newSelectedDate = new Date(date.getFullYear(), date.getMonth(), selectedDate.getDate())
                 setSelectedDate(newSelectedDate)
               }}
@@ -463,5 +468,11 @@ const styles = StyleSheet.create({
   toggleButtonTextActive: {
     color: '#7C3AED',
     fontWeight: '600',
+  },
+  debugContainer: {
+    backgroundColor: '#FFE4E1',
+    padding: 10,
+    marginBottom: 10,
+    borderRadius: 8,
   },
 })

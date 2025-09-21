@@ -30,6 +30,7 @@ const MONTHS = [
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function Calendar({ events, selectedDate, onDateSelect, onMonthChange }: CalendarProps) {
+  console.log('Calendar rendering with:', { eventsCount: events.length, selectedDate: selectedDate.toISOString() })
   const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
 
   const eventsByDate = useMemo(() => {
@@ -101,8 +102,10 @@ export default function Calendar({ events, selectedDate, onDateSelect, onMonthCh
     onDateSelect(date)
   }
 
+  console.log('Calendar days generated:', calendarDays.length)
+  
   return (
-    <View style={styles.container}>
+    <View style={styles.container} testID="calendar-container">
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity 
@@ -183,6 +186,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    minHeight: 300,
   },
   header: {
     flexDirection: 'row',
@@ -218,7 +222,7 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     width: '14.28%',
-    aspectRatio: 1,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 8,
@@ -253,8 +257,11 @@ const styles = StyleSheet.create({
   eventIndicators: {
     position: 'absolute',
     bottom: 2,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 2,
   },
   eventDot: {
