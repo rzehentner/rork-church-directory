@@ -255,33 +255,30 @@ export async function getEventICS(eventId: string) {
 
 export type EventRSVP = {
   person_id: string
-  person_name: string
+  first_name: string
+  last_name: string
+  email: string | null
+  phone: string | null
+  family_name: string
   status: RSVP
-  updated_at: string
+  responded_at: string
 }
 
 export async function getEventRSVPs(eventId: string): Promise<EventRSVP[]> {
+  console.log('getEventRSVPs called with eventId:', eventId)
+  
   const { data, error } = await supabase
     .from('event_rsvps')
-    .select(`
-      person_id,
-      status,
-      responded_at,
-      first_name,
-      last_name,
-      email,
-      phone,
-      family_name
-    `)
+    .select('person_id, first_name, last_name, email, phone, family_name, status, responded_at')
     .eq('event_id', eventId)
-    .order('responded_at', { ascending: false })
+    .order('last_name', { ascending: true })
   
-  if (error) throw error
+  console.log('getEventRSVPs response:', { data: data?.length, error })
   
-  return (data ?? []).map(row => ({
-    person_id: row.person_id,
-    person_name: `${row.first_name} ${row.last_name}`.trim(),
-    status: row.status as RSVP,
-    updated_at: row.responded_at
-  }))
+  if (error) {
+    console.error('getEventRSVPs error:', error)
+    throw error
+  }
+  
+  return data ?? []
 }

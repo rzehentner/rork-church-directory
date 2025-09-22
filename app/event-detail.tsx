@@ -293,9 +293,14 @@ export default function EventDetailScreen() {
           {rsvps.map((rsvp) => (
             <View key={rsvp.person_id} style={styles.rsvpItem}>
               <View style={styles.rsvpItemInfo}>
-                <Text style={styles.rsvpItemName}>{rsvp.person_name}</Text>
+                <Text style={styles.rsvpItemName}>
+                  {`${rsvp.first_name} ${rsvp.last_name}`.trim()}
+                </Text>
+                {rsvp.family_name && (
+                  <Text style={styles.rsvpItemFamily}>{rsvp.family_name}</Text>
+                )}
                 <Text style={styles.rsvpItemDate}>
-                  {new Date(rsvp.updated_at).toLocaleDateString()}
+                  {new Date(rsvp.responded_at).toLocaleDateString()}
                 </Text>
               </View>
               <View style={[
@@ -672,6 +677,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#111827',
+    marginBottom: 2,
+  },
+  rsvpItemFamily: {
+    fontSize: 14,
+    color: '#9CA3AF',
     marginBottom: 2,
   },
   rsvpItemDate: {
