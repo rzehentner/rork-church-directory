@@ -47,12 +47,18 @@ export default function EventDetailScreen() {
   const [isLoadingRef, setIsLoadingRef] = useState(false)
   const [networkInfo, setNetworkInfo] = useState<any>(null)
   const { showToast } = useToast()
-  const { myRole } = useMe()
+  const { myRole, isLoading: meLoading } = useMe()
 
   const loadEvent = useCallback(async () => {
     // Prevent multiple simultaneous loads
     if (isLoadingRef) {
       console.log('Load already in progress, skipping...')
+      return
+    }
+    
+    // Wait for me context to load first
+    if (meLoading) {
+      console.log('Waiting for me context to load...')
       return
     }
     
@@ -66,6 +72,7 @@ export default function EventDetailScreen() {
       console.log('ID type:', typeof id)
       console.log('ID value (JSON):', JSON.stringify(id))
       console.log('My role:', myRole)
+      console.log('Me loading:', meLoading)
       
       // Collect comprehensive debug information
       const debugData: any = {
@@ -75,6 +82,7 @@ export default function EventDetailScreen() {
         idLength: id?.length,
         idTrimmed: id?.trim(),
         myRole: myRole,
+        meLoading: meLoading,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
         platform: Platform.OS,
         routeParams: params,
@@ -182,6 +190,7 @@ export default function EventDetailScreen() {
         idLength: id?.length,
         idTrimmed: id?.trim(),
         myRole: myRole,
+        meLoading: meLoading,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
         platform: Platform.OS,
         routeParams: params,
@@ -226,14 +235,14 @@ export default function EventDetailScreen() {
       setLoading(false)
       setIsLoadingRef(false)
     }
-  }, [id, myRole, showToast, isLoadingRef])
+  }, [id, myRole, meLoading, showToast, isLoadingRef])
 
   useEffect(() => {
-    if (id && !isLoadingRef) {
+    if (id && !isLoadingRef && !meLoading) {
       console.log('useEffect triggered for event ID:', id)
       loadEvent()
     }
-  }, [id, myRole, loadEvent]) // Now safe to include loadEvent
+  }, [id, myRole, meLoading, loadEvent]) // Now safe to include loadEvent
 
   const handleRSVP = async (status: RSVP) => {
     if (!event) return
@@ -277,12 +286,14 @@ export default function EventDetailScreen() {
     return `${start.toLocaleString()} - ${end.toLocaleString()}`
   }
 
-  if (loading) {
+  if (loading || meLoading) {
     return (
       <View style={styles.container}>
         <Stack.Screen options={{ title: 'Event Details' }} />
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading...</Text>
+          {meLoading && <Text style={styles.loadingSubtext}>Loading user profile...</Text>}
+          {loading && !meLoading && <Text style={styles.loadingSubtext}>Loading event details...</Text>}
         </View>
       </View>
     )
@@ -337,6 +348,7 @@ export default function EventDetailScreen() {
                 <Text style={styles.debugSummaryTitle}>Quick Summary:</Text>
                 <Text style={styles.debugSummaryText}>• Event ID: {debugInfo?.extractedId || 'N/A'}</Text>
                 <Text style={styles.debugSummaryText}>• User Role: {debugInfo?.myRole || 'N/A'}</Text>
+                <Text style={styles.debugSummaryText}>• Me Loading: {debugInfo?.meLoading ? 'Yes' : 'No'}</Text>
                 <Text style={styles.debugSummaryText}>• Platform: {debugInfo?.platform || 'N/A'}</Text>
                 <Text style={styles.debugSummaryText}>• Network: {debugInfo?.networkStatus?.onLine ? 'Online' : 'Offline/Unknown'}</Text>
                 <Text style={styles.debugSummaryText}>• Error: {debugInfo?.error || 'N/A'}</Text>
@@ -675,6 +687,11 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#6B7280',
+  },
+  loadingSubtext: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    marginTop: 8,
   },
   errorContainer: {
     flex: 1,
