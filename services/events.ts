@@ -207,20 +207,22 @@ export async function getEventRSVPs(eventId: string): Promise<EventRSVP[]> {
     .select(`
       person_id,
       status,
-      updated_at,
-      persons (
-        name
-      )
+      responded_at,
+      first_name,
+      last_name,
+      email,
+      phone,
+      family_name
     `)
     .eq('event_id', eventId)
-    .order('updated_at', { ascending: false })
+    .order('responded_at', { ascending: false })
   
   if (error) throw error
   
   return (data ?? []).map(row => ({
     person_id: row.person_id,
-    person_name: (row.persons as any)?.name || 'Unknown',
+    person_name: `${row.first_name} ${row.last_name}`.trim(),
     status: row.status as RSVP,
-    updated_at: row.updated_at
+    updated_at: row.responded_at
   }))
 }
