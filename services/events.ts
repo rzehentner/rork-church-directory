@@ -75,18 +75,22 @@ export async function getEvent(eventId: string) {
   return { ...fallbackData, my_rsvp: null }
 }
 
-export async function listEventsForDateRange(startDate: Date, endDate: Date) {
-  console.log('listEventsForDateRange called with:', { startDate, endDate })
+export async function listEventsInRange(startISO: string, endISO: string) {
+  console.log('listEventsInRange called with:', { startISO, endISO })
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
-    .gte('start_at', startDate.toISOString())
-    .lte('end_at', endDate.toISOString())
+    .lt('start_at', endISO)
+    .gte('end_at', startISO)
     .order('start_at', { ascending: true })
   
-  console.log('listEventsForDateRange response:', { data: data?.length, error })
+  console.log('listEventsInRange response:', { data: data?.length, error })
   if (error) throw error
   return data ?? []
+}
+
+export async function listEventsForDateRange(startDate: Date, endDate: Date) {
+  return listEventsInRange(startDate.toISOString(), endDate.toISOString())
 }
 
 export async function listEventsForDate(date: Date) {
@@ -95,11 +99,19 @@ export async function listEventsForDate(date: Date) {
   const endOfDay = new Date(date)
   endOfDay.setHours(23, 59, 59, 999)
   
+  return listEventsInRange(startOfDay.toISOString(), endOfDay.toISOString())
+}
+
+export async function listByTagsAny(tagNames: string[]) {
+  console.log('listByTagsAny called with:', tagNames)
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
-    .or(`and(start_at.lte.${endOfDay.toISOString()},end_at.gte.${startOfDay.toISOString()})`)
+    .contains('audience_tags', tagNames)
+    .gte('end_at', new Date().toISOString())
     .order('start_at', { ascending: true })
+  
+  console.log('listByTagsAny response:', { data: data?.length, error })
   if (error) throw error
   return data ?? []
 }

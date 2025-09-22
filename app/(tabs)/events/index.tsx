@@ -35,7 +35,7 @@ type Event = {
 
 type EventFilter = {
   rsvpStatus: RSVP | 'all'
-  tagIds: string[]
+  tagNames: string[]
 }
 
 export default function EventsScreen() {
@@ -47,7 +47,7 @@ export default function EventsScreen() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [filters, setFilters] = useState<EventFilter>({
     rsvpStatus: 'all',
-    tagIds: []
+    tagNames: []
   })
   
   const { profile } = useUser()
@@ -118,12 +118,6 @@ export default function EventsScreen() {
   }
 
   // Filter events based on current filters and view mode
-  // Create a map of tag IDs to tag objects for easy lookup
-  const tagMap = useMemo(() => {
-    const map = new Map<string, Tag>()
-    availableTags.forEach(tag => map.set(tag.id, tag))
-    return map
-  }, [availableTags])
 
   const filteredEvents = useMemo(() => {
     let events = allEvents
@@ -152,13 +146,13 @@ export default function EventsScreen() {
     }
     
     // Filter by tags (if any tags are selected)
-    if (filters.tagIds.length > 0) {
+    if (filters.tagNames.length > 0) {
       events = events.filter(event => {
         if (!event.audience_tags || event.audience_tags.length === 0) {
           return false
         }
-        // Check if event has any of the selected tags
-        return event.audience_tags.some(tagId => filters.tagIds.includes(tagId))
+        // Check if event has any of the selected tag names
+        return event.audience_tags.some(tagName => filters.tagNames.includes(tagName))
       })
     }
     
@@ -182,10 +176,10 @@ export default function EventsScreen() {
   }
   
   const clearFilters = () => {
-    setFilters({ rsvpStatus: 'all', tagIds: [] })
+    setFilters({ rsvpStatus: 'all', tagNames: [] })
   }
   
-  const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagIds.length > 0
+  const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagNames.length > 0
   
   const FilterSection = () => {
     if (!showFilters) return null
@@ -237,22 +231,22 @@ export default function EventsScreen() {
                 key={tag.id}
                 style={[
                   styles.tagFilterChip,
-                  filters.tagIds.includes(tag.id) && styles.tagFilterChipActive,
-                  filters.tagIds.includes(tag.id) && { backgroundColor: tag.color || '#7C3AED' }
+                  filters.tagNames.includes(tag.name) && styles.tagFilterChipActive,
+                  filters.tagNames.includes(tag.name) && { backgroundColor: tag.color || '#7C3AED' }
                 ]}
                 onPress={() => {
                   setFilters(prev => ({
                     ...prev,
-                    tagIds: prev.tagIds.includes(tag.id)
-                      ? prev.tagIds.filter(id => id !== tag.id)
-                      : [...prev.tagIds, tag.id]
+                    tagNames: prev.tagNames.includes(tag.name)
+                      ? prev.tagNames.filter(name => name !== tag.name)
+                      : [...prev.tagNames, tag.name]
                   }))
                 }}
               >
                 <Text style={[
                   styles.tagFilterText,
-                  filters.tagIds.includes(tag.id) && styles.tagFilterTextActive,
-                  { color: filters.tagIds.includes(tag.id) ? '#FFFFFF' : (tag.color || '#6B7280') }
+                  filters.tagNames.includes(tag.name) && styles.tagFilterTextActive,
+                  { color: filters.tagNames.includes(tag.name) ? '#FFFFFF' : (tag.color || '#6B7280') }
                 ]}>
                   {tag.name}
                 </Text>
@@ -331,15 +325,15 @@ export default function EventsScreen() {
         {/* Event Tags */}
         {event.audience_tags && event.audience_tags.length > 0 && (
           <View style={styles.eventTags}>
-            {event.audience_tags.map((tagId) => {
-              const tag = tagMap.get(tagId)
+            {event.audience_tags.map((tagName) => {
+              const tag = availableTags.find(t => t.name === tagName)
               if (!tag) return null
               return (
                 <TagPill
-                  key={tagId}
+                  key={tagName}
                   tag={tag}
                   size="small"
-                  testId={`event-tag-${tagId}`}
+                  testId={`event-tag-${tagName}`}
                 />
               )
             })}
@@ -467,10 +461,10 @@ export default function EventsScreen() {
                     </Text>
                   </View>
                 )}
-                {filters.tagIds.length > 0 && (
+                {filters.tagNames.length > 0 && (
                   <View style={styles.activeFilterChip}>
                     <Text style={styles.activeFilterChipText}>
-                      {filters.tagIds.length} tag{filters.tagIds.length !== 1 ? 's' : ''}
+                      {filters.tagNames.length} tag{filters.tagNames.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
                 )}
