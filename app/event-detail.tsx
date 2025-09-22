@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   View,
   Text,
@@ -9,7 +9,7 @@ import {
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3, Users } from 'lucide-react-native'
-import { listUpcomingEvents, rsvpEvent, eventImageUrl, getEventTags, getEventRSVPs, type RSVP, type EventRSVP } from '@/services/events'
+import { getEvent, rsvpEvent, eventImageUrl, getEventTags, getEventRSVPs, type RSVP, type EventRSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useToast } from '@/hooks/toast-context'
 import { useMe } from '@/hooks/me-context'
@@ -36,35 +36,35 @@ export default function EventDetailScreen() {
   const { showToast } = useToast()
   const { myRole } = useMe()
 
-  const loadEvent = async () => {
+  const loadEvent = useCallback(async () => {
     try {
-      const events = await listUpcomingEvents()
-      const foundEvent = events.find(e => e.id === id) as Event | undefined
-      setEvent(foundEvent || null)
+      const eventData = await getEvent(id as string)
+      setEvent(eventData as Event)
       
-      if (foundEvent) {
-        const tags = await getEventTags(foundEvent.id)
+      if (eventData) {
+        const tags = await getEventTags(eventData.id)
         setEventTags(tags as Tag[])
         
         // Load RSVPs for admins and leaders
         if (myRole === 'admin' || myRole === 'leader') {
-          const rsvps = await getEventRSVPs(foundEvent.id)
+          const rsvps = await getEventRSVPs(eventData.id)
           setEventRSVPs(rsvps)
         }
       }
     } catch (error) {
       console.error('Failed to load event:', error)
       showToast('error', 'Failed to load event')
+      setEvent(null)
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, myRole, showToast])
 
   useEffect(() => {
     if (id) {
       loadEvent()
     }
-  }, [id])
+  }, [id, loadEvent])
 
   const handleRSVP = async (status: RSVP) => {
     if (!event) return
