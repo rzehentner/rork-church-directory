@@ -6,9 +6,11 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  Alert,
+  Platform,
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3, Users } from 'lucide-react-native'
+import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3, Users, AlertTriangle, Info } from 'lucide-react-native'
 import { getEvent, rsvpEvent, eventImageUrl, getEventTags, getEventRSVPs, type RSVP, type EventRSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useToast } from '@/hooks/toast-context'
@@ -39,6 +41,9 @@ export default function EventDetailScreen() {
   const [eventTags, setEventTags] = useState<Tag[]>([])
   const [eventRSVPs, setEventRSVPs] = useState<EventRSVP[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<any>(null)
+  const [showDebug, setShowDebug] = useState(false)
   const { showToast } = useToast()
   const { myRole } = useMe()
 
@@ -51,19 +56,36 @@ export default function EventDetailScreen() {
       console.log('Raw params:', JSON.stringify(params, null, 2))
       console.log('My role:', myRole)
       
+      const debugData: any = {
+        timestamp: new Date().toISOString(),
+        params: params,
+        extractedId: id,
+        idType: typeof id,
+        myRole: myRole,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+        platform: Platform.OS,
+      }
+      
       if (!id) {
         console.error('No event ID provided - throwing error')
-        throw new Error('No event ID provided')
+        const errorMsg = 'No event ID provided'
+        setError(errorMsg)
+        setDebugInfo({ ...debugData, error: errorMsg, step: 'validation' })
+        throw new Error(errorMsg)
       }
       
       console.log('About to call getEvent with ID:', id)
+      debugData.step = 'fetching_event'
       const eventData = await getEvent(id)
       console.log('getEvent returned successfully:', !!eventData)
       console.log('Event data:', JSON.stringify(eventData, null, 2))
       
       if (!eventData) {
         console.error('getEvent returned null/undefined')
-        throw new Error('Event data is null')
+        const errorMsg = 'Event data is null'
+        setError(errorMsg)
+        setDebugInfo({ ...debugData, error: errorMsg, step: 'event_null' })
+        throw new Error(errorMsg)
       }
       
       setEvent(eventData as Event)
@@ -71,6 +93,7 @@ export default function EventDetailScreen() {
       
       // Load tags
       console.log('Loading event tags...')
+      debugData.step = 'fetching_tags'
       const tags = await getEventTags(eventData.id)
       console.log('Event tags loaded:', tags.length, 'tags')
       setEventTags(tags as Tag[])
@@ -78,11 +101,14 @@ export default function EventDetailScreen() {
       // Load RSVPs for admins and leaders
       if (myRole === 'admin' || myRole === 'leader') {
         console.log('Loading RSVPs for admin/leader...')
+        debugData.step = 'fetching_rsvps'
         const rsvps = await getEventRSVPs(eventData.id)
         console.log('RSVPs loaded:', rsvps.length, 'RSVPs')
         setEventRSVPs(rsvps)
       }
       
+      setError(null)
+      setDebugInfo({ ...debugData, success: true, eventId: eventData.id, eventTitle: eventData.title })
       console.log('=== EVENT DETAIL LOAD SUCCESS ===')
     } catch (error) {
       console.error('=== EVENT DETAIL LOAD FAILED ===')
@@ -91,12 +117,28 @@ export default function EventDetailScreen() {
       console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
       console.error('Error stack:', error instanceof Error ? error.stack : 'No stack')
       console.error('Error details:', JSON.stringify(error, null, 2))
-      showToast('error', `Failed to load event: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+      setError(errorMessage)
+      setDebugInfo({
+        timestamp: new Date().toISOString(),
+        params: params,
+        extractedId: id,
+        idType: typeof id,
+        myRole: myRole,
+        error: errorMessage,
+        errorStack: error instanceof Error ? error.stack : null,
+        errorDetails: error,
+        platform: Platform.OS,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+      })
+      
+      showToast('error', `Failed to load event: ${errorMessage}`)
       setEvent(null)
     } finally {
       setLoading(false)
     }
-  }, [id, myRole, showToast])
+  }, [id, myRole, showToast, params])
 
   useEffect(() => {
     if (id) {
@@ -160,17 +202,57 @@ export default function EventDetailScreen() {
   if (!event) {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Event Not Found' }} />
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Event not found</Text>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
-            <ArrowLeft size={20} color="#7C3AED" />
-            <Text style={styles.backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
+        <Stack.Screen options={{ title: 'Event Error' }} />
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.errorContainer}>
+          <View style={styles.errorHeader}>
+            <AlertTriangle size={48} color="#EF4444" />
+            <Text style={styles.errorTitle}>Unable to Load Event</Text>
+            <Text style={styles.errorText}>{error || 'Event not found'}</Text>
+          </View>
+          
+          <View style={styles.errorActions}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <ArrowLeft size={20} color="#7C3AED" />
+              <Text style={styles.backButtonText}>Go Back</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.retryButton}
+              onPress={loadEvent}
+            >
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.debugButton}
+              onPress={() => setShowDebug(!showDebug)}
+            >
+              <Info size={16} color="#6B7280" />
+              <Text style={styles.debugButtonText}>Debug Info</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {showDebug && debugInfo && (
+            <View style={styles.debugContainer}>
+              <Text style={styles.debugTitle}>Debug Information</Text>
+              <ScrollView style={styles.debugScroll} nestedScrollEnabled>
+                <Text style={styles.debugText}>{JSON.stringify(debugInfo, null, 2)}</Text>
+              </ScrollView>
+              <TouchableOpacity
+                style={styles.copyButton}
+                onPress={() => {
+                  // Copy to clipboard functionality would go here
+                  Alert.alert('Debug Info', JSON.stringify(debugInfo, null, 2))
+                }}
+              >
+                <Text style={styles.copyButtonText}>Show Full Debug Info</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
       </View>
     )
   }
@@ -604,5 +686,87 @@ const styles = StyleSheet.create({
   },
   rsvpStatusTextActive: {
     color: '#FFFFFF',
+  },
+  errorHeader: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  errorTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#111827',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  errorActions: {
+    gap: 16,
+    width: '100%',
+    alignItems: 'center',
+  },
+  retryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    backgroundColor: '#7C3AED',
+    borderRadius: 8,
+    minWidth: 120,
+    alignItems: 'center',
+  },
+  retryButtonText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    gap: 8,
+  },
+  debugButtonText: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+  debugContainer: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 8,
+    width: '100%',
+  },
+  debugTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 12,
+  },
+  debugScroll: {
+    maxHeight: 200,
+    backgroundColor: '#1F2937',
+    borderRadius: 6,
+    padding: 12,
+  },
+  debugText: {
+    fontSize: 12,
+    color: '#F9FAFB',
+    fontFamily: 'monospace',
+    lineHeight: 16,
+  },
+  copyButton: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#374151',
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  copyButtonText: {
+    fontSize: 14,
+    color: '#F9FAFB',
+    fontWeight: '500',
   },
 })
