@@ -5,7 +5,7 @@ import { useUser } from "@/hooks/user-context";
 
 export default function TabLayout() {
   const { profile, isLoading } = useUser();
-  const isAdmin = !isLoading && profile?.role === 'admin';
+  const isAdmin = !isLoading && (profile?.role === 'admin' || profile?.role === 'leader');
 
   return (
     <Tabs

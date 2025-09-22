@@ -130,14 +130,14 @@ export default function AdminScreen() {
       if (error) throw error;
       return data as PendingApproval[];
     },
-    enabled: profile?.role === 'admin',
+    enabled: profile?.role === 'admin' || profile?.role === 'leader',
     staleTime: 30000, // 30 seconds
   });
 
   const { data: tags, isLoading: tagsLoading } = useQuery({
     queryKey: ['admin-tags'],
     queryFn: () => listTags(false),
-    enabled: profile?.role === 'admin',
+    enabled: profile?.role === 'admin' || profile?.role === 'leader',
     staleTime: 30000, // 30 seconds
   });
 
@@ -210,7 +210,7 @@ export default function AdminScreen() {
       console.log('📋 Raw admin announcements data:', transformedData);
       return transformedData;
     },
-    enabled: profile?.role === 'admin',
+    enabled: profile?.role === 'admin' || profile?.role === 'leader',
     staleTime: 30000, // 30 seconds
   });
 
@@ -631,7 +631,7 @@ export default function AdminScreen() {
     return matchesSearch && matchesPublishFilter;
   }) || [];
 
-  if (profile?.role !== 'admin') {
+  if (profile?.role !== 'admin' && profile?.role !== 'leader') {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.unauthorizedContainer}>
