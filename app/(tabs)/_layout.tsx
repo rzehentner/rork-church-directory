@@ -4,8 +4,8 @@ import React from "react";
 import { useUser } from "@/hooks/user-context";
 
 export default function TabLayout() {
-  const { profile } = useUser();
-  const isAdmin = profile?.role === 'admin';
+  const { profile, isLoading } = useUser();
+  const isAdmin = !isLoading && profile?.role === 'admin';
 
   return (
     <Tabs
