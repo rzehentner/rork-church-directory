@@ -43,7 +43,7 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<any>(null)
-  const [showDebug, setShowDebug] = useState(false)
+  const [showDebug, setShowDebug] = useState(true)
   const [isLoadingRef, setIsLoadingRef] = useState(false)
   const [networkInfo, setNetworkInfo] = useState<any>(null)
   const { showToast } = useToast()
