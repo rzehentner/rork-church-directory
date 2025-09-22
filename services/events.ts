@@ -22,42 +22,57 @@ export async function getEvent(eventId: string) {
     throw new Error('Invalid event ID provided')
   }
   
+  // Trim and validate the ID
+  const cleanId = eventId.trim()
+  if (cleanId.length === 0) {
+    throw new Error('Empty event ID provided')
+  }
+  
+  console.log('Clean event ID:', cleanId)
+  
   // First try events_for_me view
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
-    .eq('id', eventId)
-    .single()
+    .eq('id', cleanId)
+    .maybeSingle()
   
   console.log('getEvent response from events_for_me:', { data, error })
   console.log('getEvent error details:', error ? JSON.stringify(error, null, 2) : 'no error')
   
   if (error) {
     console.error('getEvent error from events_for_me:', error)
-    
-    // If events_for_me fails, try the events table directly as fallback
-    console.log('Trying fallback query to events table...')
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from('events')
-      .select('*')
-      .eq('id', eventId)
-      .single()
-    
-    console.log('getEvent fallback response:', { data: fallbackData, error: fallbackError })
-    
-    if (fallbackError) {
-      console.error('getEvent fallback error:', fallbackError)
-      if (fallbackError.code === 'PGRST116') {
-        throw new Error('Event not found or you do not have permission to view it')
-      }
-      throw fallbackError
-    }
-    
-    // Add my_rsvp field as null since events table doesn't have it
-    return { ...fallbackData, my_rsvp: null }
+    throw error
   }
   
-  return data
+  if (data) {
+    console.log('Event found in events_for_me:', data.id, data.title)
+    return data
+  }
+  
+  // If not found in events_for_me, try the events table directly as fallback
+  console.log('Event not found in events_for_me, trying fallback query to events table...')
+  const { data: fallbackData, error: fallbackError } = await supabase
+    .from('events')
+    .select('*')
+    .eq('id', cleanId)
+    .maybeSingle()
+  
+  console.log('getEvent fallback response:', { data: fallbackData, error: fallbackError })
+  
+  if (fallbackError) {
+    console.error('getEvent fallback error:', fallbackError)
+    throw fallbackError
+  }
+  
+  if (!fallbackData) {
+    console.error('Event not found in either events_for_me or events table')
+    throw new Error('Event not found or you do not have permission to view it')
+  }
+  
+  console.log('Event found in events table:', fallbackData.id, fallbackData.title)
+  // Add my_rsvp field as null since events table doesn't have it
+  return { ...fallbackData, my_rsvp: null }
 }
 
 export async function listEventsForDateRange(startDate: Date, endDate: Date) {

@@ -44,34 +44,54 @@ export default function EventDetailScreen() {
 
   const loadEvent = useCallback(async () => {
     try {
+      console.log('=== EVENT DETAIL LOAD START ===')
       console.log('Loading event with ID:', id)
       console.log('ID type:', typeof id)
-      console.log('Raw params:', params)
+      console.log('ID value (JSON):', JSON.stringify(id))
+      console.log('Raw params:', JSON.stringify(params, null, 2))
+      console.log('My role:', myRole)
+      
       if (!id) {
+        console.error('No event ID provided - throwing error')
         throw new Error('No event ID provided')
       }
       
       console.log('About to call getEvent with ID:', id)
       const eventData = await getEvent(id)
-      console.log('getEvent returned:', eventData)
-      console.log('Event data loaded:', eventData)
-      setEvent(eventData as Event)
+      console.log('getEvent returned successfully:', !!eventData)
+      console.log('Event data:', JSON.stringify(eventData, null, 2))
       
-      if (eventData) {
-        const tags = await getEventTags(eventData.id)
-        setEventTags(tags as Tag[])
-        
-        // Load RSVPs for admins and leaders
-        if (myRole === 'admin' || myRole === 'leader') {
-          const rsvps = await getEventRSVPs(eventData.id)
-          setEventRSVPs(rsvps)
-        }
+      if (!eventData) {
+        console.error('getEvent returned null/undefined')
+        throw new Error('Event data is null')
       }
+      
+      setEvent(eventData as Event)
+      console.log('Event state set successfully')
+      
+      // Load tags
+      console.log('Loading event tags...')
+      const tags = await getEventTags(eventData.id)
+      console.log('Event tags loaded:', tags.length, 'tags')
+      setEventTags(tags as Tag[])
+      
+      // Load RSVPs for admins and leaders
+      if (myRole === 'admin' || myRole === 'leader') {
+        console.log('Loading RSVPs for admin/leader...')
+        const rsvps = await getEventRSVPs(eventData.id)
+        console.log('RSVPs loaded:', rsvps.length, 'RSVPs')
+        setEventRSVPs(rsvps)
+      }
+      
+      console.log('=== EVENT DETAIL LOAD SUCCESS ===')
     } catch (error) {
+      console.error('=== EVENT DETAIL LOAD FAILED ===')
       console.error('Failed to load event:', error)
       console.error('Event ID was:', id)
+      console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack')
       console.error('Error details:', JSON.stringify(error, null, 2))
-      showToast('error', 'Failed to load event')
+      showToast('error', `Failed to load event: ${error instanceof Error ? error.message : 'Unknown error'}`)
       setEvent(null)
     } finally {
       setLoading(false)
