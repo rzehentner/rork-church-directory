@@ -57,14 +57,15 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
         }}
       />
-      <Tabs.Screen
-        name="admin"
-        options={{
-          title: "Admin",
-          tabBarIcon: ({ color }) => <Shield size={24} color={color} />,
-          href: isAdmin ? '/admin' : null,
-        }}
-      />
+      {isAdmin && (
+        <Tabs.Screen
+          name="admin"
+          options={{
+            title: "Admin",
+            tabBarIcon: ({ color }) => <Shield size={24} color={color} />,
+          }}
+        />
+      )}
       <Tabs.Screen
         name="settings"
         options={{

@@ -28,7 +28,8 @@ type Event = {
 }
 
 export default function EventDetailScreen() {
-  const { id } = useLocalSearchParams()
+  const params = useLocalSearchParams()
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   const [event, setEvent] = useState<Event | null>(null)
   const [eventTags, setEventTags] = useState<Tag[]>([])
   const [eventRSVPs, setEventRSVPs] = useState<EventRSVP[]>([])
@@ -39,11 +40,15 @@ export default function EventDetailScreen() {
   const loadEvent = useCallback(async () => {
     try {
       console.log('Loading event with ID:', id)
+      console.log('ID type:', typeof id)
+      console.log('Raw params:', params)
       if (!id) {
         throw new Error('No event ID provided')
       }
       
-      const eventData = await getEvent(id as string)
+      console.log('About to call getEvent with ID:', id)
+      const eventData = await getEvent(id)
+      console.log('getEvent returned:', eventData)
       console.log('Event data loaded:', eventData)
       setEvent(eventData as Event)
       

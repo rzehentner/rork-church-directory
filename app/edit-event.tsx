@@ -33,7 +33,8 @@ type Event = {
 }
 
 export default function EditEventScreen() {
-  const { id } = useLocalSearchParams()
+  const params = useLocalSearchParams()
+  const id = Array.isArray(params.id) ? params.id[0] : params.id
   const [event, setEvent] = useState<Event | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
