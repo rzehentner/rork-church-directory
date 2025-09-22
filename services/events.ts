@@ -15,21 +15,48 @@ export async function listUpcomingEvents(limit = 100) {
 
 export async function getEvent(eventId: string) {
   console.log('getEvent called with ID:', eventId)
+  console.log('getEvent ID type:', typeof eventId)
+  console.log('getEvent ID length:', eventId?.length)
+  
+  if (!eventId || typeof eventId !== 'string') {
+    throw new Error('Invalid event ID provided')
+  }
+  
+  // First try events_for_me view
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
     .eq('id', eventId)
     .single()
   
-  console.log('getEvent response:', { data, error })
+  console.log('getEvent response from events_for_me:', { data, error })
+  console.log('getEvent error details:', error ? JSON.stringify(error, null, 2) : 'no error')
   
   if (error) {
-    console.error('getEvent error:', error)
-    if (error.code === 'PGRST116') {
-      throw new Error('Event not found or you do not have permission to view it')
+    console.error('getEvent error from events_for_me:', error)
+    
+    // If events_for_me fails, try the events table directly as fallback
+    console.log('Trying fallback query to events table...')
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('events')
+      .select('*')
+      .eq('id', eventId)
+      .single()
+    
+    console.log('getEvent fallback response:', { data: fallbackData, error: fallbackError })
+    
+    if (fallbackError) {
+      console.error('getEvent fallback error:', fallbackError)
+      if (fallbackError.code === 'PGRST116') {
+        throw new Error('Event not found or you do not have permission to view it')
+      }
+      throw fallbackError
     }
-    throw error
+    
+    // Add my_rsvp field as null since events table doesn't have it
+    return { ...fallbackData, my_rsvp: null }
   }
+  
   return data
 }
 

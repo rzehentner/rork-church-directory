@@ -300,7 +300,12 @@ export default function EventsScreen() {
       style={styles.eventCard}
       onPress={() => {
         console.log('Navigating to event detail with ID:', event.id)
-        router.push(`/event-detail?id=${event.id}` as any)
+        console.log('Event ID type:', typeof event.id)
+        console.log('Event ID length:', event.id?.length)
+        console.log('Full event object:', JSON.stringify(event, null, 2))
+        const url = `/event-detail?id=${encodeURIComponent(event.id)}`
+        console.log('Navigation URL:', url)
+        router.push(url as any)
       }}
     >
       {event.image_path && (
