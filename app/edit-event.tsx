@@ -372,44 +372,42 @@ export default function EditEventScreen() {
             </View>
 
             {!isPublic && (
-              <>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Allowed Roles</Text>
-                  <View style={styles.roleContainer}>
-                    {(['admin', 'leader', 'member', 'visitor'] as const).map((role) => (
-                      <TouchableOpacity
-                        key={role}
-                        style={[
-                          styles.roleChip,
-                          selectedRoles.includes(role) && styles.roleChipSelected
-                        ]}
-                        onPress={() => {
-                          setSelectedRoles(prev => 
-                            prev.includes(role) 
-                              ? prev.filter(r => r !== role)
-                              : [...prev, role]
-                          )
-                        }}
-                      >
-                        <Text style={[
-                          styles.roleChipText,
-                          selectedRoles.includes(role) && styles.roleChipTextSelected
-                        ]}>
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Allowed Roles</Text>
+                <View style={styles.roleContainer}>
+                  {(['admin', 'leader', 'member', 'visitor'] as const).map((role) => (
+                    <TouchableOpacity
+                      key={role}
+                      style={[
+                        styles.roleChip,
+                        selectedRoles.includes(role) && styles.roleChipSelected
+                      ]}
+                      onPress={() => {
+                        setSelectedRoles(prev => 
+                          prev.includes(role) 
+                            ? prev.filter(r => r !== role)
+                            : [...prev, role]
+                        )
+                      }}
+                    >
+                      <Text style={[
+                        styles.roleChipText,
+                        selectedRoles.includes(role) && styles.roleChipTextSelected
+                      ]}>
+                        {role.charAt(0).toUpperCase() + role.slice(1)}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-
-                <EventTagPicker
-                  selectedTagIds={selectedTags}
-                  onTagsChange={setSelectedTags}
-                  disabled={false}
-                  testId="edit-event-tag-picker"
-                />
-              </>
+              </View>
             )}
+
+            <EventTagPicker
+              selectedTagIds={selectedTags}
+              onTagsChange={setSelectedTags}
+              disabled={false}
+              testId="edit-event-tag-picker"
+            />
           </View>
         </View>
       </ScrollView>
