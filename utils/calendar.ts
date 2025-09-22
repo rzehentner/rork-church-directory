@@ -41,36 +41,44 @@ export async function addEventToDevice(ev: any) {
 }
 
 export async function shareICS(eventId: string, title: string) {
-  const ics = await getEventICS(eventId)
-  const deepLink = `myapp://event-detail?id=${eventId}`
-  
-  // Add the deep link to the ICS content
-  const icsWithLink = ics.replace(
-    /DESCRIPTION:(.*?)\n/s,
-    (match, description) => {
-      const cleanDesc = description.replace(/\\n/g, '\n')
-      const newDesc = cleanDesc 
-        ? `${cleanDesc}\n\nOpen in app: ${deepLink}`
-        : `Open in app: ${deepLink}`
-      return `DESCRIPTION:${newDesc.replace(/\n/g, '\\n')}\n`
+  try {
+    console.log('shareICS called with:', { eventId, title })
+    const ics = await getEventICS(eventId)
+    console.log('ICS content received:', ics?.substring(0, 100) + '...')
+    
+    const deepLink = `myapp://event-detail?id=${eventId}`
+    
+    // Add the deep link to the ICS content
+    const icsWithLink = ics.replace(
+      /DESCRIPTION:(.*?)\n/s,
+      (match, description) => {
+        const cleanDesc = description.replace(/\\n/g, '\n')
+        const newDesc = cleanDesc 
+          ? `${cleanDesc}\n\nOpen in app: ${deepLink}`
+          : `Open in app: ${deepLink}`
+        return `DESCRIPTION:${newDesc.replace(/\n/g, '\\n')}\n`
+      }
+    )
+    
+    // Also add URL field to ICS
+    const finalIcs = icsWithLink.replace(
+      /END:VEVENT/,
+      `URL:${deepLink}\nEND:VEVENT`
+    )
+    
+    const fileUri = `${FileSystem.cacheDirectory}${title.replace(/\W+/g,'_')}.ics`
+    await FileSystem.writeAsStringAsync(fileUri, finalIcs, { encoding: FileSystem.EncodingType.UTF8 })
+    
+    if (Platform.OS === 'web') {
+      const link = document.createElement('a')
+      link.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(finalIcs)}`
+      link.download = `${title.replace(/\W+/g,'_')}.ics`
+      link.click()
+    } else {
+      await Sharing.shareAsync(fileUri, { mimeType: 'text/calendar' })
     }
-  )
-  
-  // Also add URL field to ICS
-  const finalIcs = icsWithLink.replace(
-    /END:VEVENT/,
-    `URL:${deepLink}\nEND:VEVENT`
-  )
-  
-  const fileUri = `${FileSystem.cacheDirectory}${title.replace(/\W+/g,'_')}.ics`
-  await FileSystem.writeAsStringAsync(fileUri, finalIcs, { encoding: FileSystem.EncodingType.UTF8 })
-  
-  if (Platform.OS === 'web') {
-    const link = document.createElement('a')
-    link.href = `data:text/calendar;charset=utf-8,${encodeURIComponent(finalIcs)}`
-    link.download = `${title.replace(/\W+/g,'_')}.ics`
-    link.click()
-  } else {
-    await Sharing.shareAsync(fileUri, { mimeType: 'text/calendar' })
+  } catch (error) {
+    console.error('shareICS error:', error)
+    throw new Error('Failed to generate calendar file. Please try again.')
   }
 }

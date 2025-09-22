@@ -150,11 +150,13 @@ export default function EventDetailScreen() {
     if (!event) return
     
     try {
+      console.log('Adding event to calendar:', event.id, event.title)
       await addEventToDevice(event)
       showToast('success', 'Event added to calendar')
     } catch (error) {
       console.error('Failed to add to calendar:', error)
-      showToast('error', 'Failed to add to calendar')
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add to calendar'
+      showToast('error', errorMessage)
     }
   }
 

@@ -243,8 +243,13 @@ export function eventImageUrl(path?: string | null) {
 }
 
 export async function getEventICS(eventId: string) {
+  console.log('getEventICS called with eventId:', eventId)
   const { data, error } = await supabase.rpc('get_event_ics', { p_event_id: eventId })
-  if (error) throw error
+  console.log('getEventICS response:', { data: data?.substring(0, 100) + '...', error })
+  if (error) {
+    console.error('getEventICS error:', error)
+    throw error
+  }
   return data as string
 }
 
