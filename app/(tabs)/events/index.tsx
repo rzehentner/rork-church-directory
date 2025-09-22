@@ -290,7 +290,11 @@ export default function EventsScreen() {
   )
 
   const renderEvent = ({ item: event }: { item: Event }) => (
-    <View style={styles.eventCard}>
+    <TouchableOpacity 
+      style={styles.eventCard}
+      onPress={() => router.push(`/event-detail?id=${event.id}` as any)}
+      testID={`event-card-${event.id}`}
+    >
       {event.image_path && (
         <Image 
           source={{ uri: eventImageUrl(event.image_path)! }} 
@@ -352,7 +356,7 @@ export default function EventsScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   )
 
   return (
