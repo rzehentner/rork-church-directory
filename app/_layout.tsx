@@ -22,6 +22,11 @@ function RootLayoutNav() {
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="visitor-profile" options={{ headerShown: false }} />
+      <Stack.Screen name="event-detail" options={{ title: "Event Details" }} />
+      <Stack.Screen name="create-event" options={{ title: "Create Event" }} />
+      <Stack.Screen name="edit-event" options={{ title: "Edit Event" }} />
+      <Stack.Screen name="create-announcement" options={{ title: "Create Announcement" }} />
+      <Stack.Screen name="join-family" options={{ title: "Join Family" }} />
     </Stack>
   );
 }
