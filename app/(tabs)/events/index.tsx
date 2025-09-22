@@ -17,6 +17,7 @@ import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
 import Calendar from '@/components/Calendar'
+import TagPill from '@/components/TagPill'
 
 
 type Event = {
@@ -114,6 +115,13 @@ export default function EventsScreen() {
   }
 
   // Filter events based on current filters and view mode
+  // Create a map of tag IDs to tag objects for easy lookup
+  const tagMap = useMemo(() => {
+    const map = new Map<string, Tag>()
+    availableTags.forEach(tag => map.set(tag.id, tag))
+    return map
+  }, [availableTags])
+
   const filteredEvents = useMemo(() => {
     let events = allEvents
     
@@ -318,6 +326,24 @@ export default function EventsScreen() {
           <Text style={styles.eventDescription} numberOfLines={2}>
             {event.description}
           </Text>
+        )}
+
+        {/* Event Tags */}
+        {event.audience_tags && event.audience_tags.length > 0 && (
+          <View style={styles.eventTags}>
+            {event.audience_tags.map((tagId) => {
+              const tag = tagMap.get(tagId)
+              if (!tag) return null
+              return (
+                <TagPill
+                  key={tagId}
+                  tag={tag}
+                  size="small"
+                  testId={`event-tag-${tagId}`}
+                />
+              )
+            })}
+          </View>
         )}
 
         <View style={styles.eventActions}>
@@ -758,5 +784,11 @@ const styles = StyleSheet.create({
   },
   tagFilterTextActive: {
     color: '#FFFFFF',
+  },
+  eventTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
   },
 })
