@@ -296,18 +296,7 @@ export default function EventsScreen() {
   )
 
   const renderEvent = ({ item: event }: { item: Event }) => (
-    <TouchableOpacity 
-      style={styles.eventCard}
-      onPress={() => {
-        console.log('Navigating to event detail with ID:', event.id)
-        console.log('Event ID type:', typeof event.id)
-        console.log('Event ID length:', event.id?.length)
-        console.log('Full event object:', JSON.stringify(event, null, 2))
-        const url = `/event-detail?id=${encodeURIComponent(event.id)}`
-        console.log('Navigation URL:', url)
-        router.push(url as any)
-      }}
-    >
+    <View style={styles.eventCard}>
       {event.image_path && (
         <Image 
           source={{ uri: eventImageUrl(event.image_path)! }} 
@@ -369,7 +358,7 @@ export default function EventsScreen() {
           </TouchableOpacity>
         </View>
       </View>
-    </TouchableOpacity>
+    </View>
   )
 
   return (
