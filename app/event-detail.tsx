@@ -38,7 +38,13 @@ export default function EventDetailScreen() {
 
   const loadEvent = useCallback(async () => {
     try {
+      console.log('Loading event with ID:', id)
+      if (!id) {
+        throw new Error('No event ID provided')
+      }
+      
       const eventData = await getEvent(id as string)
+      console.log('Event data loaded:', eventData)
       setEvent(eventData as Event)
       
       if (eventData) {
@@ -53,6 +59,8 @@ export default function EventDetailScreen() {
       }
     } catch (error) {
       console.error('Failed to load event:', error)
+      console.error('Event ID was:', id)
+      console.error('Error details:', JSON.stringify(error, null, 2))
       showToast('error', 'Failed to load event')
       setEvent(null)
     } finally {

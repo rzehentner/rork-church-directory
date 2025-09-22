@@ -14,22 +14,35 @@ export async function listUpcomingEvents(limit = 100) {
 }
 
 export async function getEvent(eventId: string) {
+  console.log('getEvent called with ID:', eventId)
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
     .eq('id', eventId)
     .single()
-  if (error) throw error
+  
+  console.log('getEvent response:', { data, error })
+  
+  if (error) {
+    console.error('getEvent error:', error)
+    if (error.code === 'PGRST116') {
+      throw new Error('Event not found or you do not have permission to view it')
+    }
+    throw error
+  }
   return data
 }
 
 export async function listEventsForDateRange(startDate: Date, endDate: Date) {
+  console.log('listEventsForDateRange called with:', { startDate, endDate })
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
     .gte('start_at', startDate.toISOString())
     .lte('end_at', endDate.toISOString())
     .order('start_at', { ascending: true })
+  
+  console.log('listEventsForDateRange response:', { data: data?.length, error })
   if (error) throw error
   return data ?? []
 }

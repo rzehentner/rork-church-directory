@@ -58,7 +58,10 @@ export default function EventsScreen() {
     try {
       const currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
       const nextMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 2, 0)
+      console.log('Loading events for date range:', { currentMonth, nextMonth })
       const data = await listEventsForDateRange(currentMonth, nextMonth)
+      console.log('Loaded events:', data?.length, 'events')
+      console.log('Event IDs:', data?.map(e => e.id))
       setAllEvents(data as Event[])
     } catch (error) {
       console.error('Failed to load events:', error)
@@ -295,7 +298,10 @@ export default function EventsScreen() {
   const renderEvent = ({ item: event }: { item: Event }) => (
     <TouchableOpacity 
       style={styles.eventCard}
-      onPress={() => router.push(`/event-detail?id=${event.id}` as any)}
+      onPress={() => {
+        console.log('Navigating to event detail with ID:', event.id)
+        router.push(`/event-detail?id=${event.id}` as any)
+      }}
     >
       {event.image_path && (
         <Image 
