@@ -180,3 +180,34 @@ export async function getEventICS(eventId: string) {
   if (error) throw error
   return data as string
 }
+
+export type EventRSVP = {
+  person_id: string
+  person_name: string
+  status: RSVP
+  updated_at: string
+}
+
+export async function getEventRSVPs(eventId: string): Promise<EventRSVP[]> {
+  const { data, error } = await supabase
+    .from('event_rsvps')
+    .select(`
+      person_id,
+      status,
+      updated_at,
+      persons (
+        name
+      )
+    `)
+    .eq('event_id', eventId)
+    .order('updated_at', { ascending: false })
+  
+  if (error) throw error
+  
+  return (data ?? []).map(row => ({
+    person_id: row.person_id,
+    person_name: (row.persons as any)?.name || 'Unknown',
+    status: row.status as RSVP,
+    updated_at: row.updated_at
+  }))
+}

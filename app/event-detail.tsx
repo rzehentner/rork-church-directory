@@ -8,8 +8,8 @@ import {
   ScrollView,
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
-import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3 } from 'lucide-react-native'
-import { listUpcomingEvents, rsvpEvent, eventImageUrl, getEventTags, type RSVP } from '@/services/events'
+import { MapPin, Clock, Calendar as CalendarIcon, ArrowLeft, Edit3, Users } from 'lucide-react-native'
+import { listUpcomingEvents, rsvpEvent, eventImageUrl, getEventTags, getEventRSVPs, type RSVP, type EventRSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useToast } from '@/hooks/toast-context'
 import { useMe } from '@/hooks/me-context'
@@ -31,6 +31,7 @@ export default function EventDetailScreen() {
   const { id } = useLocalSearchParams()
   const [event, setEvent] = useState<Event | null>(null)
   const [eventTags, setEventTags] = useState<Tag[]>([])
+  const [eventRSVPs, setEventRSVPs] = useState<EventRSVP[]>([])
   const [loading, setLoading] = useState(true)
   const { showToast } = useToast()
   const { myRole } = useMe()
@@ -44,6 +45,12 @@ export default function EventDetailScreen() {
       if (foundEvent) {
         const tags = await getEventTags(foundEvent.id)
         setEventTags(tags as Tag[])
+        
+        // Load RSVPs for admins and leaders
+        if (myRole === 'admin' || myRole === 'leader') {
+          const rsvps = await getEventRSVPs(foundEvent.id)
+          setEventRSVPs(rsvps)
+        }
       }
     } catch (error) {
       console.error('Failed to load event:', error)
@@ -131,6 +138,13 @@ export default function EventDetailScreen() {
   }
 
   const canEdit = myRole === 'admin' || myRole === 'leader'
+  const canViewRSVPs = myRole === 'admin' || myRole === 'leader'
+  
+  const rsvpCounts = {
+    going: eventRSVPs.filter(r => r.status === 'going').length,
+    maybe: eventRSVPs.filter(r => r.status === 'maybe').length,
+    declined: eventRSVPs.filter(r => r.status === 'declined').length,
+  }
 
   return (
     <View style={styles.container}>
@@ -233,6 +247,56 @@ export default function EventDetailScreen() {
               <Text style={styles.calendarButtonText}>Add to Calendar</Text>
             </TouchableOpacity>
           </View>
+          
+          {canViewRSVPs && eventRSVPs.length > 0 && (
+            <View style={styles.rsvpListContainer}>
+              <View style={styles.rsvpListHeader}>
+                <Users size={20} color="#111827" />
+                <Text style={styles.rsvpListTitle}>RSVPs ({eventRSVPs.length})</Text>
+              </View>
+              
+              <View style={styles.rsvpSummary}>
+                <View style={styles.rsvpSummaryItem}>
+                  <View style={[styles.rsvpSummaryDot, { backgroundColor: '#10B981' }]} />
+                  <Text style={styles.rsvpSummaryText}>Going: {rsvpCounts.going}</Text>
+                </View>
+                <View style={styles.rsvpSummaryItem}>
+                  <View style={[styles.rsvpSummaryDot, { backgroundColor: '#F59E0B' }]} />
+                  <Text style={styles.rsvpSummaryText}>Maybe: {rsvpCounts.maybe}</Text>
+                </View>
+                <View style={styles.rsvpSummaryItem}>
+                  <View style={[styles.rsvpSummaryDot, { backgroundColor: '#EF4444' }]} />
+                  <Text style={styles.rsvpSummaryText}>Cannot Go: {rsvpCounts.declined}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.rsvpList}>
+                {eventRSVPs.map((rsvp) => (
+                  <View key={rsvp.person_id} style={styles.rsvpItem}>
+                    <View style={styles.rsvpItemLeft}>
+                      <Text style={styles.rsvpPersonName}>{rsvp.person_name}</Text>
+                      <Text style={styles.rsvpDate}>
+                        {new Date(rsvp.updated_at).toLocaleDateString()}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.rsvpStatus,
+                      rsvp.status === 'going' && styles.rsvpStatusGoing,
+                      rsvp.status === 'maybe' && styles.rsvpStatusMaybe,
+                      rsvp.status === 'declined' && styles.rsvpStatusDeclined,
+                    ]}>
+                      <Text style={[
+                        styles.rsvpStatusText,
+                        rsvp.status !== 'declined' && styles.rsvpStatusTextActive
+                      ]}>
+                        {rsvp.status === 'going' ? 'Going' : rsvp.status === 'maybe' ? 'Maybe' : 'Cannot Go'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -412,5 +476,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  rsvpListContainer: {
+    marginTop: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  rsvpListHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 8,
+  },
+  rsvpListTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  rsvpSummary: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  rsvpSummaryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  rsvpSummaryDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  rsvpSummaryText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  rsvpList: {
+    gap: 12,
+  },
+  rsvpItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+  },
+  rsvpItemLeft: {
+    flex: 1,
+  },
+  rsvpPersonName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+    marginBottom: 2,
+  },
+  rsvpDate: {
+    fontSize: 12,
+    color: '#9CA3AF',
+  },
+  rsvpStatus: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#E5E7EB',
+  },
+  rsvpStatusGoing: {
+    backgroundColor: '#10B981',
+  },
+  rsvpStatusMaybe: {
+    backgroundColor: '#F59E0B',
+  },
+  rsvpStatusDeclined: {
+    backgroundColor: '#E5E7EB',
+  },
+  rsvpStatusText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
+  rsvpStatusTextActive: {
+    color: '#FFFFFF',
   },
 })
