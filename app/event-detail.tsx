@@ -45,6 +45,7 @@ export default function EventDetailScreen() {
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const [showDebug, setShowDebug] = useState(false)
   const [isLoadingRef, setIsLoadingRef] = useState(false)
+  const [networkInfo, setNetworkInfo] = useState<any>(null)
   const { showToast } = useToast()
   const { myRole } = useMe()
 
@@ -66,14 +67,29 @@ export default function EventDetailScreen() {
       console.log('ID value (JSON):', JSON.stringify(id))
       console.log('My role:', myRole)
       
+      // Collect comprehensive debug information
       const debugData: any = {
         timestamp: new Date().toISOString(),
         extractedId: id,
         idType: typeof id,
+        idLength: id?.length,
+        idTrimmed: id?.trim(),
         myRole: myRole,
         userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
         platform: Platform.OS,
+        routeParams: params,
+        supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+        supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET',
+        networkOnline: typeof navigator !== 'undefined' ? navigator.onLine : 'unknown',
+        memoryUsage: typeof performance !== 'undefined' && (performance as any).memory ? {
+          usedJSHeapSize: (performance as any).memory.usedJSHeapSize,
+          totalJSHeapSize: (performance as any).memory.totalJSHeapSize,
+          jsHeapSizeLimit: (performance as any).memory.jsHeapSizeLimit
+        } : 'not available',
+        loadAttempts: 1
       }
+      
+      setNetworkInfo(debugData)
       
       if (!id) {
         console.error('No event ID provided - throwing error')
@@ -85,40 +101,68 @@ export default function EventDetailScreen() {
       
       console.log('About to call getEvent with ID:', id)
       debugData.step = 'fetching_event'
-      const eventData = await getEvent(id)
-      console.log('getEvent returned successfully:', !!eventData)
-      console.log('Event data:', JSON.stringify(eventData, null, 2))
+      debugData.requestStartTime = Date.now()
       
-      if (!eventData) {
-        console.error('getEvent returned null/undefined')
-        const errorMsg = 'Event data is null'
-        setError(errorMsg)
-        setDebugInfo({ ...debugData, error: errorMsg, step: 'event_null' })
-        throw new Error(errorMsg)
-      }
+      try {
+        const eventData = await getEvent(id)
+        debugData.requestEndTime = Date.now()
+        debugData.requestDuration = debugData.requestEndTime - debugData.requestStartTime
+        console.log('getEvent returned successfully:', !!eventData)
+        console.log('Event data:', JSON.stringify(eventData, null, 2))
+        debugData.eventDataReceived = !!eventData
+        debugData.eventDataKeys = eventData ? Object.keys(eventData) : null
+      
+        if (!eventData) {
+          console.error('getEvent returned null/undefined')
+          const errorMsg = 'Event data is null - this could indicate the event does not exist or you lack permission to view it'
+          setError(errorMsg)
+          setDebugInfo({ ...debugData, error: errorMsg, step: 'event_null', possibleCauses: [
+            'Event ID does not exist in database',
+            'User lacks permission to view this event',
+            'Event is not visible due to role restrictions',
+            'Event is not visible due to tag restrictions',
+            'Database connection issue'
+          ] })
+          throw new Error(errorMsg)
+        }
       
       setEvent(eventData as Event)
       console.log('Event state set successfully')
       
-      // Load tags
-      console.log('Loading event tags...')
-      debugData.step = 'fetching_tags'
-      const tags = await getEventTags(eventData.id)
-      console.log('Event tags loaded:', tags.length, 'tags')
-      setEventTags(tags as Tag[])
+        // Load tags
+        console.log('Loading event tags...')
+        debugData.step = 'fetching_tags'
+        debugData.tagsRequestStartTime = Date.now()
+        const tags = await getEventTags(eventData.id)
+        debugData.tagsRequestEndTime = Date.now()
+        debugData.tagsRequestDuration = debugData.tagsRequestEndTime - debugData.tagsRequestStartTime
+        console.log('Event tags loaded:', tags.length, 'tags')
+        debugData.tagsCount = tags.length
+        setEventTags(tags as Tag[])
       
-      // Load RSVPs for admins and leaders
-      if (myRole === 'admin' || myRole === 'leader') {
-        console.log('Loading RSVPs for admin/leader...')
-        debugData.step = 'fetching_rsvps'
-        const rsvps = await getEventRSVPs(eventData.id)
-        console.log('RSVPs loaded:', rsvps.length, 'RSVPs')
-        setEventRSVPs(rsvps)
+        // Load RSVPs for admins and leaders
+        if (myRole === 'admin' || myRole === 'leader') {
+          console.log('Loading RSVPs for admin/leader...')
+          debugData.step = 'fetching_rsvps'
+          debugData.rsvpsRequestStartTime = Date.now()
+          const rsvps = await getEventRSVPs(eventData.id)
+          debugData.rsvpsRequestEndTime = Date.now()
+          debugData.rsvpsRequestDuration = debugData.rsvpsRequestEndTime - debugData.rsvpsRequestStartTime
+          console.log('RSVPs loaded:', rsvps.length, 'RSVPs')
+          debugData.rsvpsCount = rsvps.length
+          setEventRSVPs(rsvps)
+        }
+      
+        setError(null)
+        debugData.totalLoadTime = Date.now() - debugData.requestStartTime
+        setDebugInfo({ ...debugData, success: true, eventId: eventData.id, eventTitle: eventData.title })
+        console.log('=== EVENT DETAIL LOAD SUCCESS ===')
+      } catch (fetchError) {
+        debugData.requestEndTime = Date.now()
+        debugData.requestDuration = debugData.requestEndTime - debugData.requestStartTime
+        debugData.fetchError = fetchError
+        throw fetchError
       }
-      
-      setError(null)
-      setDebugInfo({ ...debugData, success: true, eventId: eventData.id, eventTitle: eventData.title })
-      console.log('=== EVENT DETAIL LOAD SUCCESS ===')
     } catch (error) {
       console.error('=== EVENT DETAIL LOAD FAILED ===')
       console.error('Failed to load event:', error)
@@ -129,17 +173,52 @@ export default function EventDetailScreen() {
       
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
       setError(errorMessage)
-      setDebugInfo({
+      
+      // Enhanced error debugging
+      const errorDebugInfo = {
         timestamp: new Date().toISOString(),
         extractedId: id,
         idType: typeof id,
+        idLength: id?.length,
+        idTrimmed: id?.trim(),
         myRole: myRole,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+        platform: Platform.OS,
+        routeParams: params,
+        supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+        supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ? 'SET' : 'NOT_SET',
+        networkOnline: typeof navigator !== 'undefined' ? navigator.onLine : 'unknown',
         error: errorMessage,
         errorStack: error instanceof Error ? error.stack : null,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
         errorDetails: error,
-        platform: Platform.OS,
-        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
-      })
+        errorType: typeof error,
+        errorConstructor: error?.constructor?.name,
+        supabaseError: error && typeof error === 'object' && 'code' in error ? {
+          code: (error as any).code,
+          message: (error as any).message,
+          details: (error as any).details,
+          hint: (error as any).hint
+        } : null,
+        networkStatus: typeof navigator !== 'undefined' ? {
+          onLine: navigator.onLine,
+          connection: (navigator as any).connection ? {
+            effectiveType: (navigator as any).connection.effectiveType,
+            downlink: (navigator as any).connection.downlink,
+            rtt: (navigator as any).connection.rtt
+          } : null
+        } : null,
+        troubleshootingSteps: [
+          '1. Check if the event ID is valid',
+          '2. Verify you have permission to view this event',
+          '3. Check your internet connection',
+          '4. Try refreshing the page',
+          '5. Check if you are logged in properly',
+          '6. Contact support if the issue persists'
+        ]
+      }
+      
+      setDebugInfo(errorDebugInfo)
       
       showToast('error', `Failed to load event: ${errorMessage}`)
       setEvent(null)
@@ -252,14 +331,54 @@ export default function EventDetailScreen() {
           {showDebug && debugInfo && (
             <View style={styles.debugContainer}>
               <Text style={styles.debugTitle}>Debug Information</Text>
+              
+              {/* Quick Summary */}
+              <View style={styles.debugSummary}>
+                <Text style={styles.debugSummaryTitle}>Quick Summary:</Text>
+                <Text style={styles.debugSummaryText}>• Event ID: {debugInfo?.extractedId || 'N/A'}</Text>
+                <Text style={styles.debugSummaryText}>• User Role: {debugInfo?.myRole || 'N/A'}</Text>
+                <Text style={styles.debugSummaryText}>• Platform: {debugInfo?.platform || 'N/A'}</Text>
+                <Text style={styles.debugSummaryText}>• Network: {debugInfo?.networkStatus?.onLine ? 'Online' : 'Offline/Unknown'}</Text>
+                <Text style={styles.debugSummaryText}>• Error: {debugInfo?.error || 'N/A'}</Text>
+                {debugInfo?.requestDuration && (
+                  <Text style={styles.debugSummaryText}>• Request Time: {debugInfo.requestDuration}ms</Text>
+                )}
+              </View>
+              
+              {/* Troubleshooting */}
+              {debugInfo?.troubleshootingSteps && (
+                <View style={styles.troubleshootingContainer}>
+                  <Text style={styles.troubleshootingTitle}>Troubleshooting Steps:</Text>
+                  {debugInfo.troubleshootingSteps.map((step: string, index: number) => (
+                    <Text key={index} style={styles.troubleshootingStep}>{step}</Text>
+                  ))}
+                </View>
+              )}
+              
+              {/* Full Debug Data */}
               <ScrollView style={styles.debugScroll} nestedScrollEnabled>
                 <Text style={styles.debugText}>{JSON.stringify(debugInfo, null, 2)}</Text>
               </ScrollView>
+              
               <TouchableOpacity
                 style={styles.copyButton}
                 onPress={() => {
-                  // Copy to clipboard functionality would go here
-                  Alert.alert('Debug Info', JSON.stringify(debugInfo, null, 2))
+                  const debugString = JSON.stringify(debugInfo, null, 2)
+                  Alert.alert(
+                    'Full Debug Information', 
+                    debugString,
+                    [
+                      { text: 'Close', style: 'cancel' },
+                      { 
+                        text: 'Copy to Share', 
+                        onPress: () => {
+                          // In a real app, you'd copy to clipboard here
+                          console.log('Debug info for sharing:', debugString)
+                        }
+                      }
+                    ],
+                    { cancelable: true }
+                  )
                 }}
               >
                 <Text style={styles.copyButtonText}>Show Full Debug Info</Text>
@@ -782,5 +901,44 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#F9FAFB',
     fontWeight: '500',
+  },
+  debugSummary: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  debugSummaryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 8,
+  },
+  debugSummaryText: {
+    fontSize: 12,
+    color: '#4B5563',
+    marginBottom: 2,
+    fontFamily: 'monospace',
+  },
+  troubleshootingContainer: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 6,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F59E0B',
+  },
+  troubleshootingTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#92400E',
+    marginBottom: 8,
+  },
+  troubleshootingStep: {
+    fontSize: 12,
+    color: '#78350F',
+    marginBottom: 4,
   },
 })
