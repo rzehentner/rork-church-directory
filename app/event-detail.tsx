@@ -44,21 +44,30 @@ export default function EventDetailScreen() {
   const [error, setError] = useState<string | null>(null)
   const [debugInfo, setDebugInfo] = useState<any>(null)
   const [showDebug, setShowDebug] = useState(false)
+  const [isLoadingRef, setIsLoadingRef] = useState(false)
   const { showToast } = useToast()
   const { myRole } = useMe()
 
   const loadEvent = useCallback(async () => {
+    // Prevent multiple simultaneous loads
+    if (isLoadingRef) {
+      console.log('Load already in progress, skipping...')
+      return
+    }
+    
     try {
+      setIsLoadingRef(true)
+      setLoading(true)
+      setError(null)
+      
       console.log('=== EVENT DETAIL LOAD START ===')
       console.log('Loading event with ID:', id)
       console.log('ID type:', typeof id)
       console.log('ID value (JSON):', JSON.stringify(id))
-      console.log('Raw params:', JSON.stringify(params, null, 2))
       console.log('My role:', myRole)
       
       const debugData: any = {
         timestamp: new Date().toISOString(),
-        params: params,
         extractedId: id,
         idType: typeof id,
         myRole: myRole,
@@ -122,7 +131,6 @@ export default function EventDetailScreen() {
       setError(errorMessage)
       setDebugInfo({
         timestamp: new Date().toISOString(),
-        params: params,
         extractedId: id,
         idType: typeof id,
         myRole: myRole,
@@ -137,14 +145,16 @@ export default function EventDetailScreen() {
       setEvent(null)
     } finally {
       setLoading(false)
+      setIsLoadingRef(false)
     }
-  }, [id, myRole, showToast, params])
+  }, [id, myRole, showToast, isLoadingRef])
 
   useEffect(() => {
-    if (id) {
+    if (id && !isLoadingRef) {
+      console.log('useEffect triggered for event ID:', id)
       loadEvent()
     }
-  }, [id, loadEvent])
+  }, [id, myRole, loadEvent]) // Now safe to include loadEvent
 
   const handleRSVP = async (status: RSVP) => {
     if (!event) return
@@ -221,7 +231,11 @@ export default function EventDetailScreen() {
             
             <TouchableOpacity
               style={styles.retryButton}
-              onPress={loadEvent}
+              onPress={() => {
+                setIsLoadingRef(false) // Reset loading ref first
+                setLoading(false)
+                loadEvent()
+              }}
             >
               <Text style={styles.retryButtonText}>Retry</Text>
             </TouchableOpacity>
