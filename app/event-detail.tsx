@@ -59,7 +59,7 @@ export default function EventDetailScreen() {
   const [loading, setLoading] = useState(true)
   const [rsvpLoading, setRSVPLoading] = useState(false)
   
-  const { profile, myRole } = useMe()
+  const { profile, myRole, isLoading: meLoading } = useMe()
   const { showToast } = useToast()
   const insets = useSafeAreaInsets()
   const isStaff = myRole === 'admin' || myRole === 'leader'
@@ -89,18 +89,6 @@ export default function EventDetailScreen() {
       const eventData = await getEvent(id)
       console.log('Event loaded:', eventData)
       setEvent(eventData as EventDetail)
-      
-      // Load RSVPs if user is staff
-      if (canViewRSVPs) {
-        try {
-          const rsvpData = await getEventRSVPs(id)
-          console.log('RSVPs loaded:', rsvpData)
-          setRSVPs(rsvpData)
-        } catch (error) {
-          console.error('Failed to load RSVPs:', error)
-          // Don't show error for RSVPs as it's not critical
-        }
-      }
     } catch (error) {
       console.error('Failed to load event:', error)
       showToast('error', 'Failed to load event details')
@@ -108,12 +96,31 @@ export default function EventDetailScreen() {
     } finally {
       setLoading(false)
     }
-  }, [id, canViewRSVPs, showToast])
+  }, [id, showToast])
 
   useEffect(() => {
     loadEventCallback()
     loadTags()
   }, [loadEventCallback])
+
+  // Load RSVPs separately when role is loaded and user is staff
+  useEffect(() => {
+    const loadRSVPs = async () => {
+      if (!id || !event || meLoading || !canViewRSVPs) return
+      
+      try {
+        console.log('Loading RSVPs for event:', id, 'as staff user with role:', myRole)
+        const rsvpData = await getEventRSVPs(id)
+        console.log('RSVPs loaded:', rsvpData)
+        setRSVPs(rsvpData)
+      } catch (error) {
+        console.error('Failed to load RSVPs:', error)
+        // Don't show error for RSVPs as it's not critical
+      }
+    }
+    
+    loadRSVPs()
+  }, [id, event, meLoading, canViewRSVPs, myRole])
 
 
 
