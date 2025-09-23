@@ -99,9 +99,11 @@ export default function EventDetailScreen() {
   }, [id, showToast])
 
   useEffect(() => {
-    loadEventCallback()
-    loadTags()
-  }, [loadEventCallback])
+    if (id) {
+      loadEventCallback()
+      loadTags()
+    }
+  }, [id, loadEventCallback])
 
   // Load RSVPs separately when role is loaded and user is staff
   useEffect(() => {
