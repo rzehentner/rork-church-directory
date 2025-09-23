@@ -7,7 +7,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
-import { Bell, Tag } from 'lucide-react-native';
+import { Bell, Tag, Calendar } from 'lucide-react-native';
 import { notificationStorage, NotificationPreferences } from '@/lib/notification-preferences';
 import { listTags, Tag as TagType } from '@/services/tags';
 
@@ -92,6 +92,57 @@ export function NotificationPreferencesSection({ onPreferencesChange }: Notifica
     onPreferencesChange?.(updated);
   };
 
+  const updateEventsEnabled = async (enabled: boolean) => {
+    if (!preferences) return;
+    
+    const updated = {
+      ...preferences,
+      events: {
+        ...preferences.events,
+        enabled,
+      },
+    };
+    
+    setPreferences(updated);
+    await notificationStorage.setNotificationPreferences(updated);
+    onPreferencesChange?.(updated);
+  };
+
+  const updateEventNotificationType = async (type: 'newEvents' | 'eventUpdates' | 'rsvpReminders' | 'eventCancellations', enabled: boolean) => {
+    if (!preferences) return;
+    
+    const updated = {
+      ...preferences,
+      events: {
+        ...preferences.events,
+        [type]: enabled,
+      },
+    };
+    
+    setPreferences(updated);
+    await notificationStorage.setNotificationPreferences(updated);
+    onPreferencesChange?.(updated);
+  };
+
+  const updateEventTagPreference = async (tagId: string, enabled: boolean) => {
+    if (!preferences) return;
+    
+    const updated = {
+      ...preferences,
+      events: {
+        ...preferences.events,
+        tagPreferences: {
+          ...preferences.events.tagPreferences,
+          [tagId]: enabled,
+        },
+      },
+    };
+    
+    setPreferences(updated);
+    await notificationStorage.setNotificationPreferences(updated);
+    onPreferencesChange?.(updated);
+  };
+
   if (loading || !preferences) {
     return (
       <View style={styles.loadingContainer}>
@@ -166,6 +217,119 @@ export function NotificationPreferencesSection({ onPreferencesChange }: Notifica
           <Text style={styles.noTagsText}>
             No announcement tags are currently available. You&apos;ll receive notifications for all announcements.
           </Text>
+        </View>
+      )}
+
+      {/* Event Notifications */}
+      <View style={styles.card}>
+        <View style={styles.mainToggleRow}>
+          <View style={styles.toggleInfo}>
+            <Calendar size={20} color="#6B7280" />
+            <View style={styles.toggleContent}>
+              <Text style={styles.toggleLabel}>Event Notifications</Text>
+              <Text style={styles.toggleDescription}>
+                Receive notifications for events and RSVPs
+              </Text>
+            </View>
+          </View>
+          <Switch
+            value={preferences.events.enabled}
+            onValueChange={updateEventsEnabled}
+            trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+            thumbColor={preferences.events.enabled ? '#7C3AED' : '#9CA3AF'}
+          />
+        </View>
+      </View>
+
+      {/* Event Notification Types */}
+      {preferences.events.enabled && (
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Calendar size={16} color="#6B7280" />
+            <Text style={styles.sectionTitle}>Event Notification Types</Text>
+          </View>
+          <Text style={styles.sectionDescription}>
+            Choose which types of event notifications you want to receive
+          </Text>
+          
+          <View style={styles.eventTypesList}>
+            <View style={styles.eventTypeRow}>
+              <Text style={styles.eventTypeLabel}>New Events</Text>
+              <Switch
+                value={preferences.events.newEvents}
+                onValueChange={(enabled) => updateEventNotificationType('newEvents', enabled)}
+                trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+                thumbColor={preferences.events.newEvents ? '#7C3AED' : '#9CA3AF'}
+              />
+            </View>
+            
+            <View style={styles.eventTypeRow}>
+              <Text style={styles.eventTypeLabel}>Event Updates</Text>
+              <Switch
+                value={preferences.events.eventUpdates}
+                onValueChange={(enabled) => updateEventNotificationType('eventUpdates', enabled)}
+                trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+                thumbColor={preferences.events.eventUpdates ? '#7C3AED' : '#9CA3AF'}
+              />
+            </View>
+            
+            <View style={styles.eventTypeRow}>
+              <Text style={styles.eventTypeLabel}>RSVP Reminders</Text>
+              <Switch
+                value={preferences.events.rsvpReminders}
+                onValueChange={(enabled) => updateEventNotificationType('rsvpReminders', enabled)}
+                trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+                thumbColor={preferences.events.rsvpReminders ? '#7C3AED' : '#9CA3AF'}
+              />
+            </View>
+            
+            <View style={styles.eventTypeRow}>
+              <Text style={styles.eventTypeLabel}>Event Cancellations</Text>
+              <Switch
+                value={preferences.events.eventCancellations}
+                onValueChange={(enabled) => updateEventNotificationType('eventCancellations', enabled)}
+                trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+                thumbColor={preferences.events.eventCancellations ? '#7C3AED' : '#9CA3AF'}
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Event Tag-based Preferences */}
+      {preferences.events.enabled && tags.length > 0 && (
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Tag size={16} color="#6B7280" />
+            <Text style={styles.sectionTitle}>Event Notification Preferences by Tag</Text>
+          </View>
+          <Text style={styles.sectionDescription}>
+            Choose which types of events you want to receive notifications for
+          </Text>
+          
+          <ScrollView style={styles.tagsList} showsVerticalScrollIndicator={false}>
+            {tags.map((tag) => (
+              <View key={`event-${tag.id}`} style={styles.tagRow}>
+                <View style={styles.tagInfo}>
+                  <View style={[styles.tagColorDot, { backgroundColor: tag.color || '#6B7280' }]} />
+                  <Text style={styles.tagName}>{tag.name}</Text>
+                  {tag.description && (
+                    <Text style={styles.tagDescription}>{tag.description}</Text>
+                  )}
+                </View>
+                <Switch
+                  value={preferences.events.tagPreferences[tag.id] ?? true}
+                  onValueChange={(enabled) => updateEventTagPreference(tag.id, enabled)}
+                  trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
+                  thumbColor={
+                    (preferences.events.tagPreferences[tag.id] ?? true) 
+                      ? '#7C3AED' 
+                      : '#9CA3AF'
+                  }
+                />
+              </View>
+            ))}
+          </ScrollView>
         </View>
       )}
     </View>
@@ -278,5 +442,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontStyle: 'italic',
     padding: 16,
+  },
+  eventTypesList: {
+    gap: 8,
+  },
+  eventTypeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+  eventTypeLabel: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500' as const,
   },
 });

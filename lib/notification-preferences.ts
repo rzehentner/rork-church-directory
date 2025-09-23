@@ -7,6 +7,14 @@ export interface NotificationPreferences {
     enabled: boolean;
     tagPreferences: Record<string, boolean>; // tagId -> enabled
   };
+  events: {
+    enabled: boolean;
+    newEvents: boolean;
+    eventUpdates: boolean;
+    rsvpReminders: boolean;
+    eventCancellations: boolean;
+    tagPreferences: Record<string, boolean>; // tagId -> enabled
+  };
   general: {
     enabled: boolean;
   };
@@ -15,6 +23,14 @@ export interface NotificationPreferences {
 const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   announcements: {
     enabled: true,
+    tagPreferences: {},
+  },
+  events: {
+    enabled: true,
+    newEvents: true,
+    eventUpdates: true,
+    rsvpReminders: true,
+    eventCancellations: true,
     tagPreferences: {},
   },
   general: {
@@ -35,6 +51,10 @@ export const notificationStorage = {
           announcements: {
             ...DEFAULT_NOTIFICATION_PREFERENCES.announcements,
             ...stored.announcements,
+          },
+          events: {
+            ...DEFAULT_NOTIFICATION_PREFERENCES.events,
+            ...stored.events,
           },
           general: {
             ...DEFAULT_NOTIFICATION_PREFERENCES.general,
@@ -84,6 +104,38 @@ export const notificationStorage = {
       await this.setNotificationPreferences(preferences);
     } catch (error) {
       console.error('Error updating general notifications enabled:', error);
+    }
+  },
+
+  async updateEventsEnabled(enabled: boolean): Promise<void> {
+    try {
+      const preferences = await this.getNotificationPreferences();
+      preferences.events.enabled = enabled;
+      await this.setNotificationPreferences(preferences);
+    } catch (error) {
+      console.error('Error updating events enabled:', error);
+    }
+  },
+
+  async updateEventNotificationType(type: keyof NotificationPreferences['events'], enabled: boolean): Promise<void> {
+    try {
+      const preferences = await this.getNotificationPreferences();
+      if (type !== 'tagPreferences') {
+        (preferences.events as any)[type] = enabled;
+        await this.setNotificationPreferences(preferences);
+      }
+    } catch (error) {
+      console.error('Error updating event notification type:', error);
+    }
+  },
+
+  async updateEventTagPreference(tagId: string, enabled: boolean): Promise<void> {
+    try {
+      const preferences = await this.getNotificationPreferences();
+      preferences.events.tagPreferences[tagId] = enabled;
+      await this.setNotificationPreferences(preferences);
+    } catch (error) {
+      console.error('Error updating event tag preference:', error);
     }
   },
 };
