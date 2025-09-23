@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Search, Users, User, Mail, Phone, MapPin, AlertCircle, Edit3, X, Save, Home, Trash2, UserPlus, List, Tags, Filter } from 'lucide-react-native';
+import { Search, Users, User, Mail, Phone, MapPin, AlertCircle, Edit3, X, Save, Home, Trash2, UserPlus, List, Tags, Filter, BookOpen } from 'lucide-react-native';
 import { useUser } from '@/hooks/user-context';
 import { getSignedUrl, uploadFamilyPhoto, uploadPersonAvatar } from '@/lib/storage';
 import ImageUploader from '@/components/ImageUploader';
@@ -1182,7 +1182,10 @@ export default function DirectoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Church Directory</Text>
+        <View style={styles.headerLeft}>
+          <BookOpen size={28} color="#7C3AED" />
+          <Text style={styles.title}>Church Directory</Text>
+        </View>
         <View style={styles.searchContainer}>
           <Search size={20} color="#9CA3AF" />
           <TextInput
@@ -2295,12 +2298,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold' as const,
     color: '#1F2937',
-    marginBottom: 16,
   },
   searchContainer: {
     flexDirection: 'row',

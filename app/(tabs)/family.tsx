@@ -36,6 +36,7 @@ import {
   Link2,
   User,
   ArrowRight,
+  Users,
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
@@ -465,7 +466,10 @@ export default function FamilyScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <Text style={styles.title}>My Family</Text>
+          <View style={styles.headerLeft}>
+            <Users size={28} color="#7C3AED" />
+            <Text style={styles.title}>My Family</Text>
+          </View>
           <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
             <LogOut size={24} color="#EF4444" />
           </TouchableOpacity>
@@ -1153,6 +1157,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   logoutButton: {
     padding: 8,
@@ -1292,7 +1304,7 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: 'bold' as const,
     color: '#1F2937',
   },
