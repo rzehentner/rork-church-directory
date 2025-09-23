@@ -32,6 +32,7 @@ export const [MeProvider, useMe] = createContextHook<MeState>(() => {
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const {
@@ -53,6 +54,7 @@ export const [MeProvider, useMe] = createContextHook<MeState>(() => {
     enabled: !!user,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const isLoading = profileLoading || personLoading;

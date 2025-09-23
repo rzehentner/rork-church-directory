@@ -33,6 +33,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     
     const initAuth = async () => {
       try {
+        // Get session first
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!mounted) return;
@@ -40,27 +41,16 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         setSession(session);
         setUser(session?.user ?? null);
         
+        // Initialize biometrics asynchronously on native only
         if (Platform.OS !== 'web') {
-          try {
-            const compatible = await LocalAuthentication.hasHardwareAsync();
-            const enrolled = await LocalAuthentication.isEnrolledAsync();
-            
-            if (mounted) {
-              setIsBiometricAvailable(compatible && enrolled);
-            }
-            
-            const biometricData = await AsyncStorage.getItem('biometric_credentials');
-            
-            if (mounted) {
-              setIsBiometricEnabled(!!biometricData);
-            }
-          } catch (error) {
+          // Don't await this - let it run in background
+          initBiometrics().catch(error => {
             console.warn('Biometric setup failed:', error);
             if (mounted) {
               setIsBiometricAvailable(false);
               setIsBiometricEnabled(false);
             }
-          }
+          });
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
@@ -68,6 +58,23 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         if (mounted) {
           setIsLoading(false);
         }
+      }
+    };
+    
+    const initBiometrics = async () => {
+      if (!mounted) return;
+      
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      
+      if (mounted) {
+        setIsBiometricAvailable(compatible && enrolled);
+      }
+      
+      const biometricData = await AsyncStorage.getItem('biometric_credentials');
+      
+      if (mounted) {
+        setIsBiometricEnabled(!!biometricData);
       }
     };
     
@@ -79,7 +86,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Handle session storage safely
+      // Handle session storage safely in background
       if (session) {
         AsyncStorage.setItem('session', JSON.stringify(session)).catch(console.warn);
       } else {

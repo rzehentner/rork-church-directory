@@ -11,10 +11,20 @@ import { ToastProvider, ToastRenderer } from "@/hooks/toast-context";
 
 // Prevent auto hide only on native platforms
 if (Platform.OS !== 'web') {
-  SplashScreen.preventAutoHideAsync();
+  SplashScreen.preventAutoHideAsync().catch(() => {
+    // Ignore errors on web or if already prevented
+  });
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 30000, // 30 seconds
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function RootLayoutNav() {
   return (
@@ -40,14 +50,20 @@ export default function RootLayout() {
       return;
     }
 
-    // On native, hide splash screen after a short delay
-    const timer = setTimeout(() => {
-      SplashScreen.hideAsync().finally(() => {
+    // On native, hide splash screen after initialization
+    const initializeApp = async () => {
+      try {
+        // Small delay to ensure everything is loaded
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await SplashScreen.hideAsync();
+      } catch (error) {
+        console.warn('Error hiding splash screen:', error);
+      } finally {
         setIsReady(true);
-      });
-    }, 100);
+      }
+    };
 
-    return () => clearTimeout(timer);
+    initializeApp();
   }, []);
 
   // On native, don't render until splash is handled

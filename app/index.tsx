@@ -2,45 +2,34 @@ import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
-import { View, ActivityIndicator, StyleSheet, Text, Animated } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Home } from 'lucide-react-native';
 
 export default function IndexScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, person, isLoading: userLoading } = useUser();
-  const [showSplash, setShowSplash] = useState(true);
-  const [fadeAnim] = useState(new Animated.Value(0));
-  const [forceReady, setForceReady] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
-    // Fade in animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      useNativeDriver: true,
-    }).start();
-
-    // Minimum splash duration for better UX
-    const splashTimer = setTimeout(() => {
-      setShowSplash(false);
-    }, 2000);
-
-    // Force ready after maximum wait time to prevent infinite loading
+    // Shorter timeout for web to prevent hydration issues
+    const timeout = Platform.OS === 'web' ? 3000 : 8000;
+    
     const forceTimer = setTimeout(() => {
-      console.warn('Forcing app ready due to timeout');
-      setForceReady(true);
-      setShowSplash(false);
-    }, 10000);
+      console.warn('Forcing navigation due to timeout');
+      if (!isNavigating) {
+        setIsNavigating(true);
+        router.replace('/(auth)/login');
+      }
+    }, timeout);
 
-    return () => {
-      clearTimeout(splashTimer);
-      clearTimeout(forceTimer);
-    };
-  }, [fadeAnim]);
+    return () => clearTimeout(forceTimer);
+  }, [isNavigating]);
 
   useEffect(() => {
-    if ((!authLoading && !userLoading && !showSplash) || forceReady) {
+    if (!authLoading && !isNavigating) {
+      setIsNavigating(true);
+      
       if (user) {
         // Check if user is a visitor (pending) without a complete profile
         if (profile?.role === 'pending' && (!person || !person.first_name || !person.last_name)) {
@@ -52,32 +41,28 @@ export default function IndexScreen() {
         router.replace('/(auth)/login');
       }
     }
-  }, [user, profile, person, authLoading, userLoading, showSplash, forceReady]);
+  }, [user, profile, person, authLoading, userLoading, isNavigating]);
 
-  if ((authLoading || userLoading || showSplash) && !forceReady) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <View style={styles.logoContainer}>
-            <View style={styles.iconBackground}>
-              <Home size={48} color="#FFFFFF" />
-            </View>
-            <Text style={styles.appName}>EBC Connect</Text>
-            <Text style={styles.tagline}>Edna Baptist Church Community</Text>
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
+          <View style={styles.iconBackground}>
+            <Home size={48} color="#FFFFFF" />
           </View>
-          
-          <View style={styles.loadingSection}>
-            <ActivityIndicator size="large" color="#7C3AED" />
-            <Text style={styles.loadingText}>
-              {authLoading || userLoading ? 'Loading your church family...' : 'Welcome back!'}
-            </Text>
-          </View>
-        </Animated.View>
-      </SafeAreaView>
-    );
-  }
-
-  return null;
+          <Text style={styles.appName}>EBC Connect</Text>
+          <Text style={styles.tagline}>Edna Baptist Church Community</Text>
+        </View>
+        
+        <View style={styles.loadingSection}>
+          <ActivityIndicator size="large" color="#7C3AED" />
+          <Text style={styles.loadingText}>
+            {authLoading ? 'Loading your church family...' : 'Welcome back!'}
+          </Text>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({

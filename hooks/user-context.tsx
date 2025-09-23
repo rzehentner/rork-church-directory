@@ -42,51 +42,52 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
 
     setIsLoading(true);
     console.log('🔍 Fetching user data for:', user.email, 'ID:', user.id);
-    console.log('🔍 Current timestamp:', new Date().toISOString());
 
     try {
-      // Fetch profile
-      const profileResponse = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+      // Fetch profile and person in parallel
+      const [profileResponse, personResponse] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single(),
+        supabase
+          .from('persons')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle()
+      ]);
       
       console.log('📋 Profile response:', profileResponse);
-      setProfile(profileResponse.data);
-
-      // Fetch person
-      const personResponse = await supabase
-        .from('persons')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      
       console.log('👤 Person response:', personResponse);
+      
+      setProfile(profileResponse.data);
       setPerson(personResponse.data);
 
       // Fetch family and members if person has family_id
       if (personResponse.data?.family_id) {
         console.log('👨‍👩‍👧‍👦 Person has family_id:', personResponse.data.family_id);
         
-        const familyResponse = await supabase
-          .from('families')
-          .select('*, photo_path')
-          .eq('id', personResponse.data.family_id)
-          .single();
+        // Fetch family and members in parallel
+        const [familyResponse, membersResponse] = await Promise.all([
+          supabase
+            .from('families')
+            .select('*, photo_path')
+            .eq('id', personResponse.data.family_id)
+            .single(),
+          supabase
+            .from('persons')
+            .select('*')
+            .eq('family_id', personResponse.data.family_id)
+            .order('is_head_of_family', { ascending: false })
+            .order('is_spouse', { ascending: false })
+            .order('date_of_birth', { ascending: true })
+        ]);
         
         console.log('🏠 Family response:', familyResponse);
-        setFamily(familyResponse.data);
-
-        const membersResponse = await supabase
-          .from('persons')
-          .select('*')
-          .eq('family_id', personResponse.data.family_id)
-          .order('is_head_of_family', { ascending: false })
-          .order('is_spouse', { ascending: false })
-          .order('date_of_birth', { ascending: true });
-        
         console.log('👥 Family members response:', membersResponse);
+        
+        setFamily(familyResponse.data);
         setFamilyMembers(membersResponse.data || []);
       } else {
         console.log('❌ No family_id found for person');
@@ -95,6 +96,11 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
       }
     } catch (error) {
       console.error('❌ Error fetching user data:', error);
+      // Set defaults on error to prevent infinite loading
+      setProfile(null);
+      setPerson(null);
+      setFamily(null);
+      setFamilyMembers([]);
     } finally {
       setIsLoading(false);
     }
