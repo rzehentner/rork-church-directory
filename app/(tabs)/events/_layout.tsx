@@ -12,6 +12,8 @@ export default function EventsLayout() {
           fontWeight: '600',
         },
       }}
-    />
+    >
+      <Stack.Screen name="index" options={{ title: 'Events' }} />
+    </Stack>
   )
 }
