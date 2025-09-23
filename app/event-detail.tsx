@@ -264,6 +264,25 @@ export default function EventDetailScreen() {
   }
 
   const RSVPList = () => {
+    console.log('RSVPList render - canViewRSVPs:', canViewRSVPs, 'rsvps.length:', rsvps.length, 'myRole:', myRole, 'isStaff:', isStaff)
+    
+    // Show debug info for admins when no RSVPs
+    if (canViewRSVPs && rsvps.length === 0) {
+      return (
+        <View style={styles.rsvpListContainer}>
+          <Text style={styles.sectionTitle}>RSVPs (Debug Info)</Text>
+          <View style={styles.debugContainer}>
+            <Text style={styles.debugText}>Role: {myRole}</Text>
+            <Text style={styles.debugText}>Is Staff: {isStaff ? 'Yes' : 'No'}</Text>
+            <Text style={styles.debugText}>Can View RSVPs: {canViewRSVPs ? 'Yes' : 'No'}</Text>
+            <Text style={styles.debugText}>RSVPs Length: {rsvps.length}</Text>
+            <Text style={styles.debugText}>Event ID: {event?.id}</Text>
+            <Text style={styles.debugText}>Me Loading: {meLoading ? 'Yes' : 'No'}</Text>
+          </View>
+        </View>
+      )
+    }
+    
     if (!canViewRSVPs || rsvps.length === 0) return null
     
     const counts = getRSVPCounts()
@@ -707,5 +726,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#374151',
+  },
+  debugContainer: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+  },
+  debugText: {
+    fontSize: 14,
+    color: '#92400E',
+    marginBottom: 4,
+    fontFamily: 'monospace',
   },
 })
