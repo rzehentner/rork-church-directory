@@ -13,7 +13,7 @@ export default function EventsLayout() {
         },
       }}
     >
-      <Stack.Screen name="index" options={{ title: 'Events' }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
     </Stack>
   )
 }
