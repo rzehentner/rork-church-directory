@@ -85,9 +85,7 @@ export default function EventDetailScreen() {
     }
 
     try {
-      console.log('Loading event with ID:', id)
       const eventData = await getEvent(id)
-      console.log('Event loaded:', eventData)
       setEvent(eventData as EventDetail)
     } catch (error) {
       console.error('Failed to load event:', error)
@@ -111,9 +109,7 @@ export default function EventDetailScreen() {
       if (!id || !event || meLoading || !canViewRSVPs) return
       
       try {
-        console.log('Loading RSVPs for event:', id, 'as staff user with role:', myRole)
         const rsvpData = await getEventRSVPs(id)
-        console.log('RSVPs loaded:', rsvpData)
         setRSVPs(rsvpData)
       } catch (error) {
         console.error('Failed to load RSVPs:', error)
@@ -159,7 +155,7 @@ export default function EventDetailScreen() {
     if (!event) return
     
     try {
-      console.log('Adding event to calendar:', event.id, event.title)
+
       await addEventToDevice(event)
       showToast('success', 'Event added to calendar')
     } catch (error) {
@@ -266,25 +262,6 @@ export default function EventDetailScreen() {
   }
 
   const RSVPList = () => {
-    console.log('RSVPList render - canViewRSVPs:', canViewRSVPs, 'rsvps.length:', rsvps.length, 'myRole:', myRole, 'isStaff:', isStaff)
-    
-    // Show debug info for admins when no RSVPs
-    if (canViewRSVPs && rsvps.length === 0) {
-      return (
-        <View style={styles.rsvpListContainer}>
-          <Text style={styles.sectionTitle}>RSVPs (Debug Info)</Text>
-          <View style={styles.debugContainer}>
-            <Text style={styles.debugText}>Role: {myRole}</Text>
-            <Text style={styles.debugText}>Is Staff: {isStaff ? 'Yes' : 'No'}</Text>
-            <Text style={styles.debugText}>Can View RSVPs: {canViewRSVPs ? 'Yes' : 'No'}</Text>
-            <Text style={styles.debugText}>RSVPs Length: {rsvps.length}</Text>
-            <Text style={styles.debugText}>Event ID: {event?.id}</Text>
-            <Text style={styles.debugText}>Me Loading: {meLoading ? 'Yes' : 'No'}</Text>
-          </View>
-        </View>
-      )
-    }
-    
     if (!canViewRSVPs || rsvps.length === 0) return null
     
     const counts = getRSVPCounts()
@@ -729,16 +706,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
   },
-  debugContainer: {
-    backgroundColor: '#FEF3C7',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  debugText: {
-    fontSize: 14,
-    color: '#92400E',
-    marginBottom: 4,
-    fontFamily: 'monospace',
-  },
+
 })
