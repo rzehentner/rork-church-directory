@@ -8,10 +8,11 @@ import {
   Image,
   RefreshControl,
   ScrollView,
+  TextInput,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X } from 'lucide-react-native'
+import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search } from 'lucide-react-native'
 import { listEventsForDateRange, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
 import { useUser } from '@/hooks/user-context'
@@ -44,7 +45,8 @@ export default function EventsScreen() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'upcoming' | 'selected'>('upcoming')
-  const [showFilters, setShowFilters] = useState(true)
+  const [showFilters, setShowFilters] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [filters, setFilters] = useState<EventFilter>({
     rsvpStatus: 'all',
@@ -120,11 +122,21 @@ export default function EventsScreen() {
   }
 
   // Filter events based on current filters and view mode
-
   const filteredEvents = useMemo(() => {
     let events = allEvents
     
-    // Filter by view mode first
+    // Apply search filter first
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      events = events.filter(event => 
+        event.title.toLowerCase().includes(query) ||
+        event.description?.toLowerCase().includes(query) ||
+        event.location?.toLowerCase().includes(query) ||
+        event.audience_tags?.some(tagName => tagName.toLowerCase().includes(query))
+      )
+    }
+    
+    // Filter by view mode
     if (viewMode === 'upcoming') {
       const now = new Date()
       events = events.filter(event => new Date(event.end_at) >= now)
@@ -159,7 +171,7 @@ export default function EventsScreen() {
     }
     
     return events.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-  }, [allEvents, viewMode, selectedDate, filters])
+  }, [allEvents, viewMode, selectedDate, filters, searchQuery])
   
   const formatEventTime = (event: Event) => {
     const start = new Date(event.start_at)
@@ -181,7 +193,11 @@ export default function EventsScreen() {
     setFilters({ rsvpStatus: 'all', tagNames: [] })
   }
   
-  const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagNames.length > 0
+  const clearSearch = () => {
+    setSearchQuery('')
+  }
+  
+  const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagNames.length > 0 || searchQuery.trim() !== ''
   
   const FilterSection = () => {
     if (!showFilters) return null
@@ -374,26 +390,48 @@ export default function EventsScreen() {
           <CalendarIcon size={28} color="#7C3AED" />
           <Text style={styles.title}>Events</Text>
         </View>
-        <View style={styles.headerButtons}>
+        {isStaff && (
           <TouchableOpacity
-            onPress={() => setShowFilters(!showFilters)}
-            style={[
-              styles.headerButton,
-              hasActiveFilters && styles.headerButtonActive
-            ]}
+            onPress={() => router.push('/create-event' as any)}
+            style={styles.createButton}
           >
-            <Filter size={20} color={hasActiveFilters ? '#FFFFFF' : '#7C3AED'} />
+            <Plus size={20} color="#FFFFFF" />
+            <Text style={styles.createButtonText}>Create</Text>
           </TouchableOpacity>
-          {isStaff && (
-            <TouchableOpacity
-              onPress={() => router.push('/create-event' as any)}
-              style={styles.createButton}
-            >
-              <Plus size={20} color="#FFFFFF" />
-              <Text style={styles.createButtonText}>Create</Text>
+        )}
+      </View>
+      
+      {/* Search and Filter Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={16} color="#6B7280" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search events..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#9CA3AF"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <X size={16} color="#6B7280" />
             </TouchableOpacity>
           )}
         </View>
+        
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            (hasActiveFilters || showFilters) && styles.filterButtonActive
+          ]}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Filter size={16} color={(hasActiveFilters || showFilters) ? '#FFFFFF' : '#7C3AED'} />
+          <Text style={[
+            styles.filterButtonText,
+            (hasActiveFilters || showFilters) && styles.filterButtonTextActive
+          ]}>Filter</Text>
+        </TouchableOpacity>
       </View>
       
       <FlatList
@@ -525,17 +563,55 @@ const styles = StyleSheet.create({
     fontWeight: 'bold' as const,
     color: '#1F2937',
   },
-  headerButtons: {
+  searchContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    gap: 12,
+  },
+  searchInputContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     gap: 8,
   },
-  headerButton: {
-    padding: 8,
-    borderRadius: 6,
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
   },
-  headerButtonActive: {
+  clearButton: {
+    padding: 4,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    gap: 6,
+  },
+  filterButtonActive: {
     backgroundColor: '#7C3AED',
+    borderColor: '#7C3AED',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: '#7C3AED',
+    fontWeight: '500' as const,
+  },
+  filterButtonTextActive: {
+    color: '#FFFFFF',
   },
   createButton: {
     flexDirection: 'row',
