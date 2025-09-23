@@ -10,6 +10,7 @@ import {
   ScrollView,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X } from 'lucide-react-native'
 import { listEventsForDateRange, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
 import { addEventToDevice } from '@/utils/calendar'
@@ -52,6 +53,7 @@ export default function EventsScreen() {
   
   const { profile } = useUser()
   const { showToast } = useToast()
+  const insets = useSafeAreaInsets()
   const isStaff = profile?.role === 'admin' || profile?.role === 'leader'
 
   const loadAllEvents = useCallback(async () => {
@@ -360,33 +362,39 @@ export default function EventsScreen() {
   )
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen 
         options={{ 
-          title: 'Events',
-          headerRight: () => (
-            <View style={styles.headerButtons}>
-              <TouchableOpacity
-                onPress={() => setShowFilters(!showFilters)}
-                style={[
-                  styles.headerButton,
-                  hasActiveFilters && styles.headerButtonActive
-                ]}
-              >
-                <Filter size={20} color={hasActiveFilters ? '#FFFFFF' : '#7C3AED'} />
-              </TouchableOpacity>
-              {isStaff && (
-                <TouchableOpacity
-                  onPress={() => router.push('/create-event' as any)}
-                  style={styles.headerButton}
-                >
-                  <Plus size={20} color="#7C3AED" />
-                </TouchableOpacity>
-              )}
-            </View>
-          )
+          headerShown: false
         }} 
       />
+      
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <CalendarIcon size={28} color="#7C3AED" />
+          <Text style={styles.title}>Events</Text>
+        </View>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={() => setShowFilters(!showFilters)}
+            style={[
+              styles.headerButton,
+              hasActiveFilters && styles.headerButtonActive
+            ]}
+          >
+            <Filter size={20} color={hasActiveFilters ? '#FFFFFF' : '#7C3AED'} />
+          </TouchableOpacity>
+          {isStaff && (
+            <TouchableOpacity
+              onPress={() => router.push('/create-event' as any)}
+              style={styles.createButton}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.createButtonText}>Create</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
       
       <FlatList
         data={filteredEvents}
@@ -497,6 +505,26 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#1F2937',
+  },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -508,6 +536,20 @@ const styles = StyleSheet.create({
   },
   headerButtonActive: {
     backgroundColor: '#7C3AED',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   listContainer: {
     padding: 16,
