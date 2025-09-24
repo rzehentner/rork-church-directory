@@ -16,6 +16,7 @@ import { uploadEventImage } from '@/utils/uploadEventImage'
 import { useToast } from '@/hooks/toast-context'
 import { useUser } from '@/hooks/user-context'
 import EventTagPicker from '@/components/EventTagPicker'
+import { scheduleEventReminder } from '@/lib/notifications'
 
 
 
@@ -30,6 +31,8 @@ export default function CreateEventScreen() {
   const [selectedRoles, setSelectedRoles] = useState<('admin'|'leader'|'member'|'visitor')[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [imageUri, setImageUri] = useState<string | null>(null)
+  const [enableReminders, setEnableReminders] = useState(true)
+  const [reminderMinutes, setReminderMinutes] = useState(60)
   const [loading, setLoading] = useState(false)
   const { profile } = useUser()
   const { showToast } = useToast()
@@ -75,6 +78,17 @@ export default function CreateEventScreen() {
 
       if (imageUri) {
         await uploadEventImage(imageUri, event.id)
+      }
+
+      // Schedule event reminder if enabled
+      if (enableReminders) {
+        try {
+          await scheduleEventReminder(event.id, reminderMinutes, true)
+          console.log(`Event reminder scheduled for ${reminderMinutes} minutes before event`)
+        } catch (error) {
+          console.error('Failed to schedule event reminder:', error)
+          // Don't fail the event creation if reminder scheduling fails
+        }
       }
 
       showToast('success', 'Event created successfully')

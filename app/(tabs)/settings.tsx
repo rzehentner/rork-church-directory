@@ -12,6 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
+import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
 import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint } from 'lucide-react-native';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
@@ -21,6 +22,7 @@ import { useRouter } from 'expo-router';
 export default function SettingsScreen() {
   const { profile } = useUser();
   const { user, isBiometricAvailable, isBiometricEnabled, enableBiometric, disableBiometric } = useAuth();
+  const { unreadCount } = useNotifications();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
@@ -126,6 +128,19 @@ export default function SettingsScreen() {
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <Text style={styles.title}>Settings</Text>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => router.push('/notifications')}
+          >
+            <Bell size={24} color="#6B7280" />
+            {unreadCount > 0 && (
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
 
         {/* Account Section */}
@@ -281,6 +296,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 10,
@@ -289,6 +307,27 @@ const styles = StyleSheet.create({
     fontSize: 32,
     fontWeight: '700' as const,
     color: '#111827',
+  },
+  notificationButton: {
+    position: 'relative',
+    padding: 8,
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  notificationBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600' as const,
   },
   section: {
     marginTop: 24,

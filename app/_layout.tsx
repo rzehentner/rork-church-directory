@@ -8,6 +8,7 @@ import { AuthProvider } from "@/hooks/auth-context";
 import { UserProvider } from "@/hooks/user-context";
 import { MeProvider } from "@/hooks/me-context";
 import { ToastProvider, ToastRenderer } from "@/hooks/toast-context";
+import { NotificationProvider } from "@/hooks/notification-context";
 
 // Prevent auto hide only on native platforms
 if (Platform.OS !== 'web') {
@@ -37,6 +38,7 @@ function RootLayoutNav() {
       <Stack.Screen name="edit-event" options={{ title: "Edit Event" }} />
       <Stack.Screen name="create-announcement" options={{ title: "Create Announcement" }} />
       <Stack.Screen name="join-family" options={{ title: "Join Family" }} />
+      <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
     </Stack>
   );
 }
@@ -78,8 +80,10 @@ export default function RootLayout() {
           <AuthProvider>
             <UserProvider>
               <MeProvider>
-                <RootLayoutNav />
-                <ToastRenderer />
+                <NotificationProvider>
+                  <RootLayoutNav />
+                  <ToastRenderer />
+                </NotificationProvider>
               </MeProvider>
             </UserProvider>
           </AuthProvider>
