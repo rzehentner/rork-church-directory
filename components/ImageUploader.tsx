@@ -474,7 +474,7 @@ export default function ImageUploader({
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="small" color="#7C3AED" />
           </View>
-        ) : imageUrl && imageUrl !== '' ? (
+        ) : imageUrl && imageUrl.trim() !== '' ? (
           <>
             <Image
               source={{ uri: imageUrl }}
