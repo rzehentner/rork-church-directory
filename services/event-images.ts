@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase'
-import { Platform } from 'react-native'
 
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
@@ -120,9 +119,7 @@ export async function testStorageWrite(eventId: string) {
     console.log('User role:', profile?.role)
     
     // Make a small blob ("hello world") - web compatible
-    const blob = Platform.OS === 'web' 
-      ? new Blob(['hello world'], { type: 'text/plain' })
-      : new Blob([new TextEncoder().encode('hello world')], { type: 'text/plain' })
+    const blob = new Blob(['hello world'], { type: 'text/plain' })
     const path = `events/${eventId}/test.txt`
     console.log('Uploading test file to path:', path)
 
