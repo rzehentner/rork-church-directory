@@ -305,41 +305,53 @@ export default function CreateEventScreen() {
             </View>
 
             {showStartDatePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleStartDateChange}
-                minimumDate={new Date()}
-              />
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={startDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleStartDateChange}
+                  minimumDate={new Date()}
+                  style={styles.datePicker}
+                />
+              </View>
             )}
             
             {showStartTimePicker && (
-              <DateTimePicker
-                value={startDate}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleStartTimeChange}
-              />
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={startDate}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleStartTimeChange}
+                  style={styles.datePicker}
+                />
+              </View>
             )}
             
             {showEndDatePicker && (
-              <DateTimePicker
-                value={endDate}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleEndDateChange}
-                minimumDate={startDate}
-              />
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={endDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleEndDateChange}
+                  minimumDate={startDate}
+                  style={styles.datePicker}
+                />
+              </View>
             )}
             
             {showEndTimePicker && (
-              <DateTimePicker
-                value={endDate}
-                mode="time"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={handleEndTimeChange}
-              />
+              <View style={styles.datePickerContainer}>
+                <DateTimePicker
+                  value={endDate}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleEndTimeChange}
+                  style={styles.datePicker}
+                />
+              </View>
             )}
           </View>
 
@@ -606,5 +618,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  datePickerContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginVertical: 8,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  datePicker: {
+    height: 120,
+    width: '100%',
   },
 })
