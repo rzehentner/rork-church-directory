@@ -313,6 +313,8 @@ export default function CreateEventScreen() {
                   onChange={handleStartDateChange}
                   minimumDate={new Date()}
                   style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
                 />
               </View>
             )}
@@ -325,6 +327,8 @@ export default function CreateEventScreen() {
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleStartTimeChange}
                   style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
                 />
               </View>
             )}
@@ -338,6 +342,8 @@ export default function CreateEventScreen() {
                   onChange={handleEndDateChange}
                   minimumDate={startDate}
                   style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
                 />
               </View>
             )}
@@ -350,6 +356,8 @@ export default function CreateEventScreen() {
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleEndTimeChange}
                   style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
                 />
               </View>
             )}
