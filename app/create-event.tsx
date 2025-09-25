@@ -234,7 +234,11 @@ export default function CreateEventScreen() {
         }} 
       />
       
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        style={styles.scrollView} 
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.content}>
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Event Details</Text>
@@ -630,6 +634,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: 100,
+  },
   content: {
     padding: 20,
   },
@@ -777,9 +784,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     marginVertical: 8,
-    paddingVertical: 8,
     borderWidth: 1,
     borderColor: '#E5E7EB',
+    maxHeight: 200,
   },
   datePicker: {
     height: 120,
@@ -792,6 +799,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderTopWidth: 1,
     borderTopColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
   },
   datePickerButton: {
     paddingHorizontal: 20,
