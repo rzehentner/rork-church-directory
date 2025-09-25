@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rwbppxcusppltwkcjmdu.supabase.co'
-  return `${baseUrl}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+  return `${baseUrl}/storage/v1/object/public/avatars/${encodeURIComponent(path)}`
 }
 
 /** Upload a picked image and save the path into events.image_path. */
@@ -40,7 +40,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
 
     // Upload (staff-only; must be logged in; RLS enforces role)
     const { error: upErr } = await supabase.storage
-      .from('event-images')
+      .from('avatars')
       .upload(path, blob, { 
         upsert: true, 
         contentType: blob.type || 'image/jpeg'
@@ -77,7 +77,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
 export async function testStorageBucket() {
   try {
     console.log('Testing storage bucket access...')
-    const { data, error } = await supabase.storage.from('event-images').list('', { limit: 1 })
+    const { data, error } = await supabase.storage.from('avatars').list('', { limit: 1 })
     
     if (error) {
       console.error('Storage bucket test failed:', error)
@@ -125,7 +125,7 @@ export async function testStorageWrite(eventId: string) {
 
     const { error: upErr } = await supabase
       .storage
-      .from('event-images')
+      .from('avatars')
       .upload(path, blob, { upsert: true, contentType: 'text/plain' })
 
     console.log('UPLOAD ERR:', upErr)
@@ -140,7 +140,7 @@ export async function testStorageWrite(eventId: string) {
     console.log('EVENT UPDATE ERR:', updErr)
     if (updErr) throw updErr
 
-    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${encodeURIComponent(path)}`
     console.log('TEST URL:', url)
     return { success: true, url }
   } catch (error: any) {
