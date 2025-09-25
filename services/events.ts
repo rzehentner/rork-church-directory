@@ -134,22 +134,39 @@ export async function createEvent(input: {
   location?: string | null
   is_public?: boolean
   roles_allowed?: ('admin'|'leader'|'member'|'visitor')[] | null
+  created_by?: string
 }) {
+  // Basic validation
+  if (!input.title) throw new Error('Title is required')
+  if (!input.start_at || !input.end_at) throw new Error('Start/End are required')
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Not signed in')
+
+  const payload: any = {
+    title: input.title,
+    description: input.description ?? null,
+    start_at: input.start_at,
+    end_at: input.end_at,
+    is_all_day: !!input.is_all_day,
+    location: input.location ?? null,
+    is_public: !!input.is_public,
+    roles_allowed: input.is_public ? null : (input.roles_allowed ?? null),
+    created_by: input.created_by ?? user.id, // safe even if trigger later sets it
+  }
+
+  console.log('Creating event with payload:', payload)
   const { data, error } = await supabase
     .from('events')
-    .insert([{
-      title: input.title,
-      description: input.description ?? null,
-      start_at: input.start_at,
-      end_at: input.end_at,
-      is_all_day: !!input.is_all_day,
-      location: input.location ?? null,
-      is_public: !!input.is_public,
-      roles_allowed: input.roles_allowed ?? null,
-    }])
+    .insert([payload])
     .select('*')
     .single()
-  if (error) throw error
+  
+  console.log('Create event response:', { data, error })
+  if (error) {
+    console.error('Create event error:', error)
+    throw error
+  }
   return data
 }
 
@@ -174,30 +191,42 @@ export async function updateEvent(id: string, patch: Partial<{
   return data
 }
 
+/** Replace audience tags for an event (staff only). Pass tag IDs. */
 export async function setEventTags(eventId: string, tagIds: string[]) {
+  console.log('Setting event tags:', { eventId, tagIds })
   const { data: curr, error: e1 } = await supabase
     .from('event_audience_tags')
     .select('tag_id')
     .eq('event_id', eventId)
-  if (e1) throw e1
-  const current = new Set((curr ?? []).map(r => r.tag_id))
-  const next = new Set(tagIds)
-  const toAdd = [...next].filter(id => !current.has(id))
-  const toRemove = [...current].filter(id => !next.has(id))
+  if (e1) {
+    console.error('Error fetching current tags:', e1)
+    throw e1
+  }
+  
+  const have = new Set((curr ?? []).map(r => r.tag_id))
+  const want = new Set(tagIds)
+  const toAdd = [...want].filter(x => !have.has(x))
+  const toDel = [...have].filter(x => !want.has(x))
 
-  if (toRemove.length) {
-    const { error } = await supabase
-      .from('event_audience_tags')
-      .delete()
-      .eq('event_id', eventId)
-      .in('tag_id', toRemove)
-    if (error) throw error
+  console.log('Tag changes:', { toAdd, toDel })
+
+  if (toDel.length) {
+    const { error } = await supabase.from('event_audience_tags')
+      .delete().eq('event_id', eventId).in('tag_id', toDel)
+    if (error) {
+      console.error('Error deleting tags:', error)
+      throw error
+    }
   }
   if (toAdd.length) {
     const rows = toAdd.map(tag_id => ({ event_id: eventId, tag_id }))
     const { error } = await supabase.from('event_audience_tags').insert(rows)
-    if (error) throw error
+    if (error) {
+      console.error('Error adding tags:', error)
+      throw error
+    }
   }
+  console.log('Event tags updated successfully')
 }
 
 export async function getEventTags(eventId: string) {
@@ -238,8 +267,53 @@ export async function getEventTags(eventId: string) {
 
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
-  const base = process.env.EXPO_PUBLIC_SUPABASE_URL!
-  return `${base}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+  return `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+}
+
+/** Upload an image and persist its path on the event. (Avoid 0-byte uploads.) */
+export async function uploadEventImage(localUri: string, eventId: string) {
+  console.log('Uploading event image:', { localUri, eventId })
+  const res = await fetch(localUri)
+  const blob = await res.blob()
+  
+  if (blob.size === 0) {
+    throw new Error('Cannot upload empty image file')
+  }
+  
+  const ext = (localUri.split('.').pop() || 'jpg').toLowerCase()
+  const path = `events/${eventId}/cover.${ext}`
+
+  const up = await supabase.storage.from('event-images')
+    .upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' })
+  if (up.error) {
+    console.error('Storage upload error:', up.error)
+    throw up.error
+  }
+
+  const { error } = await supabase.from('events').update({ image_path: path }).eq('id', eventId)
+  if (error) {
+    console.error('Error updating event image path:', error)
+    throw error
+  }
+
+  console.log('Event image uploaded successfully:', path)
+  return eventImageUrl(path)
+}
+
+/** Optional: schedule reminder N minutes before start (attendees only by default) */
+export async function scheduleReminder(eventId: string, minutesBefore = 60, attendeesOnly = true) {
+  console.log('Scheduling reminder:', { eventId, minutesBefore, attendeesOnly })
+  const { data, error } = await supabase.rpc('schedule_event_reminder', {
+    p_event_id: eventId,
+    p_minutes_before: minutesBefore,
+    p_attendees_only: attendeesOnly,
+  })
+  if (error) {
+    console.error('Error scheduling reminder:', error)
+    throw error
+  }
+  console.log('Reminder scheduled successfully:', data)
+  return data // integer count enqueued
 }
 
 export async function getEventICS(eventId: string) {

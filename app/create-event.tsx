@@ -13,12 +13,10 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
-import { createEvent, setEventTags } from '@/services/events'
-import { uploadEventImage } from '@/utils/uploadEventImage'
+import { createEvent, setEventTags, uploadEventImage, scheduleReminder } from '@/services/events'
 import { useToast } from '@/hooks/toast-context'
 import { useUser } from '@/hooks/user-context'
 import EventTagPicker from '@/components/EventTagPicker'
-import { scheduleEventReminder } from '@/lib/notifications'
 
 
 
@@ -83,21 +81,28 @@ export default function CreateEventScreen() {
         roles_allowed: isPublic ? null : selectedRoles.length > 0 ? selectedRoles : null,
       }
 
+      console.log('Creating event with data:', eventData)
       const event = await createEvent(eventData)
+      console.log('Event created successfully:', event.id)
 
+      // Set audience tags (only matter when private; we still keep them on public)
       if (selectedTags.length > 0) {
+        console.log('Setting event tags:', selectedTags)
         await setEventTags(event.id, selectedTags)
       }
 
+      // Upload image (optional)
       if (imageUri) {
+        console.log('Uploading event image')
         await uploadEventImage(imageUri, event.id)
       }
 
       // Schedule event reminder if enabled
       if (enableReminders) {
         try {
-          await scheduleEventReminder(event.id, reminderMinutes, true)
-          console.log(`Event reminder scheduled for ${reminderMinutes} minutes before event`)
+          console.log(`Scheduling reminder ${reminderMinutes} minutes before event`)
+          await scheduleReminder(event.id, reminderMinutes, true)
+          console.log('Event reminder scheduled successfully')
         } catch (error) {
           console.error('Failed to schedule event reminder:', error)
           // Don't fail the event creation if reminder scheduling fails
