@@ -8,7 +8,9 @@ import {
   ScrollView,
   Switch,
   Image,
+  Platform,
 } from 'react-native'
+import DateTimePicker from '@react-native-community/datetimepicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
 import { createEvent, setEventTags } from '@/services/events'
@@ -24,8 +26,12 @@ export default function CreateEventScreen() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [location, setLocation] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [startDate, setStartDate] = useState(new Date())
+  const [endDate, setEndDate] = useState(new Date(Date.now() + 60 * 60 * 1000)) // 1 hour later
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false)
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false)
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false)
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false)
   const [isAllDay, setIsAllDay] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
   const [selectedRoles, setSelectedRoles] = useState<('admin'|'leader'|'member'|'visitor')[]>([])
@@ -57,13 +63,18 @@ export default function CreateEventScreen() {
       return
     }
 
+    if (startDate >= endDate) {
+      showToast('error', 'End date must be after start date')
+      return
+    }
+
     setLoading(true)
     try {
       const eventData = {
         title: title.trim(),
         description: description.trim() || null,
-        start_at: startDate,
-        end_at: endDate,
+        start_at: startDate.toISOString(),
+        end_at: endDate.toISOString(),
         is_all_day: isAllDay,
         location: location.trim() || null,
         is_public: isPublic,
@@ -101,16 +112,76 @@ export default function CreateEventScreen() {
     }
   }
 
-  const formatDateForInput = (date: Date) => {
-    return date.toISOString().slice(0, 16)
+  const formatDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
   }
 
-  const handleStartDateChange = (text: string) => {
-    setStartDate(text)
-    if (!endDate || new Date(text) > new Date(endDate)) {
-      const start = new Date(text)
-      start.setHours(start.getHours() + 1)
-      setEndDate(formatDateForInput(start))
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    })
+  }
+
+  const handleStartDateChange = (event: any, selectedDate?: Date) => {
+    setShowStartDatePicker(false)
+    if (selectedDate) {
+      const newStartDate = new Date(startDate)
+      newStartDate.setFullYear(selectedDate.getFullYear())
+      newStartDate.setMonth(selectedDate.getMonth())
+      newStartDate.setDate(selectedDate.getDate())
+      setStartDate(newStartDate)
+      
+      // Auto-adjust end date if it's before the new start date
+      if (newStartDate >= endDate) {
+        const newEndDate = new Date(newStartDate)
+        newEndDate.setHours(newEndDate.getHours() + 1)
+        setEndDate(newEndDate)
+      }
+    }
+  }
+
+  const handleStartTimeChange = (event: any, selectedTime?: Date) => {
+    setShowStartTimePicker(false)
+    if (selectedTime) {
+      const newStartDate = new Date(startDate)
+      newStartDate.setHours(selectedTime.getHours())
+      newStartDate.setMinutes(selectedTime.getMinutes())
+      setStartDate(newStartDate)
+      
+      // Auto-adjust end date if it's before the new start date
+      if (newStartDate >= endDate) {
+        const newEndDate = new Date(newStartDate)
+        newEndDate.setHours(newEndDate.getHours() + 1)
+        setEndDate(newEndDate)
+      }
+    }
+  }
+
+  const handleEndDateChange = (event: any, selectedDate?: Date) => {
+    setShowEndDatePicker(false)
+    if (selectedDate) {
+      const newEndDate = new Date(endDate)
+      newEndDate.setFullYear(selectedDate.getFullYear())
+      newEndDate.setMonth(selectedDate.getMonth())
+      newEndDate.setDate(selectedDate.getDate())
+      setEndDate(newEndDate)
+    }
+  }
+
+  const handleEndTimeChange = (event: any, selectedTime?: Date) => {
+    setShowEndTimePicker(false)
+    if (selectedTime) {
+      const newEndDate = new Date(endDate)
+      newEndDate.setHours(selectedTime.getHours())
+      newEndDate.setMinutes(selectedTime.getMinutes())
+      setEndDate(newEndDate)
     }
   }
 
@@ -191,29 +262,85 @@ export default function CreateEventScreen() {
               />
             </View>
 
-            <View style={styles.dateRow}>
-              <View style={styles.dateInput}>
-                <Text style={styles.label}>Start Date *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={startDate}
-                  onChangeText={handleStartDateChange}
-                  placeholder="YYYY-MM-DDTHH:MM"
-                  placeholderTextColor="#9CA3AF"
-                />
+            <View style={styles.dateTimeSection}>
+              <View style={styles.dateTimeGroup}>
+                <Text style={styles.label}>Start Date & Time *</Text>
+                <View style={styles.dateTimeRow}>
+                  <TouchableOpacity
+                    style={[styles.dateTimeButton, styles.dateButton]}
+                    onPress={() => setShowStartDatePicker(true)}
+                  >
+                    <Text style={styles.dateTimeButtonText}>{formatDate(startDate)}</Text>
+                  </TouchableOpacity>
+                  {!isAllDay && (
+                    <TouchableOpacity
+                      style={[styles.dateTimeButton, styles.timeButton]}
+                      onPress={() => setShowStartTimePicker(true)}
+                    >
+                      <Text style={styles.dateTimeButtonText}>{formatTime(startDate)}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
               
-              <View style={styles.dateInput}>
-                <Text style={styles.label}>End Date *</Text>
-                <TextInput
-                  style={styles.input}
-                  value={endDate}
-                  onChangeText={setEndDate}
-                  placeholder="YYYY-MM-DDTHH:MM"
-                  placeholderTextColor="#9CA3AF"
-                />
+              <View style={styles.dateTimeGroup}>
+                <Text style={styles.label}>End Date & Time *</Text>
+                <View style={styles.dateTimeRow}>
+                  <TouchableOpacity
+                    style={[styles.dateTimeButton, styles.dateButton]}
+                    onPress={() => setShowEndDatePicker(true)}
+                  >
+                    <Text style={styles.dateTimeButtonText}>{formatDate(endDate)}</Text>
+                  </TouchableOpacity>
+                  {!isAllDay && (
+                    <TouchableOpacity
+                      style={[styles.dateTimeButton, styles.timeButton]}
+                      onPress={() => setShowEndTimePicker(true)}
+                    >
+                      <Text style={styles.dateTimeButtonText}>{formatTime(endDate)}</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </View>
             </View>
+
+            {showStartDatePicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleStartDateChange}
+                minimumDate={new Date()}
+              />
+            )}
+            
+            {showStartTimePicker && (
+              <DateTimePicker
+                value={startDate}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleStartTimeChange}
+              />
+            )}
+            
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={endDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleEndDateChange}
+                minimumDate={startDate}
+              />
+            )}
+            
+            {showEndTimePicker && (
+              <DateTimePicker
+                value={endDate}
+                mode="time"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={handleEndTimeChange}
+              />
+            )}
           </View>
 
           <View style={styles.section}>
@@ -400,12 +527,36 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     marginTop: 2,
   },
-  dateRow: {
+  dateTimeSection: {
+    gap: 16,
+  },
+  dateTimeGroup: {
+    marginBottom: 8,
+  },
+  dateTimeRow: {
     flexDirection: 'row',
     gap: 12,
   },
-  dateInput: {
+  dateTimeButton: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateButton: {
+    flex: 2,
+  },
+  timeButton: {
     flex: 1,
+  },
+  dateTimeButtonText: {
+    fontSize: 16,
+    color: '#111827',
+    fontWeight: '500',
   },
   roleContainer: {
     flexDirection: 'row',
