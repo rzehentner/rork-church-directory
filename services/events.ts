@@ -271,39 +271,88 @@ export async function getEventTags(eventId: string) {
   return tags
 }
 
-export function eventImageUrl(path?: string | null) {
+export function eventImageUrl(path?: string | null, bucketName: string = 'event-images') {
   if (!path) return null
-  return `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
+  if (!baseUrl) {
+    console.error('EXPO_PUBLIC_SUPABASE_URL is not defined')
+    return null
+  }
+  return `${baseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(path)}`
 }
 
 /** Upload an image and persist its path on the event. (Avoid 0-byte uploads.) */
 export async function uploadEventImage(localUri: string, eventId: string) {
   console.log('Uploading event image:', { localUri, eventId })
-  const res = await fetch(localUri)
-  const blob = await res.blob()
   
-  if (blob.size === 0) {
-    throw new Error('Cannot upload empty image file')
+  if (!localUri || !eventId) {
+    throw new Error('Missing required parameters: localUri and eventId')
   }
   
-  const ext = (localUri.split('.').pop() || 'jpg').toLowerCase()
-  const path = `events/${eventId}/cover.${ext}`
+  try {
+    console.log('Fetching image from local URI...')
+    const res = await fetch(localUri)
+    
+    if (!res.ok) {
+      throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`)
+    }
+    
+    const blob = await res.blob()
+    console.log('Image blob details:', { size: blob.size, type: blob.type })
+    
+    if (blob.size === 0) {
+      throw new Error('Cannot upload empty image file')
+    }
+    
+    if (blob.size > 10 * 1024 * 1024) { // 10MB limit
+      throw new Error('Image file is too large (max 10MB)')
+    }
+    
+    const ext = (localUri.split('.').pop() || 'jpg').toLowerCase()
+    const path = `events/${eventId}/cover.${ext}`
+    console.log('Uploading to storage path:', path)
 
-  const up = await supabase.storage.from('event-images')
-    .upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' })
-  if (up.error) {
-    console.error('Storage upload error:', up.error)
-    throw up.error
-  }
+    // Try event-images bucket first, fallback to avatars bucket if it doesn't exist
+    let uploadResult
+    let bucketName = 'event-images'
+    
+    try {
+      uploadResult = await supabase.storage.from('event-images')
+        .upload(path, blob, { 
+          upsert: true, 
+          contentType: blob.type || 'image/jpeg',
+          cacheControl: '3600'
+        })
+    } catch {
+      console.log('event-images bucket not available, trying avatars bucket...')
+      bucketName = 'avatars'
+      uploadResult = await supabase.storage.from('avatars')
+        .upload(path, blob, { 
+          upsert: true, 
+          contentType: blob.type || 'image/jpeg',
+          cacheControl: '3600'
+        })
+    }
+      
+    if (uploadResult.error) {
+      console.error('Storage upload error:', uploadResult.error)
+      throw new Error(`Storage upload failed: ${uploadResult.error.message}`)
+    }
+    
+    console.log('Storage upload successful, updating event record...')
+    const { error } = await supabase.from('events').update({ image_path: path }).eq('id', eventId)
+    if (error) {
+      console.error('Error updating event image path:', error)
+      throw new Error(`Failed to update event record: ${error.message}`)
+    }
 
-  const { error } = await supabase.from('events').update({ image_path: path }).eq('id', eventId)
-  if (error) {
-    console.error('Error updating event image path:', error)
+    const finalUrl = eventImageUrl(path, bucketName)
+    console.log('Event image uploaded successfully:', { path, url: finalUrl, bucket: bucketName })
+    return finalUrl
+  } catch (error) {
+    console.error('uploadEventImage error:', error)
     throw error
   }
-
-  console.log('Event image uploaded successfully:', path)
-  return eventImageUrl(path)
 }
 
 /** Optional: schedule reminder N minutes before start (attendees only by default) */

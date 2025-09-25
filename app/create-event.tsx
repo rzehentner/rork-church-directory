@@ -93,8 +93,15 @@ export default function CreateEventScreen() {
 
       // Upload image (optional)
       if (imageUri) {
-        console.log('Uploading event image')
-        await uploadEventImage(imageUri, event.id)
+        console.log('Uploading event image:', imageUri)
+        try {
+          const uploadedUrl = await uploadEventImage(imageUri, event.id)
+          console.log('Image uploaded successfully:', uploadedUrl)
+        } catch (imageError) {
+          console.error('Image upload failed:', imageError)
+          // Don't fail the entire event creation if image upload fails
+          showToast('warning', 'Event created but image upload failed')
+        }
       }
 
       // Schedule event reminder if enabled
