@@ -3,13 +3,19 @@ import { supabase } from '@/lib/supabase'
 export type RSVP = 'going'|'maybe'|'declined'
 
 export async function listUpcomingEvents(limit = 100) {
+  console.log('listUpcomingEvents called with limit:', limit)
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
     .gte('end_at', new Date().toISOString())
     .order('start_at', { ascending: true })
     .limit(limit)
-  if (error) throw error
+  
+  console.log('listUpcomingEvents response:', { data: data?.length, error })
+  if (error) {
+    console.error('listUpcomingEvents error:', error)
+    throw error
+  }
   return data ?? []
 }
 

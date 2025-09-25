@@ -60,12 +60,20 @@ export default function EventsScreen() {
 
   const loadAllEvents = useCallback(async () => {
     try {
-      const currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
-      const nextMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 2, 0)
-      console.log('Loading events for date range:', { currentMonth, nextMonth })
-      const data = await listEventsForDateRange(currentMonth, nextMonth)
+      // Load a wider range: 3 months back and 6 months forward
+      const startDate = new Date()
+      startDate.setMonth(startDate.getMonth() - 3)
+      startDate.setDate(1)
+      
+      const endDate = new Date()
+      endDate.setMonth(endDate.getMonth() + 6)
+      endDate.setDate(0) // Last day of the month
+      
+      console.log('Loading events for date range:', { startDate, endDate })
+      const data = await listEventsForDateRange(startDate, endDate)
       console.log('Loaded events:', data?.length, 'events')
       console.log('Event IDs:', data?.map(e => e.id))
+      console.log('Event titles:', data?.map(e => e.title))
       setAllEvents(data as Event[])
     } catch (error) {
       console.error('Failed to load events:', error)
@@ -73,7 +81,7 @@ export default function EventsScreen() {
     } finally {
       setRefreshing(false)
     }
-  }, [selectedDate, showToast])
+  }, [showToast])
 
   const loadTags = useCallback(async () => {
     try {
@@ -88,6 +96,16 @@ export default function EventsScreen() {
     loadAllEvents()
     loadTags()
   }, [loadAllEvents, loadTags])
+  
+  // Add a simple interval to refresh events periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Periodic refresh of events...')
+      loadAllEvents()
+    }, 30000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [loadAllEvents])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -390,15 +408,28 @@ export default function EventsScreen() {
           <CalendarIcon size={28} color="#7C3AED" />
           <Text style={styles.title}>Events</Text>
         </View>
-        {isStaff && (
+        <View style={styles.headerButtons}>
+          {/* Debug button to manually refresh */}
           <TouchableOpacity
-            onPress={() => router.push('/create-event' as any)}
-            style={styles.createButton}
+            onPress={() => {
+              console.log('Manual refresh triggered')
+              handleRefresh()
+            }}
+            style={[styles.createButton, styles.refreshButton]}
           >
-            <Plus size={20} color="#FFFFFF" />
-            <Text style={styles.createButtonText}>Create</Text>
+            <Text style={styles.createButtonText}>Refresh</Text>
           </TouchableOpacity>
-        )}
+          
+          {isStaff && (
+            <TouchableOpacity
+              onPress={() => router.push('/create-event' as any)}
+              style={styles.createButton}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.createButtonText}>Create</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       
       {/* Search and Filter Bar */}
@@ -906,5 +937,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginBottom: 12,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  refreshButton: {
+    backgroundColor: '#10B981',
   },
 })
