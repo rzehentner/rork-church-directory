@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rwbppxcusppltwkcjmdu.supabase.co'
-  return `${baseUrl}/storage/v1/object/public/avatars/${encodeURIComponent(path)}`
+  return `${baseUrl}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
 }
 
 /** Upload a picked image and save the path into events.image_path. */
@@ -40,7 +40,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
 
     // Upload (staff-only; must be logged in; RLS enforces role)
     const { error: upErr } = await supabase.storage
-      .from('avatars')
+      .from('event-images')
       .upload(path, blob, { 
         upsert: true, 
         contentType: blob.type || 'image/jpeg'
@@ -77,7 +77,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
 export async function testStorageBucket() {
   try {
     console.log('Testing storage bucket access...')
-    const { data, error } = await supabase.storage.from('avatars').list('', { limit: 1 })
+    const { data, error } = await supabase.storage.from('event-images').list('', { limit: 1 })
     
     if (error) {
       console.error('Storage bucket test failed:', error)
@@ -92,7 +92,7 @@ export async function testStorageBucket() {
   }
 }
 
-/** Test storage write with a simple text file */
+/** Test storage write with a small image file */
 export async function testStorageWrite(eventId: string) {
   try {
     console.log('Testing storage write with eventId:', eventId)
@@ -118,15 +118,25 @@ export async function testStorageWrite(eventId: string) {
     
     console.log('User role:', profile?.role)
     
-    // Make a small blob ("hello world") - web compatible
-    const blob = new Blob(['hello world'], { type: 'text/plain' })
-    const path = `events/${eventId}/test.txt`
-    console.log('Uploading test file to path:', path)
+    // Create a minimal 1x1 pixel PNG image as base64
+    const base64Image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+    
+    // Convert base64 to blob
+    const byteCharacters = atob(base64Image)
+    const byteNumbers = new Array(byteCharacters.length)
+    for (let i = 0; i < byteCharacters.length; i++) {
+      byteNumbers[i] = byteCharacters.charCodeAt(i)
+    }
+    const byteArray = new Uint8Array(byteNumbers)
+    const blob = new Blob([byteArray], { type: 'image/png' })
+    
+    const path = `events/${eventId}/test.png`
+    console.log('Uploading test image to path:', path)
 
     const { error: upErr } = await supabase
       .storage
-      .from('avatars')
-      .upload(path, blob, { upsert: true, contentType: 'text/plain' })
+      .from('event-images')
+      .upload(path, blob, { upsert: true, contentType: 'image/png' })
 
     console.log('UPLOAD ERR:', upErr)
     if (upErr) throw upErr
@@ -140,7 +150,7 @@ export async function testStorageWrite(eventId: string) {
     console.log('EVENT UPDATE ERR:', updErr)
     if (updErr) throw updErr
 
-    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${encodeURIComponent(path)}`
+    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
     console.log('TEST URL:', url)
     return { success: true, url }
   } catch (error: any) {
