@@ -32,6 +32,8 @@ export default function CreateEventScreen() {
   const [showStartTimePicker, setShowStartTimePicker] = useState(false)
   const [showEndDatePicker, setShowEndDatePicker] = useState(false)
   const [showEndTimePicker, setShowEndTimePicker] = useState(false)
+  const [tempStartDate, setTempStartDate] = useState(new Date())
+  const [tempEndDate, setTempEndDate] = useState(new Date())
   const [isAllDay, setIsAllDay] = useState(false)
   const [isPublic, setIsPublic] = useState(true)
   const [selectedRoles, setSelectedRoles] = useState<('admin'|'leader'|'member'|'visitor')[]>([])
@@ -130,58 +132,86 @@ export default function CreateEventScreen() {
   }
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    setShowStartDatePicker(false)
-    if (selectedDate) {
-      const newStartDate = new Date(startDate)
-      newStartDate.setFullYear(selectedDate.getFullYear())
-      newStartDate.setMonth(selectedDate.getMonth())
-      newStartDate.setDate(selectedDate.getDate())
-      setStartDate(newStartDate)
-      
-      // Auto-adjust end date if it's before the new start date
-      if (newStartDate >= endDate) {
-        const newEndDate = new Date(newStartDate)
-        newEndDate.setHours(newEndDate.getHours() + 1)
-        setEndDate(newEndDate)
+    if (Platform.OS === 'android') {
+      setShowStartDatePicker(false)
+      if (selectedDate) {
+        const newStartDate = new Date(startDate)
+        newStartDate.setFullYear(selectedDate.getFullYear())
+        newStartDate.setMonth(selectedDate.getMonth())
+        newStartDate.setDate(selectedDate.getDate())
+        setStartDate(newStartDate)
+        
+        // Auto-adjust end date if it's before the new start date
+        if (newStartDate >= endDate) {
+          const newEndDate = new Date(newStartDate)
+          newEndDate.setHours(newEndDate.getHours() + 1)
+          setEndDate(newEndDate)
+        }
+      }
+    } else {
+      // iOS - just update temp date, don't close picker
+      if (selectedDate) {
+        setTempStartDate(selectedDate)
       }
     }
   }
 
   const handleStartTimeChange = (event: any, selectedTime?: Date) => {
-    setShowStartTimePicker(false)
-    if (selectedTime) {
-      const newStartDate = new Date(startDate)
-      newStartDate.setHours(selectedTime.getHours())
-      newStartDate.setMinutes(selectedTime.getMinutes())
-      setStartDate(newStartDate)
-      
-      // Auto-adjust end date if it's before the new start date
-      if (newStartDate >= endDate) {
-        const newEndDate = new Date(newStartDate)
-        newEndDate.setHours(newEndDate.getHours() + 1)
-        setEndDate(newEndDate)
+    if (Platform.OS === 'android') {
+      setShowStartTimePicker(false)
+      if (selectedTime) {
+        const newStartDate = new Date(startDate)
+        newStartDate.setHours(selectedTime.getHours())
+        newStartDate.setMinutes(selectedTime.getMinutes())
+        setStartDate(newStartDate)
+        
+        // Auto-adjust end date if it's before the new start date
+        if (newStartDate >= endDate) {
+          const newEndDate = new Date(newStartDate)
+          newEndDate.setHours(newEndDate.getHours() + 1)
+          setEndDate(newEndDate)
+        }
+      }
+    } else {
+      // iOS - just update temp date, don't close picker
+      if (selectedTime) {
+        setTempStartDate(selectedTime)
       }
     }
   }
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    setShowEndDatePicker(false)
-    if (selectedDate) {
-      const newEndDate = new Date(endDate)
-      newEndDate.setFullYear(selectedDate.getFullYear())
-      newEndDate.setMonth(selectedDate.getMonth())
-      newEndDate.setDate(selectedDate.getDate())
-      setEndDate(newEndDate)
+    if (Platform.OS === 'android') {
+      setShowEndDatePicker(false)
+      if (selectedDate) {
+        const newEndDate = new Date(endDate)
+        newEndDate.setFullYear(selectedDate.getFullYear())
+        newEndDate.setMonth(selectedDate.getMonth())
+        newEndDate.setDate(selectedDate.getDate())
+        setEndDate(newEndDate)
+      }
+    } else {
+      // iOS - just update temp date, don't close picker
+      if (selectedDate) {
+        setTempEndDate(selectedDate)
+      }
     }
   }
 
   const handleEndTimeChange = (event: any, selectedTime?: Date) => {
-    setShowEndTimePicker(false)
-    if (selectedTime) {
-      const newEndDate = new Date(endDate)
-      newEndDate.setHours(selectedTime.getHours())
-      newEndDate.setMinutes(selectedTime.getMinutes())
-      setEndDate(newEndDate)
+    if (Platform.OS === 'android') {
+      setShowEndTimePicker(false)
+      if (selectedTime) {
+        const newEndDate = new Date(endDate)
+        newEndDate.setHours(selectedTime.getHours())
+        newEndDate.setMinutes(selectedTime.getMinutes())
+        setEndDate(newEndDate)
+      }
+    } else {
+      // iOS - just update temp date, don't close picker
+      if (selectedTime) {
+        setTempEndDate(selectedTime)
+      }
     }
   }
 
@@ -268,14 +298,20 @@ export default function CreateEventScreen() {
                 <View style={styles.dateTimeRow}>
                   <TouchableOpacity
                     style={[styles.dateTimeButton, styles.dateButton]}
-                    onPress={() => setShowStartDatePicker(true)}
+                    onPress={() => {
+                      setTempStartDate(startDate)
+                      setShowStartDatePicker(true)
+                    }}
                   >
                     <Text style={styles.dateTimeButtonText}>{formatDate(startDate)}</Text>
                   </TouchableOpacity>
                   {!isAllDay && (
                     <TouchableOpacity
                       style={[styles.dateTimeButton, styles.timeButton]}
-                      onPress={() => setShowStartTimePicker(true)}
+                      onPress={() => {
+                        setTempStartDate(startDate)
+                        setShowStartTimePicker(true)
+                      }}
                     >
                       <Text style={styles.dateTimeButtonText}>{formatTime(startDate)}</Text>
                     </TouchableOpacity>
@@ -288,14 +324,20 @@ export default function CreateEventScreen() {
                 <View style={styles.dateTimeRow}>
                   <TouchableOpacity
                     style={[styles.dateTimeButton, styles.dateButton]}
-                    onPress={() => setShowEndDatePicker(true)}
+                    onPress={() => {
+                      setTempEndDate(endDate)
+                      setShowEndDatePicker(true)
+                    }}
                   >
                     <Text style={styles.dateTimeButtonText}>{formatDate(endDate)}</Text>
                   </TouchableOpacity>
                   {!isAllDay && (
                     <TouchableOpacity
                       style={[styles.dateTimeButton, styles.timeButton]}
-                      onPress={() => setShowEndTimePicker(true)}
+                      onPress={() => {
+                        setTempEndDate(endDate)
+                        setShowEndTimePicker(true)
+                      }}
                     >
                       <Text style={styles.dateTimeButtonText}>{formatTime(endDate)}</Text>
                     </TouchableOpacity>
@@ -307,7 +349,7 @@ export default function CreateEventScreen() {
             {showStartDatePicker && (
               <View style={styles.datePickerContainer}>
                 <DateTimePicker
-                  value={startDate}
+                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleStartDateChange}
@@ -316,13 +358,43 @@ export default function CreateEventScreen() {
                   textColor="#111827"
                   accentColor="#7C3AED"
                 />
+                {Platform.OS === 'ios' && (
+                  <View style={styles.datePickerButtons}>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.cancelButton]}
+                      onPress={() => setShowStartDatePicker(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.confirmButton]}
+                      onPress={() => {
+                        const newStartDate = new Date(startDate)
+                        newStartDate.setFullYear(tempStartDate.getFullYear())
+                        newStartDate.setMonth(tempStartDate.getMonth())
+                        newStartDate.setDate(tempStartDate.getDate())
+                        setStartDate(newStartDate)
+                        
+                        // Auto-adjust end date if it's before the new start date
+                        if (newStartDate >= endDate) {
+                          const newEndDate = new Date(newStartDate)
+                          newEndDate.setHours(newEndDate.getHours() + 1)
+                          setEndDate(newEndDate)
+                        }
+                        setShowStartDatePicker(false)
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
             
             {showStartTimePicker && (
               <View style={styles.datePickerContainer}>
                 <DateTimePicker
-                  value={startDate}
+                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
                   mode="time"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleStartTimeChange}
@@ -330,13 +402,42 @@ export default function CreateEventScreen() {
                   textColor="#111827"
                   accentColor="#7C3AED"
                 />
+                {Platform.OS === 'ios' && (
+                  <View style={styles.datePickerButtons}>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.cancelButton]}
+                      onPress={() => setShowStartTimePicker(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.confirmButton]}
+                      onPress={() => {
+                        const newStartDate = new Date(startDate)
+                        newStartDate.setHours(tempStartDate.getHours())
+                        newStartDate.setMinutes(tempStartDate.getMinutes())
+                        setStartDate(newStartDate)
+                        
+                        // Auto-adjust end date if it's before the new start date
+                        if (newStartDate >= endDate) {
+                          const newEndDate = new Date(newStartDate)
+                          newEndDate.setHours(newEndDate.getHours() + 1)
+                          setEndDate(newEndDate)
+                        }
+                        setShowStartTimePicker(false)
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
             
             {showEndDatePicker && (
               <View style={styles.datePickerContainer}>
                 <DateTimePicker
-                  value={endDate}
+                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
                   mode="date"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleEndDateChange}
@@ -345,13 +446,36 @@ export default function CreateEventScreen() {
                   textColor="#111827"
                   accentColor="#7C3AED"
                 />
+                {Platform.OS === 'ios' && (
+                  <View style={styles.datePickerButtons}>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.cancelButton]}
+                      onPress={() => setShowEndDatePicker(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.confirmButton]}
+                      onPress={() => {
+                        const newEndDate = new Date(endDate)
+                        newEndDate.setFullYear(tempEndDate.getFullYear())
+                        newEndDate.setMonth(tempEndDate.getMonth())
+                        newEndDate.setDate(tempEndDate.getDate())
+                        setEndDate(newEndDate)
+                        setShowEndDatePicker(false)
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
             
             {showEndTimePicker && (
               <View style={styles.datePickerContainer}>
                 <DateTimePicker
-                  value={endDate}
+                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
                   mode="time"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   onChange={handleEndTimeChange}
@@ -359,6 +483,28 @@ export default function CreateEventScreen() {
                   textColor="#111827"
                   accentColor="#7C3AED"
                 />
+                {Platform.OS === 'ios' && (
+                  <View style={styles.datePickerButtons}>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.cancelButton]}
+                      onPress={() => setShowEndTimePicker(false)}
+                    >
+                      <Text style={styles.cancelButtonText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.datePickerButton, styles.confirmButton]}
+                      onPress={() => {
+                        const newEndDate = new Date(endDate)
+                        newEndDate.setHours(tempEndDate.getHours())
+                        newEndDate.setMinutes(tempEndDate.getMinutes())
+                        setEndDate(newEndDate)
+                        setShowEndTimePicker(false)
+                      }}
+                    >
+                      <Text style={styles.confirmButtonText}>Confirm</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -638,5 +784,36 @@ const styles = StyleSheet.create({
   datePicker: {
     height: 120,
     width: '100%',
+  },
+  datePickerButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  datePickerButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+  },
+  confirmButton: {
+    backgroundColor: '#7C3AED',
+  },
+  cancelButtonText: {
+    color: '#6B7280',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 16,
   },
 })
