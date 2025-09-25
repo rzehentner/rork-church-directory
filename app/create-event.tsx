@@ -12,11 +12,13 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
-import { createEvent, setEventTags, uploadEventImage, scheduleReminder } from '@/services/events'
+import { createEvent, setEventTags, scheduleReminder } from '@/services/events'
+import { uploadEventImage } from '@/services/event-images'
 import { useToast } from '@/hooks/toast-context'
 import { useUser } from '@/hooks/user-context'
 import EventTagPicker from '@/components/EventTagPicker'
 import ImageUploader from '@/components/ImageUploader'
+import StorageBucketTest from '@/components/StorageBucketTest'
 
 
 
@@ -526,6 +528,8 @@ export default function CreateEventScreen() {
             )}
           </View>
 
+          <StorageBucketTest />
+          
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Event Image</Text>
             <View style={styles.imageUploaderContainer}>
