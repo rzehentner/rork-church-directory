@@ -113,7 +113,7 @@ export async function testStorageWrite(eventId: string) {
     
     if (profileError) {
       console.error('Error fetching user profile:', profileError)
-      throw profileError
+      throw new Error(`Profile error: ${profileError.message}`)
     }
     
     console.log('User role:', profile?.role)
@@ -130,7 +130,7 @@ export async function testStorageWrite(eventId: string) {
     const byteArray = new Uint8Array(byteNumbers)
     const blob = new Blob([byteArray], { type: 'image/png' })
     
-    const path = `events/${eventId}/test.png`
+    const path = `test/${eventId}/test.png`
     console.log('Uploading test image to path:', path)
 
     const { error: upErr } = await supabase
@@ -139,22 +139,17 @@ export async function testStorageWrite(eventId: string) {
       .upload(path, blob, { upsert: true, contentType: 'image/png' })
 
     console.log('UPLOAD ERR:', upErr)
-    if (upErr) throw upErr
+    if (upErr) {
+      throw new Error(`Storage upload failed: ${upErr.message}`)
+    }
 
-    // Optional: persist path to the event so you can fetch/display it
-    const { error: updErr } = await supabase
-      .from('events')
-      .update({ image_path: path })
-      .eq('id', eventId)
-
-    console.log('EVENT UPDATE ERR:', updErr)
-    if (updErr) throw updErr
-
+    console.log('Storage upload successful!')
     const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
     console.log('TEST URL:', url)
     return { success: true, url }
   } catch (error: any) {
     console.error('testStorageWrite error:', error)
-    return { success: false, error: error.message }
+    const errorMessage = error?.message || 'Unknown error occurred'
+    return { success: false, error: errorMessage }
   }
 }
