@@ -91,3 +91,60 @@ export async function testStorageBucket() {
     return { success: false, error: error.message }
   }
 }
+
+/** Test storage write with a simple text file */
+export async function testStorageWrite(eventId: string) {
+  try {
+    console.log('Testing storage write with eventId:', eventId)
+    
+    // Check if user is authenticated
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      throw new Error('Not authenticated')
+    }
+    console.log('User authenticated:', user.id)
+    
+    // Check user role
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+    
+    if (profileError) {
+      console.error('Error fetching user profile:', profileError)
+      throw profileError
+    }
+    
+    console.log('User role:', profile?.role)
+    
+    // Make a small blob ("hello world")
+    const blob = new Blob([new TextEncoder().encode('hello world')], { type: 'text/plain' })
+    const path = `events/${eventId}/test.txt`
+    console.log('Uploading test file to path:', path)
+
+    const { error: upErr } = await supabase
+      .storage
+      .from('event-images')
+      .upload(path, blob, { upsert: true, contentType: 'text/plain' })
+
+    console.log('UPLOAD ERR:', upErr)
+    if (upErr) throw upErr
+
+    // Optional: persist path to the event so you can fetch/display it
+    const { error: updErr } = await supabase
+      .from('events')
+      .update({ image_path: path })
+      .eq('id', eventId)
+
+    console.log('EVENT UPDATE ERR:', updErr)
+    if (updErr) throw updErr
+
+    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+    console.log('TEST URL:', url)
+    return { success: true, url }
+  } catch (error: any) {
+    console.error('testStorageWrite error:', error)
+    return { success: false, error: error.message }
+  }
+}

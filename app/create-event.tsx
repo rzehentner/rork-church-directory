@@ -536,9 +536,10 @@ export default function CreateEventScreen() {
               <ImageUploader
                 currentImageUrl={imageUri}
                 onUpload={async (file) => {
-                  // For now, just return the local URI
-                  // The actual upload will happen in handleSave
+                  console.log('[CreateEvent] Image selected:', file.uri)
+                  // Store the local URI for later upload
                   setImageUri(file.uri)
+                  // Return the local URI to show in the UI
                   return file.uri
                 }}
                 placeholder="Add Event Photo"
