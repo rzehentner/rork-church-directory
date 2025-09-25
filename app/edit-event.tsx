@@ -7,7 +7,6 @@ import {
   TextInput,
   ScrollView,
   Switch,
-  Image,
   Alert,
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
@@ -17,6 +16,7 @@ import { useToast } from '@/hooks/toast-context'
 import { useMe } from '@/hooks/me-context'
 import { supabase } from '@/lib/supabase'
 import EventTagPicker from '@/components/EventTagPicker'
+import ImageUploader from '@/components/ImageUploader'
 
 type Event = {
   id: string
@@ -122,8 +122,17 @@ export default function EditEventScreen() {
 
       await setEventTags(event.id, selectedTags)
 
+      // Upload image (optional)
       if (imageUri) {
-        await uploadEventImage(imageUri, event.id)
+        console.log('Uploading event image:', imageUri)
+        try {
+          const uploadedUrl = await uploadEventImage(imageUri, event.id)
+          console.log('Image uploaded successfully:', uploadedUrl)
+        } catch (imageError) {
+          console.error('Image upload failed:', imageError)
+          // Don't fail the entire event update if image upload fails
+          showToast('warning', 'Event updated but image upload failed')
+        }
       }
 
       showToast('success', 'Event updated successfully')
@@ -319,38 +328,25 @@ export default function EditEventScreen() {
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Event Image</Text>
-            <TouchableOpacity
-              style={styles.imageUploadButton}
-              onPress={async () => {
-                const ImagePicker = await import('expo-image-picker')
-                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-                if (status !== 'granted') {
-                  showToast('error', 'Permission needed to access photos')
-                  return
-                }
-                
-                const result = await ImagePicker.launchImageLibraryAsync({
-                  mediaTypes: ImagePicker.MediaTypeOptions.Images,
-                  allowsEditing: true,
-                  aspect: [16, 9],
-                  quality: 0.8,
-                })
-                
-                if (!result.canceled && result.assets[0]) {
-                  setImageUri(result.assets[0].uri)
-                }
-              }}
-            >
-              {imageUri ? (
-                <Image source={{ uri: imageUri }} style={styles.selectedImage} />
-              ) : currentImagePath ? (
-                <Image source={{ uri: eventImageUrl(currentImagePath)! }} style={styles.selectedImage} />
-              ) : (
-                <View style={styles.imagePlaceholder}>
-                  <Text style={styles.imagePlaceholderText}>Tap to add event image</Text>
-                </View>
-              )}
-            </TouchableOpacity>
+            <View style={styles.imageUploaderContainer}>
+              <ImageUploader
+                currentImageUrl={imageUri || (currentImagePath ? eventImageUrl(currentImagePath) : null)}
+                onUpload={async (file) => {
+                  // For now, just return the local URI
+                  // The actual upload will happen in handleSave
+                  setImageUri(file.uri)
+                  return file.uri
+                }}
+                placeholder="Add Event Photo"
+                size={200}
+                isCircular={false}
+                aspectRatio={{ width: 16, height: 9 }}
+                disabled={loading}
+              />
+            </View>
+            <Text style={styles.imageHelpText}>
+              Tap to select an event photo. You can crop and adjust it before saving.
+            </Text>
           </View>
 
           <View style={styles.section}>
@@ -544,29 +540,15 @@ const styles = StyleSheet.create({
   roleChipTextSelected: {
     color: '#FFFFFF',
   },
-  imageUploadButton: {
-    borderWidth: 2,
-    borderColor: '#D1D5DB',
-    borderStyle: 'dashed',
-    borderRadius: 12,
-    padding: 20,
+  imageUploaderContainer: {
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
+    marginBottom: 12,
   },
-  selectedImage: {
-    width: '100%',
-    height: 200,
-    borderRadius: 8,
-  },
-  imagePlaceholder: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 40,
-  },
-  imagePlaceholderText: {
-    fontSize: 16,
+  imageHelpText: {
+    fontSize: 14,
     color: '#6B7280',
-    fontWeight: '500',
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   loadingContainer: {
     flex: 1,

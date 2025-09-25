@@ -271,14 +271,14 @@ export async function getEventTags(eventId: string) {
   return tags
 }
 
-export function eventImageUrl(path?: string | null, bucketName: string = 'event-images') {
+export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL
   if (!baseUrl) {
     console.error('EXPO_PUBLIC_SUPABASE_URL is not defined')
     return null
   }
-  return `${baseUrl}/storage/v1/object/public/${bucketName}/${encodeURIComponent(path)}`
+  return `${baseUrl}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
 }
 
 /** Upload an image and persist its path on the event. (Avoid 0-byte uploads.) */
@@ -300,54 +300,47 @@ export async function uploadEventImage(localUri: string, eventId: string) {
     const blob = await res.blob()
     console.log('Image blob details:', { size: blob.size, type: blob.type })
     
-    if (blob.size === 0) {
-      throw new Error('Cannot upload empty image file')
+    if (!blob || blob.size === 0) {
+      throw new Error('Image blob empty (URI fetch failed)')
     }
     
     if (blob.size > 10 * 1024 * 1024) { // 10MB limit
       throw new Error('Image file is too large (max 10MB)')
     }
     
+    // Build a path; no leading slash; deterministic per event
     const ext = (localUri.split('.').pop() || 'jpg').toLowerCase()
     const path = `events/${eventId}/cover.${ext}`
     console.log('Uploading to storage path:', path)
 
-    // Try event-images bucket first, fallback to avatars bucket if it doesn't exist
-    let uploadResult
-    let bucketName = 'event-images'
+    // Upload (staff-only; must be logged in; RLS enforces role)
+    const { error: upErr } = await supabase.storage
+      .from('event-images')
+      .upload(path, blob, { 
+        upsert: true, 
+        contentType: blob.type || 'image/jpeg'
+      })
     
-    try {
-      uploadResult = await supabase.storage.from('event-images')
-        .upload(path, blob, { 
-          upsert: true, 
-          contentType: blob.type || 'image/jpeg',
-          cacheControl: '3600'
-        })
-    } catch {
-      console.log('event-images bucket not available, trying avatars bucket...')
-      bucketName = 'avatars'
-      uploadResult = await supabase.storage.from('avatars')
-        .upload(path, blob, { 
-          upsert: true, 
-          contentType: blob.type || 'image/jpeg',
-          cacheControl: '3600'
-        })
-    }
-      
-    if (uploadResult.error) {
-      console.error('Storage upload error:', uploadResult.error)
-      throw new Error(`Storage upload failed: ${uploadResult.error.message}`)
+    if (upErr) {
+      console.error('Storage upload error:', upErr)
+      throw new Error(`Storage upload failed: ${upErr.message}`)
     }
     
     console.log('Storage upload successful, updating event record...')
-    const { error } = await supabase.from('events').update({ image_path: path }).eq('id', eventId)
-    if (error) {
-      console.error('Error updating event image path:', error)
-      throw new Error(`Failed to update event record: ${error.message}`)
+    // Persist path on the event row
+    const { error: updErr } = await supabase
+      .from('events')
+      .update({ image_path: path })
+      .eq('id', eventId)
+    
+    if (updErr) {
+      console.error('Error updating event image path:', updErr)
+      throw new Error(`Failed to update event record: ${updErr.message}`)
     }
 
-    const finalUrl = eventImageUrl(path, bucketName)
-    console.log('Event image uploaded successfully:', { path, url: finalUrl, bucket: bucketName })
+    // Return public URL for UI
+    const finalUrl = eventImageUrl(path)
+    console.log('Event image uploaded successfully:', { path, url: finalUrl })
     return finalUrl
   } catch (error) {
     console.error('uploadEventImage error:', error)
