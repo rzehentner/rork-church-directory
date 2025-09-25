@@ -352,16 +352,6 @@ export default function CreateEventScreen() {
 
             {showStartDatePicker && (
               <View style={styles.datePickerContainer}>
-                <DateTimePicker
-                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleStartDateChange}
-                  minimumDate={new Date()}
-                  style={styles.datePicker}
-                  textColor="#111827"
-                  accentColor="#7C3AED"
-                />
                 {Platform.OS === 'ios' && (
                   <View style={styles.datePickerButtons}>
                     <TouchableOpacity
@@ -392,20 +382,21 @@ export default function CreateEventScreen() {
                     </TouchableOpacity>
                   </View>
                 )}
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleStartDateChange}
+                  minimumDate={new Date()}
+                  style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
+                />
               </View>
             )}
             
             {showStartTimePicker && (
               <View style={styles.datePickerContainer}>
-                <DateTimePicker
-                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleStartTimeChange}
-                  style={styles.datePicker}
-                  textColor="#111827"
-                  accentColor="#7C3AED"
-                />
                 {Platform.OS === 'ios' && (
                   <View style={styles.datePickerButtons}>
                     <TouchableOpacity
@@ -435,21 +426,20 @@ export default function CreateEventScreen() {
                     </TouchableOpacity>
                   </View>
                 )}
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleStartTimeChange}
+                  style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
+                />
               </View>
             )}
             
             {showEndDatePicker && (
               <View style={styles.datePickerContainer}>
-                <DateTimePicker
-                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleEndDateChange}
-                  minimumDate={startDate}
-                  style={styles.datePicker}
-                  textColor="#111827"
-                  accentColor="#7C3AED"
-                />
                 {Platform.OS === 'ios' && (
                   <View style={styles.datePickerButtons}>
                     <TouchableOpacity
@@ -473,20 +463,21 @@ export default function CreateEventScreen() {
                     </TouchableOpacity>
                   </View>
                 )}
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleEndDateChange}
+                  minimumDate={startDate}
+                  style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
+                />
               </View>
             )}
             
             {showEndTimePicker && (
               <View style={styles.datePickerContainer}>
-                <DateTimePicker
-                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={handleEndTimeChange}
-                  style={styles.datePicker}
-                  textColor="#111827"
-                  accentColor="#7C3AED"
-                />
                 {Platform.OS === 'ios' && (
                   <View style={styles.datePickerButtons}>
                     <TouchableOpacity
@@ -509,6 +500,15 @@ export default function CreateEventScreen() {
                     </TouchableOpacity>
                   </View>
                 )}
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={handleEndTimeChange}
+                  style={styles.datePicker}
+                  textColor="#111827"
+                  accentColor="#7C3AED"
+                />
               </View>
             )}
           </View>
@@ -797,11 +797,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
     backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
+    borderTopLeftRadius: 12,
+    borderTopRightRadius: 12,
   },
   datePickerButton: {
     paddingHorizontal: 20,
