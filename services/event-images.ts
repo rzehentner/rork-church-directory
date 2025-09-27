@@ -6,7 +6,9 @@ export const STORAGE_BUCKET = 'event-images' as const
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rwbppxcusppltwkcjmdu.supabase.co'
-  return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${encodeURIComponent(path)}`
+  // Encode each path segment separately to avoid encoding slashes
+  const safe = path.split('/').map(encodeURIComponent).join('/')
+  return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${safe}`
 }
 
 export async function uploadEventImage(localUri: string, eventId: string): Promise<string> {
@@ -29,6 +31,12 @@ export async function uploadEventImage(localUri: string, eventId: string): Promi
   }
   
   try {
+    // Assert auth before proceeding
+    const { data: session } = await supabase.auth.getSession()
+    if (!session?.session) {
+      throw new Error('Not authenticated')
+    }
+    
     // 1) Convert local file URI to Blob (same as profile images)
     const resp = await fetch(sanitizedUri)
     if (!resp.ok) {
@@ -180,5 +188,58 @@ export async function testStorageWrite(eventId: string): Promise<string> {
     return `✅ Test upload successful to: ${path}`
   } catch (error) {
     return `❌ Test upload failed: ${error}`
+  }
+}
+
+// Comprehensive smoke test as suggested by backend developer
+export async function smokeTest(eventId: string): Promise<string> {
+  try {
+    console.log('=== SMOKE TEST START ===')
+    
+    // 1. Check auth
+    const { data: session } = await supabase.auth.getSession()
+    console.log('Auth?', !!session?.session, session?.session?.user?.id)
+    
+    if (!session?.session) {
+      return '❌ Not authenticated'
+    }
+    
+    // 2. Test bucket list (proves bucket exists)
+    const list = await supabase.storage.from(STORAGE_BUCKET).list('', { limit: 1 })
+    console.log('Bucket list error:', list.error?.message ?? 'none')
+    
+    if (list.error) {
+      return `❌ Bucket list failed: ${list.error.message}`
+    }
+    
+    // 3. Test probe upload
+    const path = `events/${eventId}/${Date.now()}-probe.txt`
+    const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET)
+      .upload(path, new Blob(['probe'], { type: 'text/plain' }), { upsert: false })
+    console.log('Probe upload:', upErr?.message ?? 'ok')
+    
+    if (upErr) {
+      return `❌ Probe upload failed: ${upErr.message}`
+    }
+    
+    // 4. Test events table update
+    const { error: updErr } = await supabase
+      .from('events')
+      .update({ image_path: path })
+      .eq('id', eventId)
+    
+    if (updErr) {
+      return `❌ Events update failed: ${updErr.message}`
+    }
+    
+    // 5. Clean up
+    await supabase.storage.from(STORAGE_BUCKET).remove([path])
+    
+    console.log('=== SMOKE TEST END ===')
+    return '✅ All smoke test checks passed'
+    
+  } catch (error) {
+    console.error('Smoke test error:', error)
+    return `❌ Smoke test failed: ${error}`
   }
 }

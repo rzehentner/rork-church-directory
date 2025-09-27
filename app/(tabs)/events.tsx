@@ -14,7 +14,7 @@ import { Stack, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search } from 'lucide-react-native'
 import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
-import { eventImageUrl, runDiagnosticProbe } from '@/services/event-images'
+import { eventImageUrl, smokeTest } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
 import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
@@ -147,15 +147,15 @@ export default function EventsScreen() {
     }
     
     const testEventId = filteredEvents[0].id
-    console.log('Running diagnostic probe with event ID:', testEventId)
+    console.log('Running smoke test with event ID:', testEventId)
     
     try {
-      const result = await runDiagnosticProbe(testEventId)
-      console.log('Diagnostic result:', result)
+      const result = await smokeTest(testEventId)
+      console.log('Smoke test result:', result)
       showToast('info', result)
     } catch (error) {
-      console.error('Diagnostic test failed:', error)
-      showToast('error', `Diagnostic failed: ${error}`)
+      console.error('Smoke test failed:', error)
+      showToast('error', `Smoke test failed: ${error}`)
     }
   }
 
