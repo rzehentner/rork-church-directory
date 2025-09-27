@@ -157,7 +157,24 @@ export async function runDiagnosticProbe(eventId: string): Promise<string> {
 // Test functions for debugging storage issues
 export async function testStorageBucket(): Promise<string> {
   try {
-    // Use the object API to match the upload path & auth
+    console.log('Testing bucket:', STORAGE_BUCKET)
+    console.log('Project URL:', process.env.EXPO_PUBLIC_SUPABASE_URL)
+    
+    // First, list all buckets to see what exists
+    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
+    console.log('Available buckets:', buckets?.map(b => b.name))
+    
+    if (bucketsError) {
+      return `❌ Failed to list buckets: ${bucketsError.message}`
+    }
+    
+    // Check if our target bucket exists
+    const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET)
+    if (!bucketExists) {
+      return `❌ Bucket '${STORAGE_BUCKET}' not found. Available buckets: ${buckets?.map(b => b.name).join(', ') || 'none'}`
+    }
+    
+    // Test access to the bucket
     const { error } = await supabase
       .storage
       .from(STORAGE_BUCKET)

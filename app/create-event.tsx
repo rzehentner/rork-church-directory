@@ -13,7 +13,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
 import { createEvent, setEventTags, scheduleReminder } from '@/services/events'
-import { uploadEventImage, runDiagnosticProbe } from '@/services/event-images'
+import { uploadEventImage, runDiagnosticProbe, testStorageBucket } from '@/services/event-images'
 import { useToast } from '@/hooks/toast-context'
 import { useUser } from '@/hooks/user-context'
 import EventTagPicker from '@/components/EventTagPicker'
@@ -552,6 +552,20 @@ export default function CreateEventScreen() {
             <Text style={styles.imageHelpText}>
               Tap to select an event photo. You can crop and adjust it before saving.
             </Text>
+            
+            {/* Debug buttons */}
+            <View style={styles.debugSection}>
+              <TouchableOpacity
+                style={styles.debugButton}
+                onPress={async () => {
+                  const result = await testStorageBucket()
+                  console.log('Storage bucket test result:', result)
+                  showToast('info', result)
+                }}
+              >
+                <Text style={styles.debugButtonText}>Test Storage Bucket</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.section}>
@@ -818,5 +832,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '600',
     fontSize: 16,
+  },
+  debugSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  debugButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  debugButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 14,
   },
 })
