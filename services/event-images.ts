@@ -1,80 +1,134 @@
 import { supabase } from '@/lib/supabase'
 
+// Storage bucket name constant
 export const STORAGE_BUCKET = 'event-images' as const
 
-// ✅ Keep slashes; only encode unsafe chars
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
-  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!
-  // encode each segment, not the slashes
-  const safe = path.split('/').map(encodeURIComponent).join('/')
-  return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${safe}`
+  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rwbppxcusppltwkcjmdu.supabase.co'
+  return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${encodeURIComponent(path)}`
 }
 
-// small helper
-function randName(ext = 'jpg') {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+export async function uploadEventImage(localUri: string, eventId: string): Promise<string> {
+  console.log('Uploading event image:', { localUri, eventId })
+  
+  // Validate inputs
+  if (!localUri?.trim() || !eventId?.trim()) {
+    throw new Error('Missing required parameters: localUri and eventId')
+  }
+  
+  const sanitizedUri = localUri.trim()
+  const sanitizedEventId = eventId.trim()
+  
+  if (sanitizedUri.length > 2000) {
+    throw new Error('URI too long')
+  }
+  
+  if (sanitizedEventId.length > 100) {
+    throw new Error('Event ID too long')
+  }
+  
+  try {
+    // 1) Convert local file URI to Blob (same as profile images)
+    const resp = await fetch(sanitizedUri)
+    if (!resp.ok) {
+      throw new Error(`Failed to fetch file: ${resp.status} ${resp.statusText}`)
+    }
+    const blob = await resp.blob()
+    
+    console.log('Blob size:', blob.size, 'bytes')
+    console.log('Blob type:', blob.type)
+    
+    if (!blob || blob.size === 0) {
+      throw new Error('Image blob empty')
+    }
+    
+    // 2) Generate unique filename to avoid collisions
+    const timestamp = Date.now()
+    const random = Math.random().toString(36).slice(2)
+    const filename = `${timestamp}-${random}.jpg`
+    const path = `events/${sanitizedEventId}/${filename}`
+    
+    console.log('Uploading to storage path:', path)
+    
+    // 3) Upload to event-images bucket
+    const { data: uploadResult, error: upErr } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(path, blob, { 
+        contentType: 'image/jpeg',
+        upsert: false, // Use false to avoid overwriting
+        cacheControl: '3600'
+      })
+    
+    if (upErr) {
+      console.error('Storage upload error:', upErr)
+      throw new Error(`Storage upload failed: ${upErr.message}`)
+    }
+    
+    console.log('Upload successful!', uploadResult)
+    
+    // 4) Update the event record with the image path
+    const { error: updErr } = await supabase
+      .from('events')
+      .update({ image_path: path })
+      .eq('id', sanitizedEventId)
+    
+    if (updErr) {
+      console.error('Error updating event image path:', updErr)
+      throw new Error(`Failed to update event record: ${updErr.message}`)
+    }
+
+    // 5) Get public URL for display
+    const { data: pub } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(path)
+    
+    const publicUrl = pub?.publicUrl
+    if (!publicUrl) {
+      throw new Error('Failed to get public URL')
+    }
+    
+    console.log('Generated public URL:', publicUrl)
+    return publicUrl
+  } catch (error) {
+    console.error('uploadEventImage error:', error)
+    throw error
+  }
 }
 
-async function uriToBlob(uri: string): Promise<Blob> {
-  const resp = await fetch(uri)
-  if (!resp.ok) throw new Error(`Failed to fetch file: ${resp.status} ${resp.statusText}`)
-  return await resp.blob()
-}
-
-export async function uploadEventImage(localUri: string, eventId: string): Promise<{ path: string; publicUrl: string }> {
-  if (!localUri?.trim() || !eventId?.trim()) throw new Error('Missing required parameters: localUri and eventId')
-
-  // 1) Blob
-  const blob = await uriToBlob(localUri.trim())
-  if (!blob || blob.size === 0) throw new Error('Image blob empty')
-
-  // 2) Extension + contentType
-  const type = blob.type || 'image/jpeg'           // RN often returns ''
-  const ext = type.includes('png') ? 'png'
-            : type.includes('webp') ? 'webp'
-            : 'jpg'                                // default to jpg
-  const filename = randName(ext)
-  const path = `events/${eventId.trim()}/${filename}`
-
-  // 3) Upload
-  const { error: upErr } = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(path, blob, {
-      contentType: type,
-      upsert: false,              // avoid needing UPDATE permission
-      cacheControl: '3600',
-    })
-  if (upErr) throw new Error(`Storage upload failed: ${upErr.message}`)
-
-  // 4) Update event row (requires events RLS to permit this user)
-  const { error: updErr } = await supabase.from('events')
-    .update({ image_path: path })
-    .eq('id', eventId.trim())
-  if (updErr) throw new Error(`Failed to update event record: ${updErr.message}`)
-
-  // 5) Public URL (requires SELECT policy on bucket for anon if you plan to show publicly)
-  const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
-  const publicUrl = pub?.publicUrl
-  if (!publicUrl) throw new Error('Failed to get public URL')
-
-  return { path, publicUrl }
-}
-
-// Diagnostics (safe tweaks)
+// Test functions for debugging storage issues
 export async function testStorageBucket(): Promise<string> {
-  const { error } = await supabase.storage.from(STORAGE_BUCKET).list('events', { limit: 1 })
-  return error ? `❌ Bucket check failed: ${error.message}` : '✅ Storage bucket is accessible (object API).'
+  try {
+    // Use the object API to match the upload path & auth
+    const { error } = await supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .list('', { limit: 1 })
+
+    if (error) {
+      return `❌ Bucket check failed: ${error.message}`
+    }
+    return '✅ Storage bucket is accessible (object API).'
+  } catch (error) {
+    return `❌ Bucket check error: ${error}`
+  }
 }
 
 export async function testStorageWrite(eventId: string): Promise<string> {
   try {
-    const testPath = `events/${eventId}/${randName('txt')}`
+    const path = `events/${eventId}/test.txt`
     const body = new Blob(['test upload'], { type: 'text/plain' })
-    const { error } = await supabase.storage.from(STORAGE_BUCKET).upload(testPath, body, { upsert: false })
-    if (error) throw error
-    return `✅ Test upload successful to: ${testPath}`
-  } catch (e: any) {
-    return `❌ Test upload failed: ${e?.message ?? e}`
+
+    const { error } = await supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .upload(path, body, { upsert: true, contentType: 'text/plain' })
+
+    if (error) {
+      throw new Error(`Storage upload failed: ${error.message}`)
+    }
+    return `✅ Test upload successful to: ${path}`
+  } catch (error) {
+    return `❌ Test upload failed: ${error}`
   }
 }
