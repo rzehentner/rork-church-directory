@@ -1,8 +1,9 @@
 import { supabase } from '@/lib/supabase'
 import { Platform } from 'react-native'
+import { STORAGE_BUCKET } from '@/lib/constants'
 
-// Use the same bucket as profile images since it's working
-const EVENT_IMAGES_BUCKET = 'avatars'
+// Use the proper event-images bucket
+const EVENT_IMAGES_BUCKET = STORAGE_BUCKET
 
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
@@ -78,7 +79,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
       uploadData = arrayBuffer
     }
 
-    // Upload using the same bucket as profile images (avatars)
+    // Upload to the event-images bucket
     const { data: uploadResult, error: upErr } = await supabase.storage
       .from(EVENT_IMAGES_BUCKET)
       .upload(path, uploadData, { 
