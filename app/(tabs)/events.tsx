@@ -14,7 +14,7 @@ import { Stack, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search } from 'lucide-react-native'
 import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
-import { eventImageUrl } from '@/services/event-images'
+import { eventImageUrl, runDiagnosticProbe } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
 import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
@@ -137,6 +137,25 @@ export default function EventsScreen() {
     } catch (error) {
       console.error('Failed to add to calendar:', error)
       showToast('error', 'Failed to add to calendar')
+    }
+  }
+
+  const handleDiagnosticTest = async () => {
+    if (filteredEvents.length === 0) {
+      showToast('error', 'No events available for testing. Create an event first.')
+      return
+    }
+    
+    const testEventId = filteredEvents[0].id
+    console.log('Running diagnostic probe with event ID:', testEventId)
+    
+    try {
+      const result = await runDiagnosticProbe(testEventId)
+      console.log('Diagnostic result:', result)
+      showToast('info', result)
+    } catch (error) {
+      console.error('Diagnostic test failed:', error)
+      showToast('error', `Diagnostic failed: ${error}`)
     }
   }
 
@@ -410,6 +429,16 @@ export default function EventsScreen() {
           <Text style={styles.title}>Events</Text>
         </View>
         <View style={styles.headerButtons}>
+          {/* Diagnostic button for testing image upload */}
+          {isStaff && (
+            <TouchableOpacity
+              onPress={handleDiagnosticTest}
+              style={[styles.createButton, styles.diagnosticButton]}
+            >
+              <Text style={styles.createButtonText}>Test</Text>
+            </TouchableOpacity>
+          )}
+          
           {/* Debug button to manually refresh */}
           <TouchableOpacity
             onPress={() => {
@@ -945,5 +974,8 @@ const styles = StyleSheet.create({
   },
   refreshButton: {
     backgroundColor: '#10B981',
+  },
+  diagnosticButton: {
+    backgroundColor: '#F59E0B',
   },
 })

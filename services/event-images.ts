@@ -96,6 +96,56 @@ export async function uploadEventImage(localUri: string, eventId: string): Promi
   }
 }
 
+// Diagnostic probe function as suggested by backend developer
+export async function runDiagnosticProbe(eventId: string): Promise<string> {
+  try {
+    console.log('=== DIAGNOSTIC PROBE START ===')
+    
+    // 1. Check auth session
+    const { data: session } = await supabase.auth.getSession()
+    console.log('Auth session?', !!session?.session, session?.session?.user?.id)
+    
+    if (!session?.session) {
+      return '❌ No auth session found'
+    }
+    
+    // 2. Test storage write with text probe
+    const testPath = `events/${eventId}/${Date.now()}-probe.txt`
+    const body = new Blob(['probe'], { type: 'text/plain' })
+    const { error: probeErr } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(testPath, body, { upsert: false, contentType: 'text/plain' })
+    
+    console.log('Storage probe upload OK?', !probeErr, probeErr?.message)
+    
+    if (probeErr) {
+      return `❌ Storage write blocked: ${probeErr.message}`
+    }
+    
+    // 3. Test events table update
+    const { error: updErr } = await supabase
+      .from('events')
+      .update({ image_path: testPath })
+      .eq('id', eventId)
+    
+    console.log('Events update OK?', !updErr, updErr?.message)
+    
+    if (updErr) {
+      return `❌ Events table update blocked: ${updErr.message}`
+    }
+    
+    // 4. Clean up test file
+    await supabase.storage.from(STORAGE_BUCKET).remove([testPath])
+    
+    console.log('=== DIAGNOSTIC PROBE END ===')
+    return '✅ All checks passed - storage write and events update both work'
+    
+  } catch (error) {
+    console.error('Diagnostic probe error:', error)
+    return `❌ Probe failed: ${error}`
+  }
+}
+
 // Test functions for debugging storage issues
 export async function testStorageBucket(): Promise<string> {
   try {
