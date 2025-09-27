@@ -30,6 +30,7 @@
         "expo-linking": "~7.1.4",
         "expo-local-authentication": "~16.0.5",
         "expo-location": "~18.1.4",
+        "expo-media-library": "~17.1.7",
         "expo-notifications": "~0.31.4",
         "expo-router": "~5.0.3",
         "expo-sharing": "~13.1.5",
@@ -970,6 +971,8 @@
     "expo-local-authentication": ["expo-local-authentication@16.0.5", "", { "dependencies": { "invariant": "^2.2.4" }, "peerDependencies": { "expo": "*" } }, "sha512-JzrUssLBB5tr06ffbZJC074fru2mw6He3ALtwlRnrmL7svMJS0zvm6e5Gx5CSxfHf1DgneBVBnyRlmtWxQzY9Q=="],
 
     "expo-location": ["expo-location@18.1.4", "", { "peerDependencies": { "expo": "*" } }, "sha512-oI3au3IsNR278FHJe57h5FYO/TgnKNeIKXWS5wZNC1OfOcdUNtsEM9MUzP6+yyfHn5ysvpxXSWoa59xHxdv0Tg=="],
+
+    "expo-media-library": ["expo-media-library@17.1.7", "", { "peerDependencies": { "expo": "*", "react-native": "*" } }, "sha512-hLCoMvlhjtt+iYxPe71P1F6t06mYGysuNOfjQzDbbf64PCkglCZJYmywPyUSV1V5Hu9DhRj//gEg+Ki+7VWXog=="],
 
     "expo-modules-autolinking": ["expo-modules-autolinking@2.1.9", "", { "dependencies": { "@expo/spawn-async": "^1.7.2", "chalk": "^4.1.0", "commander": "^7.2.0", "find-up": "^5.0.0", "glob": "^10.4.2", "require-from-string": "^2.0.2", "resolve-from": "^5.0.0" }, "bin": { "expo-modules-autolinking": "bin/expo-modules-autolinking.js" } }, "sha512-54InfnWy1BR54IDZoawqdFAaF2lyLHe9J+2dZ7y91/36jVpBtAval39ZKt2IISFJZ7TVglsojl4P5BDcDGcvjQ=="],
 

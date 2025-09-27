@@ -17,27 +17,43 @@ export async function uploadEventImage(localUri: string, eventId: string) {
   try {
     console.log('Preparing image for upload...')
     
-    // Build a path; no leading slash; deterministic per event
-    const ext = (localUri.split('.').pop() || 'jpg').toLowerCase()
-    const path = `events/${eventId}/cover.${ext}`
-    console.log('Uploading to storage path:', path)
-    
-    // Create file object for React Native
-    const fileObject = {
-      uri: localUri,
-      name: `cover.${ext}`,
-      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`
+    // Handle iOS ph:// URIs that fetch() can't read
+    let uri = localUri
+    if (uri.startsWith('ph://')) {
+      try {
+        const MediaLibrary = await import('expo-media-library')
+        const assetId = uri.replace('ph://', '')
+        const asset = await MediaLibrary.getAssetInfoAsync(assetId)
+        uri = asset.localUri || asset.uri
+      } catch (e) {
+        console.warn('Could not resolve ph:// URI, trying original:', e)
+        // Continue with original URI and let fetch() handle it
+      }
     }
     
-    console.log('File object:', fileObject)
+    // Convert URI -> Blob (reliable on RN/Expo)
+    const res = await fetch(uri)
+    const blob = await res.blob()
+    if (!blob || blob.size === 0) {
+      throw new Error('Image blob empty (URI fetch failed)')
+    }
+    
+    console.log('Blob created:', { size: blob.size, type: blob.type })
+    
+    // Build a path; no leading slash; deterministic per event
+    const ext = (uri.split('.').pop() || 'jpg').toLowerCase()
+    const path = `events/${eventId}/cover.${ext}`
+    console.log('Uploading to storage path:', path)
 
     // Upload (staff-only; must be logged in; RLS enforces role)
     const { data: uploadData, error: upErr } = await supabase.storage
       .from('event-images')
-      .upload(path, fileObject as any, { 
-        upsert: true
+      .upload(path, blob, { 
+        upsert: true,
+        contentType: blob.type || 'image/jpeg'
       })
     
+    console.log('UPLOAD ERR:', upErr)
     if (upErr) {
       console.error('Storage upload error:', upErr)
       throw new Error(`Storage upload failed: ${upErr.message}`)
@@ -52,6 +68,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
       .update({ image_path: path })
       .eq('id', eventId)
     
+    console.log('EVENT UPDATE ERR:', updErr)
     if (updErr) {
       console.error('Error updating event image path:', updErr)
       throw new Error(`Failed to update event record: ${updErr.message}`)
@@ -112,8 +129,8 @@ export async function testStorageWrite(eventId: string) {
     
     console.log('User role:', profile?.role)
     
-    // Make a small blob ("hello world") - this is simpler and more reliable
-    const blob = new Blob([new TextEncoder().encode('hello world')], { type: 'text/plain' })
+    // Make a small blob ("hello world") - use string source for RN/Expo compatibility
+    const blob = new Blob(['hello world'], { type: 'text/plain' })
     const path = `test/${eventId}/test.txt`
     
     console.log('Uploading test file to path:', path)
