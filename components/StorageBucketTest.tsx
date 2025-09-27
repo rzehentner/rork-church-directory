@@ -60,7 +60,7 @@ export default function StorageBucketTest() {
     <View style={styles.container}>
       <Text style={styles.title}>Storage Bucket Test</Text>
       <Text style={styles.description}>
-        This will test if the &lsquo;avatars&rsquo; storage bucket exists and is accessible for event images.
+        This will test if the &lsquo;event-images&rsquo; storage bucket exists and is accessible for event images.
       </Text>
       
       <TouchableOpacity 

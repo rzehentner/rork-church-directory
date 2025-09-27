@@ -16,7 +16,16 @@ export async function uploadEventImage(localUri: string, eventId: string) {
   
   try {
     console.log('Fetching image from local URI...')
-    const res = await fetch(localUri)
+    
+    // Handle iOS ph:// URIs if needed
+    let fetchUri = localUri
+    if (localUri.startsWith('ph://')) {
+      console.log('Detected iOS ph:// URI, attempting to resolve...')
+      // For now, we'll try to fetch directly and handle the error if it fails
+      // In a production app, you might want to use expo-media-library to resolve this
+    }
+    
+    const res = await fetch(fetchUri)
     
     if (!res.ok) {
       throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`)
@@ -92,7 +101,7 @@ export async function testStorageBucket() {
   }
 }
 
-/** Test storage write with a small image file */
+/** Test storage write with a small text file */
 export async function testStorageWrite(eventId: string) {
   try {
     console.log('Testing storage write with eventId:', eventId)
@@ -118,32 +127,34 @@ export async function testStorageWrite(eventId: string) {
     
     console.log('User role:', profile?.role)
     
-    // Create a minimal 1x1 pixel PNG image as base64
-    const base64Image = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=='
+    // Make a small blob ("hello world") - this is simpler and more reliable
+    const blob = new Blob([new TextEncoder().encode('hello world')], { type: 'text/plain' })
+    const path = `events/${eventId}/test.txt`
     
-    // Convert base64 to blob
-    const byteCharacters = atob(base64Image)
-    const byteNumbers = new Array(byteCharacters.length)
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i)
-    }
-    const byteArray = new Uint8Array(byteNumbers)
-    const blob = new Blob([byteArray], { type: 'image/png' })
-    
-    const path = `test/${eventId}/test.png`
-    console.log('Uploading test image to path:', path)
+    console.log('Uploading test file to path:', path)
+    console.log('Blob details:', { size: blob.size, type: blob.type })
 
     const { error: upErr } = await supabase
       .storage
       .from('event-images')
-      .upload(path, blob, { upsert: true, contentType: 'image/png' })
+      .upload(path, blob, { upsert: true, contentType: 'text/plain' })
 
     console.log('UPLOAD ERR:', upErr)
     if (upErr) {
       throw new Error(`Storage upload failed: ${upErr.message}`)
     }
 
-    console.log('Storage upload successful!')
+    // Optional: persist path to the event so you can fetch/display it
+    const { error: updErr } = await supabase
+      .from('events')
+      .update({ image_path: path })
+      .eq('id', eventId)
+
+    console.log('EVENT UPDATE ERR:', updErr)
+    if (updErr) {
+      throw new Error(`Event update failed: ${updErr.message}`)
+    }
+
     const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
     console.log('TEST URL:', url)
     return { success: true, url }
