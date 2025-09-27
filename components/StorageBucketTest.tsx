@@ -11,7 +11,11 @@ export default function StorageBucketTest() {
 
   useEffect(() => {
     // Debug environment on component mount
-    debugEnvironment()
+    try {
+      debugEnvironment()
+    } catch (error) {
+      console.error('Debug environment error:', error)
+    }
   }, [])
 
   const runTest = async () => {
