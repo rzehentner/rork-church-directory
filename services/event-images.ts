@@ -1,9 +1,10 @@
 import { supabase } from '@/lib/supabase'
+import { STORAGE_BUCKET } from '@/lib/constants'
 
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rwbppxcusppltwkcjmdu.supabase.co'
-  return `${baseUrl}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+  return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${encodeURIComponent(path)}`
 }
 
 /** Upload a picked image and save the path into events.image_path. */
@@ -47,7 +48,7 @@ export async function uploadEventImage(localUri: string, eventId: string) {
 
     // Upload (staff-only; must be logged in; RLS enforces role)
     const { data: uploadData, error: upErr } = await supabase.storage
-      .from('event-images')
+      .from(STORAGE_BUCKET)
       .upload(path, blob, { 
         upsert: true,
         contentType: blob.type || 'image/jpeg'
@@ -84,23 +85,19 @@ export async function uploadEventImage(localUri: string, eventId: string) {
   }
 }
 
-/** Test if the storage bucket exists and is accessible */
-export async function testStorageBucket() {
-  try {
-    console.log('Testing storage bucket access...')
-    const { data, error } = await supabase.storage.from('event-images').list('', { limit: 1 })
-    
-    if (error) {
-      console.error('Storage bucket test failed:', error)
-      return { success: false, error: error.message }
-    }
-    
-    console.log('Storage bucket test successful')
-    return { success: true, data }
-  } catch (error: any) {
-    console.error('Storage bucket test error:', error)
-    return { success: false, error: error.message }
+/** Test if the storage bucket exists and is accessible using the same client as uploads */
+export async function testStorageBucket(): Promise<string> {
+  // Use the *object* API so it matches the upload path & auth
+  const { error } = await supabase
+    .storage
+    .from(STORAGE_BUCKET)
+    .list('', { limit: 1 })
+
+  if (error) {
+    // This is the error we care about (must not be "Bucket not found")
+    return `❌ Bucket check failed: ${error.message}`
   }
+  return '✅ Storage bucket is accessible (object API).'
 }
 
 /** Test storage write with a small text file */
@@ -138,7 +135,7 @@ export async function testStorageWrite(eventId: string) {
 
     const { error: upErr } = await supabase
       .storage
-      .from('event-images')
+      .from(STORAGE_BUCKET)
       .upload(path, blob, { upsert: true, contentType: 'text/plain' })
 
     console.log('UPLOAD ERR:', upErr)
@@ -148,12 +145,12 @@ export async function testStorageWrite(eventId: string) {
 
     // Don't try to update a non-existent event record for test
     // Just verify the file was uploaded by trying to get its public URL
-    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
+    const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/${encodeURIComponent(path)}`
     console.log('TEST URL:', url)
     
     // Clean up the test file
     try {
-      await supabase.storage.from('event-images').remove([path])
+      await supabase.storage.from(STORAGE_BUCKET).remove([path])
       console.log('Test file cleaned up successfully')
     } catch (cleanupError) {
       console.warn('Failed to clean up test file:', cleanupError)

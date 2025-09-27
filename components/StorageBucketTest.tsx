@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { testStorageBucket, testStorageWrite } from '@/services/event-images'
+import { debugEnvironment } from '@/lib/constants'
 
 export default function StorageBucketTest() {
   const [testing, setTesting] = useState(false)
@@ -8,19 +9,23 @@ export default function StorageBucketTest() {
   const [result, setResult] = useState<string | null>(null)
   const [writeResult, setWriteResult] = useState<string | null>(null)
 
+  useEffect(() => {
+    // Debug environment on component mount
+    debugEnvironment()
+  }, [])
+
   const runTest = async () => {
     setTesting(true)
     setResult(null)
     
     try {
       const testResult = await testStorageBucket()
+      setResult(testResult)
       
-      if (testResult.success) {
-        setResult('✅ Storage bucket is accessible!')
+      if (testResult.includes('✅')) {
         Alert.alert('Success', 'Storage bucket is working correctly')
       } else {
-        setResult(`❌ Storage bucket error: ${testResult.error}`)
-        Alert.alert('Storage Error', testResult.error)
+        Alert.alert('Storage Error', testResult)
       }
     } catch (error: any) {
       const errorMsg = error.message || 'Unknown error'
