@@ -1,22 +1,12 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native'
 import { testStorageBucket, testStorageWrite } from '@/services/event-images'
-import { debugEnvironment } from '@/lib/constants'
 
 export default function StorageBucketTest() {
   const [testing, setTesting] = useState(false)
   const [testingWrite, setTestingWrite] = useState(false)
   const [result, setResult] = useState<string | null>(null)
   const [writeResult, setWriteResult] = useState<string | null>(null)
-
-  useEffect(() => {
-    // Debug environment on component mount
-    try {
-      debugEnvironment()
-    } catch (error) {
-      console.error('Debug environment error:', error)
-    }
-  }, [])
 
   const runTest = async () => {
     setTesting(true)
