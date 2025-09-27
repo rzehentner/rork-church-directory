@@ -8,15 +8,19 @@ import {
   Image,
   RefreshControl,
   ScrollView,
+  TextInput,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
-import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X } from 'lucide-react-native'
-import { listEventsForDateRange, rsvpEvent, eventImageUrl, type RSVP } from '@/services/events'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
+import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search } from 'lucide-react-native'
+import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
+import { eventImageUrl } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
 import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
 import Calendar from '@/components/Calendar'
+import TagPill from '@/components/TagPill'
 
 
 type Event = {
@@ -29,12 +33,12 @@ type Event = {
   location: string | null
   image_path: string | null
   my_rsvp: RSVP | null
-  audience_tags?: Tag[]
+  audience_tags: string[]
 }
 
 type EventFilter = {
   rsvpStatus: RSVP | 'all'
-  tagIds: string[]
+  tagNames: string[]
 }
 
 export default function EventsScreen() {
@@ -43,21 +47,34 @@ export default function EventsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState<'upcoming' | 'selected'>('upcoming')
   const [showFilters, setShowFilters] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [filters, setFilters] = useState<EventFilter>({
     rsvpStatus: 'all',
-    tagIds: []
+    tagNames: []
   })
   
   const { profile } = useUser()
   const { showToast } = useToast()
+  const insets = useSafeAreaInsets()
   const isStaff = profile?.role === 'admin' || profile?.role === 'leader'
 
   const loadAllEvents = useCallback(async () => {
     try {
-      const currentMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1)
-      const nextMonth = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 2, 0)
-      const data = await listEventsForDateRange(currentMonth, nextMonth)
+      // Load a wider range: 3 months back and 6 months forward
+      const startDate = new Date()
+      startDate.setMonth(startDate.getMonth() - 3)
+      startDate.setDate(1)
+      
+      const endDate = new Date()
+      endDate.setMonth(endDate.getMonth() + 6)
+      endDate.setDate(0) // Last day of the month
+      
+      console.log('Loading events for date range:', { startDate, endDate })
+      const data = await listEventsForDateRange(startDate, endDate)
+      console.log('Loaded events:', data?.length, 'events')
+      console.log('Event IDs:', data?.map(e => e.id))
+      console.log('Event titles:', data?.map(e => e.title))
       setAllEvents(data as Event[])
     } catch (error) {
       console.error('Failed to load events:', error)
@@ -65,7 +82,7 @@ export default function EventsScreen() {
     } finally {
       setRefreshing(false)
     }
-  }, [selectedDate, showToast])
+  }, [showToast])
 
   const loadTags = useCallback(async () => {
     try {
@@ -80,6 +97,16 @@ export default function EventsScreen() {
     loadAllEvents()
     loadTags()
   }, [loadAllEvents, loadTags])
+  
+  // Add a simple interval to refresh events periodically
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log('Periodic refresh of events...')
+      loadAllEvents()
+    }, 30000) // Refresh every 30 seconds
+    
+    return () => clearInterval(interval)
+  }, [loadAllEvents])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -117,7 +144,18 @@ export default function EventsScreen() {
   const filteredEvents = useMemo(() => {
     let events = allEvents
     
-    // Filter by view mode first
+    // Apply search filter first
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim()
+      events = events.filter(event => 
+        event.title.toLowerCase().includes(query) ||
+        event.description?.toLowerCase().includes(query) ||
+        event.location?.toLowerCase().includes(query) ||
+        event.audience_tags?.some(tagName => tagName.toLowerCase().includes(query))
+      )
+    }
+    
+    // Filter by view mode
     if (viewMode === 'upcoming') {
       const now = new Date()
       events = events.filter(event => new Date(event.end_at) >= now)
@@ -141,18 +179,18 @@ export default function EventsScreen() {
     }
     
     // Filter by tags (if any tags are selected)
-    if (filters.tagIds.length > 0) {
+    if (filters.tagNames.length > 0) {
       events = events.filter(event => {
         if (!event.audience_tags || event.audience_tags.length === 0) {
           return false
         }
-        // Check if event has any of the selected tags
-        return event.audience_tags.some(tag => filters.tagIds.includes(tag.id))
+        // Check if event has any of the selected tag names
+        return event.audience_tags.some(tagName => filters.tagNames.includes(tagName))
       })
     }
     
     return events.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
-  }, [allEvents, viewMode, selectedDate, filters])
+  }, [allEvents, viewMode, selectedDate, filters, searchQuery])
   
   const formatEventTime = (event: Event) => {
     const start = new Date(event.start_at)
@@ -171,10 +209,14 @@ export default function EventsScreen() {
   }
   
   const clearFilters = () => {
-    setFilters({ rsvpStatus: 'all', tagIds: [] })
+    setFilters({ rsvpStatus: 'all', tagNames: [] })
   }
   
-  const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagIds.length > 0
+  const clearSearch = () => {
+    setSearchQuery('')
+  }
+  
+  const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagNames.length > 0 || searchQuery.trim() !== ''
   
   const FilterSection = () => {
     if (!showFilters) return null
@@ -226,22 +268,22 @@ export default function EventsScreen() {
                 key={tag.id}
                 style={[
                   styles.tagFilterChip,
-                  filters.tagIds.includes(tag.id) && styles.tagFilterChipActive,
-                  filters.tagIds.includes(tag.id) && { backgroundColor: tag.color || '#7C3AED' }
+                  filters.tagNames.includes(tag.name) && styles.tagFilterChipActive,
+                  filters.tagNames.includes(tag.name) && { backgroundColor: tag.color || '#7C3AED' }
                 ]}
                 onPress={() => {
                   setFilters(prev => ({
                     ...prev,
-                    tagIds: prev.tagIds.includes(tag.id)
-                      ? prev.tagIds.filter(id => id !== tag.id)
-                      : [...prev.tagIds, tag.id]
+                    tagNames: prev.tagNames.includes(tag.name)
+                      ? prev.tagNames.filter(name => name !== tag.name)
+                      : [...prev.tagNames, tag.name]
                   }))
                 }}
               >
                 <Text style={[
                   styles.tagFilterText,
-                  filters.tagIds.includes(tag.id) && styles.tagFilterTextActive,
-                  { color: filters.tagIds.includes(tag.id) ? '#FFFFFF' : (tag.color || '#6B7280') }
+                  filters.tagNames.includes(tag.name) && styles.tagFilterTextActive,
+                  { color: filters.tagNames.includes(tag.name) ? '#FFFFFF' : (tag.color || '#6B7280') }
                 ]}>
                   {tag.name}
                 </Text>
@@ -287,7 +329,8 @@ export default function EventsScreen() {
   const renderEvent = ({ item: event }: { item: Event }) => (
     <TouchableOpacity 
       style={styles.eventCard}
-      onPress={() => router.push(`/(tabs)/event-detail?id=${event.id}` as any)}
+      onPress={() => router.push(`/event-detail?id=${event.id}` as any)}
+      testID={`event-card-${event.id}`}
     >
       {event.image_path && (
         <Image 
@@ -320,6 +363,24 @@ export default function EventsScreen() {
           </Text>
         )}
 
+        {/* Event Tags */}
+        {event.audience_tags && event.audience_tags.length > 0 && (
+          <View style={styles.eventTags}>
+            {event.audience_tags.map((tagName) => {
+              const tag = availableTags.find(t => t.name === tagName)
+              if (!tag) return null
+              return (
+                <TagPill
+                  key={tagName}
+                  tag={tag}
+                  size="small"
+                  testId={`event-tag-${tagName}`}
+                />
+              )
+            })}
+          </View>
+        )}
+
         <View style={styles.eventActions}>
           <RSVPButtons event={event} />
           
@@ -336,33 +397,74 @@ export default function EventsScreen() {
   )
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen 
         options={{ 
-          title: 'Events',
-          headerRight: () => (
-            <View style={styles.headerButtons}>
-              <TouchableOpacity
-                onPress={() => setShowFilters(!showFilters)}
-                style={[
-                  styles.headerButton,
-                  hasActiveFilters && styles.headerButtonActive
-                ]}
-              >
-                <Filter size={20} color={hasActiveFilters ? '#FFFFFF' : '#7C3AED'} />
-              </TouchableOpacity>
-              {isStaff && (
-                <TouchableOpacity
-                  onPress={() => router.push('/create-event' as any)}
-                  style={styles.headerButton}
-                >
-                  <Plus size={20} color="#7C3AED" />
-                </TouchableOpacity>
-              )}
-            </View>
-          )
+          headerShown: false
         }} 
       />
+      
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <CalendarIcon size={28} color="#7C3AED" />
+          <Text style={styles.title}>Events</Text>
+        </View>
+        <View style={styles.headerButtons}>
+          {/* Debug button to manually refresh */}
+          <TouchableOpacity
+            onPress={() => {
+              console.log('Manual refresh triggered')
+              handleRefresh()
+            }}
+            style={[styles.createButton, styles.refreshButton]}
+          >
+            <Text style={styles.createButtonText}>Refresh</Text>
+          </TouchableOpacity>
+          
+          {isStaff && (
+            <TouchableOpacity
+              onPress={() => router.push('/create-event' as any)}
+              style={styles.createButton}
+            >
+              <Plus size={20} color="#FFFFFF" />
+              <Text style={styles.createButtonText}>Create</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+      
+      {/* Search and Filter Bar */}
+      <View style={styles.searchContainer}>
+        <View style={styles.searchInputContainer}>
+          <Search size={16} color="#6B7280" />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search events..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            placeholderTextColor="#9CA3AF"
+          />
+          {searchQuery.length > 0 && (
+            <TouchableOpacity onPress={clearSearch} style={styles.clearButton}>
+              <X size={16} color="#6B7280" />
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            (hasActiveFilters || showFilters) && styles.filterButtonActive
+          ]}
+          onPress={() => setShowFilters(!showFilters)}
+        >
+          <Filter size={16} color={(hasActiveFilters || showFilters) ? '#FFFFFF' : '#7C3AED'} />
+          <Text style={[
+            styles.filterButtonText,
+            (hasActiveFilters || showFilters) && styles.filterButtonTextActive
+          ]}>Filter</Text>
+        </TouchableOpacity>
+      </View>
       
       <FlatList
         data={filteredEvents}
@@ -381,9 +483,6 @@ export default function EventsScreen() {
           <View>
             <FilterSection />
             
-            <View style={styles.debugContainer}>
-              <Text>Debug: Calendar should render here. Events count: {allEvents.length}</Text>
-            </View>
             <Calendar
               events={allEvents}
               selectedDate={selectedDate}
@@ -444,10 +543,10 @@ export default function EventsScreen() {
                     </Text>
                   </View>
                 )}
-                {filters.tagIds.length > 0 && (
+                {filters.tagNames.length > 0 && (
                   <View style={styles.activeFilterChip}>
                     <Text style={styles.activeFilterChipText}>
-                      {filters.tagIds.length} tag{filters.tagIds.length !== 1 ? 's' : ''}
+                      {filters.tagNames.length} tag{filters.tagNames.length !== 1 ? 's' : ''}
                     </Text>
                   </View>
                 )}
@@ -476,17 +575,89 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
-  headerButtons: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#1F2937',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    gap: 12,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     gap: 8,
   },
-  headerButton: {
-    padding: 8,
-    borderRadius: 6,
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1F2937',
   },
-  headerButtonActive: {
+  clearButton: {
+    padding: 4,
+  },
+  filterButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    gap: 6,
+  },
+  filterButtonActive: {
     backgroundColor: '#7C3AED',
+    borderColor: '#7C3AED',
+  },
+  filterButtonText: {
+    fontSize: 14,
+    color: '#7C3AED',
+    fontWeight: '500' as const,
+  },
+  filterButtonTextActive: {
+    color: '#FFFFFF',
+  },
+  createButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   listContainer: {
     padding: 16,
@@ -639,12 +810,6 @@ const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '600',
   },
-  debugContainer: {
-    backgroundColor: '#FFE4E1',
-    padding: 10,
-    marginBottom: 10,
-    borderRadius: 8,
-  },
   filtersContainer: {
     backgroundColor: '#FFFFFF',
     marginBottom: 16,
@@ -767,5 +932,18 @@ const styles = StyleSheet.create({
   },
   tagFilterTextActive: {
     color: '#FFFFFF',
+  },
+  eventTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 12,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  refreshButton: {
+    backgroundColor: '#10B981',
   },
 })
