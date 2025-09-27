@@ -35,7 +35,7 @@ export default function IndexScreen() {
         if (profile?.role === 'pending' && (!person || !person.first_name || !person.last_name)) {
           router.replace('/visitor-profile');
         } else {
-          router.replace('/(tabs)/family');
+          router.replace('/(tabs)/dashboard');
         }
       } else {
         router.replace('/(auth)/login');

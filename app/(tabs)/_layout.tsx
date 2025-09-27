@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Users, Home, Shield, Settings, Bell, Calendar } from "lucide-react-native";
+import { Users, Home, Shield, Settings, Bell, Calendar, LayoutDashboard } from "lucide-react-native";
 import React from "react";
 import { useUser } from "@/hooks/user-context";
 
@@ -29,6 +29,13 @@ export default function TabLayout() {
         },
       }}
     >
+      <Tabs.Screen
+        name="dashboard"
+        options={{
+          title: "Dashboard",
+          tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="family"
         options={{
