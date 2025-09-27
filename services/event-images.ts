@@ -15,44 +15,27 @@ export async function uploadEventImage(localUri: string, eventId: string) {
   }
   
   try {
-    console.log('Fetching image from local URI...')
-    
-    // Handle iOS ph:// URIs if needed
-    let fetchUri = localUri
-    if (localUri.startsWith('ph://')) {
-      console.log('Detected iOS ph:// URI, attempting to resolve...')
-      // For now, we'll try to fetch directly and handle the error if it fails
-      // In a production app, you might want to use expo-media-library to resolve this
-    }
-    
-    const res = await fetch(fetchUri)
-    
-    if (!res.ok) {
-      throw new Error(`Failed to fetch image: ${res.status} ${res.statusText}`)
-    }
-    
-    const blob = await res.blob()
-    console.log('Image blob details:', { size: blob.size, type: blob.type })
-    
-    if (!blob || blob.size === 0) {
-      throw new Error('Image blob empty (URI fetch failed)')
-    }
-    
-    if (blob.size > 10 * 1024 * 1024) { // 10MB limit
-      throw new Error('Image file is too large (max 10MB)')
-    }
+    console.log('Preparing image for upload...')
     
     // Build a path; no leading slash; deterministic per event
     const ext = (localUri.split('.').pop() || 'jpg').toLowerCase()
     const path = `events/${eventId}/cover.${ext}`
     console.log('Uploading to storage path:', path)
+    
+    // Create file object for React Native
+    const fileObject = {
+      uri: localUri,
+      name: `cover.${ext}`,
+      type: `image/${ext === 'jpg' ? 'jpeg' : ext}`
+    }
+    
+    console.log('File object:', fileObject)
 
     // Upload (staff-only; must be logged in; RLS enforces role)
-    const { error: upErr } = await supabase.storage
+    const { data: uploadData, error: upErr } = await supabase.storage
       .from('event-images')
-      .upload(path, blob, { 
-        upsert: true, 
-        contentType: blob.type || 'image/jpeg'
+      .upload(path, fileObject as any, { 
+        upsert: true
       })
     
     if (upErr) {
@@ -60,7 +43,9 @@ export async function uploadEventImage(localUri: string, eventId: string) {
       throw new Error(`Storage upload failed: ${upErr.message}`)
     }
     
-    console.log('Storage upload successful, updating event record...')
+    console.log('Storage upload successful:', uploadData)
+    console.log('Updating event record...')
+    
     // Persist path on the event row
     const { error: updErr } = await supabase
       .from('events')
@@ -129,7 +114,7 @@ export async function testStorageWrite(eventId: string) {
     
     // Make a small blob ("hello world") - this is simpler and more reliable
     const blob = new Blob([new TextEncoder().encode('hello world')], { type: 'text/plain' })
-    const path = `events/${eventId}/test.txt`
+    const path = `test/${eventId}/test.txt`
     
     console.log('Uploading test file to path:', path)
     console.log('Blob details:', { size: blob.size, type: blob.type })
@@ -144,19 +129,19 @@ export async function testStorageWrite(eventId: string) {
       throw new Error(`Storage upload failed: ${upErr.message}`)
     }
 
-    // Optional: persist path to the event so you can fetch/display it
-    const { error: updErr } = await supabase
-      .from('events')
-      .update({ image_path: path })
-      .eq('id', eventId)
-
-    console.log('EVENT UPDATE ERR:', updErr)
-    if (updErr) {
-      throw new Error(`Event update failed: ${updErr.message}`)
-    }
-
+    // Don't try to update a non-existent event record for test
+    // Just verify the file was uploaded by trying to get its public URL
     const url = `${process.env.EXPO_PUBLIC_SUPABASE_URL}/storage/v1/object/public/event-images/${encodeURIComponent(path)}`
     console.log('TEST URL:', url)
+    
+    // Clean up the test file
+    try {
+      await supabase.storage.from('event-images').remove([path])
+      console.log('Test file cleaned up successfully')
+    } catch (cleanupError) {
+      console.warn('Failed to clean up test file:', cleanupError)
+    }
+    
     return { success: true, url }
   } catch (error: any) {
     console.error('testStorageWrite error:', error)
