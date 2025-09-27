@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
 import { STORAGE_BUCKET } from '@/lib/constants'
+import * as MediaLibrary from 'expo-media-library'
 
 // Use the proper event-images bucket
 const EVENT_IMAGES_BUCKET = STORAGE_BUCKET
@@ -25,7 +26,6 @@ export async function uploadEventImage(localUri: string, eventId: string) {
     let uri = localUri
     if (uri.startsWith('ph://')) {
       try {
-        const MediaLibrary = await import('expo-media-library')
         const assetId = uri.replace('ph://', '')
         const asset = await MediaLibrary.getAssetInfoAsync(assetId)
         uri = asset.localUri || asset.uri
