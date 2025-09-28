@@ -184,3 +184,77 @@ export async function smokeTest(eventId: string) {
   await supabase.storage.from(STORAGE_BUCKET).remove([probePath]).catch(() => {})
   return '✅ Smoke test passed'
 }
+
+/** Comprehensive debug function to diagnose storage issues */
+export async function fullDebug() {
+  console.log('=== SUPABASE STORAGE DEBUG ===')
+  
+  // Environment check
+  console.log('🌐 Supabase URL:', process.env.EXPO_PUBLIC_SUPABASE_URL)
+  console.log('🔑 Has Anon Key:', !!process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY)
+  
+  // Auth check
+  const { data: user, error: userError } = await supabase.auth.getUser()
+  console.log('👤 Current user ID:', user?.user?.id || 'NONE')
+  console.log('👤 User error:', userError)
+  
+  // List all buckets
+  const { data: buckets, error: listError } = await supabase.storage.listBuckets()
+  console.log('🪣 All buckets:', buckets?.map(b => ({ 
+    name: b.name, 
+    id: b.id,
+    public: b.public,
+    file_size_limit: b.file_size_limit,
+    allowed_mime_types: b.allowed_mime_types
+  })) || 'NONE')
+  console.log('❌ List buckets error:', listError)
+  
+  // Check if event-images bucket exists
+  const eventImagesBucket = buckets?.find(b => b.name === 'event-images')
+  console.log('🎯 event-images bucket found:', !!eventImagesBucket)
+  console.log('📋 event-images details:', eventImagesBucket)
+  
+  // Test bucket access
+  const { data: files, error: bucketError } = await supabase.storage
+    .from('event-images')
+    .list('', { limit: 1 })
+  console.log('📁 Bucket list test result:', files ? 'SUCCESS' : 'FAILED')
+  console.log('❌ Bucket access error:', bucketError)
+  
+  // Test direct upload
+  const testPath = `debug-test-${Date.now()}.txt`
+  const testBlob = new Blob(['debug test content'], { type: 'text/plain' })
+  
+  console.log('🧪 Testing direct upload...')
+  const { data: uploadData, error: uploadError } = await supabase.storage
+    .from('event-images')
+    .upload(testPath, testBlob, { upsert: false })
+    
+  console.log('⬆️  Upload result:', uploadData)
+  console.log('❌ Upload error:', uploadError)
+  
+  // If upload succeeded, clean up
+  if (!uploadError) {
+    await supabase.storage.from('event-images').remove([testPath])
+    console.log('🧹 Test file cleaned up')
+  }
+  
+  // Test signed upload
+  console.log('🧪 Testing signed upload...')
+  const signedTestPath = `debug-signed-${Date.now()}.txt`
+  const { data: signedUrl, error: signedError } = await supabase.storage
+    .from('event-images')
+    .createSignedUploadUrl(signedTestPath)
+    
+  console.log('🔏 Signed URL result:', signedUrl)
+  console.log('❌ Signed URL error:', signedError)
+  
+  return {
+    hasUser: !!user?.user?.id,
+    bucketsFound: buckets?.length || 0,
+    eventImagesBucket: !!eventImagesBucket,
+    bucketAccessible: !bucketError,
+    directUploadWorks: !uploadError,
+    signedUrlWorks: !signedError
+  }
+}

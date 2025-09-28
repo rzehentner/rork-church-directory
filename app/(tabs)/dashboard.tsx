@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { supabase, debugSupabase, testStorageUpload, runDiagnosticProbe } from '@/lib/supabase';
+import { fullDebug } from '@/services/event-images';
 import { router } from 'expo-router';
 import {
   Home,
@@ -461,6 +462,28 @@ export default function DashboardScreen() {
               >
                 <Text style={styles.debugButtonText}>
                   {isDebugging ? 'Testing Storage...' : 'Test Storage Upload'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.debugButton, isDebugging && styles.debugButtonDisabled]}
+                onPress={async () => {
+                  if (isDebugging) return;
+                  setIsDebugging(true);
+                  try {
+                    const results = await fullDebug();
+                    setDebugResults({ fullDebug: results });
+                  } catch (error) {
+                    console.error('Full debug failed:', error);
+                    setDebugResults({ fullDebug: { error: String(error) } });
+                  } finally {
+                    setIsDebugging(false);
+                  }
+                }}
+                disabled={isDebugging}
+              >
+                <Text style={styles.debugButtonText}>
+                  {isDebugging ? 'Running Full Debug...' : 'Full Storage Debug'}
                 </Text>
               </TouchableOpacity>
             </View>
