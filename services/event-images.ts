@@ -34,10 +34,12 @@ function extFromTypeOrUri(type: string | null | undefined, uri?: string) {
 }
 
 async function fetchBlob(uri: string): Promise<Blob> {
+  console.log('📥 Fetching blob from:', uri)
   const resp = await fetch(uri)
   if (!resp.ok) throw new Error(`Failed to fetch file: ${resp.status} ${resp.statusText}`)
   const blob = await resp.blob()
   if (!blob || blob.size === 0) throw new Error('Image blob empty')
+  console.log('✅ Blob fetched:', { size: blob.size, type: blob.type })
   return blob
 }
 
@@ -51,14 +53,17 @@ export async function uploadEventImage(
   localUri: string,
   eventId: string
 ): Promise<{ publicUrl: string; path: string }> {
+  console.log('🚀 uploadEventImage called', { localUri, eventId })
+  
   const u = localUri?.trim()
   const id = eventId?.trim()
   if (!u || !id) throw new Error('Missing required parameters: localUri and eventId')
   if (u.length > 2000) throw new Error('URI too long')
   if (id.length > 100) throw new Error('Event ID too long')
 
-  // Must be signed in (your RLS requires admin/leader)
+  // Must be signed in
   const { data: sess } = await supabase.auth.getSession()
+  console.log('🔐 Auth check:', sess?.session ? '✅ Authenticated' : '❌ Not authenticated')
   if (!sess?.session) throw new Error('Not authenticated')
 
   // Build blob + file naming
@@ -66,19 +71,31 @@ export async function uploadEventImage(
   const { ext, contentType } = extFromTypeOrUri(blob.type, u)
   const filename = randName(ext)
   const path = `events/${id}/${filename}`
+  console.log('📁 Upload path:', path, '| Content-Type:', contentType)
 
   // Upload strategies
   const directUpload = async () => {
+    console.log('⬆️  Attempting direct upload...')
     const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
       .upload(path, blob, { contentType, upsert: false, cacheControl: '3600' })
-    if (error) throw error
+    if (error) {
+      console.error('❌ Direct upload error:', error)
+      throw error
+    }
+    console.log('✅ Direct upload succeeded')
   }
 
   const signedUpload = async () => {
+    console.log('🔏 Attempting signed upload...')
     const { data: signed, error: signErr } =
       await supabase.storage.from(STORAGE_BUCKET).createSignedUploadUrl(path)
-    if (signErr) throw signErr
+    if (signErr) {
+      console.error('❌ Signed URL creation error:', signErr)
+      throw signErr
+    }
+    console.log('✅ Signed URL created')
+    
     const { error: putErr } =
       await supabase.storage.from(STORAGE_BUCKET).uploadToSignedUrl(
         signed.path,
@@ -86,41 +103,50 @@ export async function uploadEventImage(
         blob,
         { contentType }
       )
-    if (putErr) throw putErr
+    if (putErr) {
+      console.error('❌ Signed upload error:', putErr)
+      throw putErr
+    }
+    console.log('✅ Signed upload succeeded')
   }
 
   // Try direct upload; if it fails for transient/device reasons, retry once, then fall back
   try {
     await directUpload()
   } catch (errFirst: any) {
+    console.warn('⚠️  First upload attempt failed, retrying...')
     // retry once (helps with flaky network/content:// races)
     try {
       await directUpload()
     } catch (errSecond: any) {
       console.warn(
-        'Direct upload failed twice, switching to signed upload:',
+        '⚠️  Direct upload failed twice, switching to signed upload:',
         (errSecond && (errSecond.statusCode ?? errSecond.message)) ?? errSecond
       )
       await signedUpload()
     }
   }
 
+  console.log('💾 Updating events table with image_path...')
   // DB: save the path on the event row
   const { error: updErr } = await supabase
     .from('events')
     .update({ image_path: path })
     .eq('id', id)
   if (updErr) {
+    console.error('❌ Events table update error:', updErr)
     // optional: cleanup the uploaded object if DB update fails
     await supabase.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
     throw new Error(`Event update blocked by RLS: ${updErr.message}`)
   }
+  console.log('✅ Events table updated successfully')
 
   // Public URL (bucket is public)
   const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
   const publicUrl = pub?.publicUrl
   if (!publicUrl) throw new Error('Failed to get public URL')
 
+  console.log('🎉 Upload complete!', { publicUrl, path })
   return { publicUrl, path }
 }
 
