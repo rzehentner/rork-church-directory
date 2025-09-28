@@ -1,262 +1,157 @@
+// event-images.ts
 import { supabase } from '@/lib/supabase'
 
-// Storage bucket name constant
 export const STORAGE_BUCKET = 'event-images' as const
 
+// Build a public URL for a stored object (bucket is public)
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
-  const baseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://rwbppxcusppltwkcjmdu.supabase.co'
-  // Encode each path segment separately to avoid encoding slashes
+  const baseUrl =
+    process.env.EXPO_PUBLIC_SUPABASE_URL ||
+    'https://rwbppxcusppltwkcjmdu.supabase.co'
+  // Encode each path segment, not the slashes
   const safe = path.split('/').map(encodeURIComponent).join('/')
   return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${safe}`
 }
 
-export async function uploadEventImage(localUri: string, eventId: string): Promise<string> {
-  console.log('Uploading event image:', { localUri, eventId })
-  
-  // Validate inputs
-  if (!localUri?.trim() || !eventId?.trim()) {
-    throw new Error('Missing required parameters: localUri and eventId')
+// Small helpers
+function randName(ext = 'jpg') {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+}
+
+function extFromTypeOrUri(type: string | null | undefined, uri?: string) {
+  if (type) {
+    if (type.includes('png')) return { ext: 'png', contentType: 'image/png' }
+    if (type.includes('webp')) return { ext: 'webp', contentType: 'image/webp' }
+    if (type.includes('heic') || type.includes('hei')) return { ext: 'heic', contentType: 'image/heic' }
+    if (type.includes('jpeg') || type.includes('jpg')) return { ext: 'jpg', contentType: 'image/jpeg' }
   }
-  
-  const sanitizedUri = localUri.trim()
-  const sanitizedEventId = eventId.trim()
-  
-  if (sanitizedUri.length > 2000) {
-    throw new Error('URI too long')
-  }
-  
-  if (sanitizedEventId.length > 100) {
-    throw new Error('Event ID too long')
-  }
-  
-  try {
-    // Assert auth before proceeding
-    const { data: session } = await supabase.auth.getSession()
-    if (!session?.session) {
-      throw new Error('Not authenticated')
-    }
-    
-    // 1) Convert local file URI to Blob (same as profile images)
-    const resp = await fetch(sanitizedUri)
-    if (!resp.ok) {
-      throw new Error(`Failed to fetch file: ${resp.status} ${resp.statusText}`)
-    }
-    const blob = await resp.blob()
-    
-    console.log('Blob size:', blob.size, 'bytes')
-    console.log('Blob type:', blob.type)
-    
-    if (!blob || blob.size === 0) {
-      throw new Error('Image blob empty')
-    }
-    
-    // 2) Generate unique filename to avoid collisions
-    const timestamp = Date.now()
-    const random = Math.random().toString(36).slice(2)
-    const filename = `${timestamp}-${random}.jpg`
-    const path = `events/${sanitizedEventId}/${filename}`
-    
-    console.log('Uploading to storage path:', path)
-    
-    // 3) Upload to event-images bucket
-    const { data: uploadResult, error: upErr } = await supabase.storage
+  // Fall back to URI hint
+  const lower = (uri || '').toLowerCase()
+  if (lower.endsWith('.png')) return { ext: 'png', contentType: 'image/png' }
+  if (lower.endsWith('.webp')) return { ext: 'webp', contentType: 'image/webp' }
+  if (lower.endsWith('.heic') || lower.endsWith('.heif')) return { ext: 'heic', contentType: 'image/heic' }
+  // Default
+  return { ext: 'jpg', contentType: 'image/jpeg' }
+}
+
+/**
+ * Upload an image for an event and save the storage path on the event row.
+ * Returns the public URL (bucket is public) and the storage path we saved.
+ */
+export async function uploadEventImage(
+  localUri: string,
+  eventId: string
+): Promise<{ publicUrl: string; path: string }> {
+  const u = localUri?.trim()
+  const id = eventId?.trim()
+  if (!u || !id) throw new Error('Missing required parameters: localUri and eventId')
+  if (u.length > 2000) throw new Error('URI too long')
+  if (id.length > 100) throw new Error('Event ID too long')
+
+  // Ensure we’re signed in (your storage write policy requires it)
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess?.session) throw new Error('Not authenticated')
+
+  // Fetch -> Blob
+  const resp = await fetch(u)
+  if (!resp.ok) throw new Error(`Failed to fetch file: ${resp.status} ${resp.statusText}`)
+  const blob = await resp.blob()
+  if (!blob || blob.size === 0) throw new Error('Image blob empty')
+
+  // Decide extension + contentType
+  const { ext, contentType } = extFromTypeOrUri(blob.type, u)
+
+  // Unique path
+  const filename = randName(ext)
+  const path = `events/${id}/${filename}`
+
+  // Try direct upload first
+  const tryDirect = async () => {
+    const { error } = await supabase.storage
       .from(STORAGE_BUCKET)
-      .upload(path, blob, { 
-        contentType: 'image/jpeg',
-        upsert: false, // Use false to avoid overwriting
-        cacheControl: '3600'
+      .upload(path, blob, {
+        contentType,
+        upsert: false,
+        cacheControl: '3600',
       })
-    
-    if (upErr) {
-      console.error('Storage upload error:', upErr)
-      throw new Error(`Storage upload failed: ${upErr.message}`)
-    }
-    
-    console.log('Upload successful!', uploadResult)
-    
-    // 4) Update the event record with the image path
-    const { error: updErr } = await supabase
-      .from('events')
-      .update({ image_path: path })
-      .eq('id', sanitizedEventId)
-    
-    if (updErr) {
-      console.error('Error updating event image path:', updErr)
-      throw new Error(`Failed to update event record: ${updErr.message}`)
-    }
-
-    // 5) Get public URL for display
-    const { data: pub } = supabase.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(path)
-    
-    const publicUrl = pub?.publicUrl
-    if (!publicUrl) {
-      throw new Error('Failed to get public URL')
-    }
-    
-    console.log('Generated public URL:', publicUrl)
-    return publicUrl
-  } catch (error) {
-    console.error('uploadEventImage error:', error)
-    throw error
+    if (error) throw error
   }
+
+  // Fallback: signed upload (often fixes Android content:// + odd CORS/device issues)
+  const trySigned = async () => {
+    const { data: signed, error: signErr } =
+      await supabase.storage.from(STORAGE_BUCKET).createSignedUploadUrl(path)
+    if (signErr) throw signErr
+    const { error: putErr } =
+      await supabase.storage.from(STORAGE_BUCKET).uploadToSignedUrl(
+        signed.path,
+        signed.token,
+        blob,
+        { contentType }
+      )
+    if (putErr) throw putErr
+  }
+
+  // Execute upload with fallback
+  try {
+    await tryDirect()
+  } catch (e: any) {
+    console.warn('Direct upload failed, trying signed URL fallback:', e?.message || e)
+    await trySigned()
+  }
+
+  // Save path on the event row (ensure events RLS allows this user to update)
+  const { error: updErr } = await supabase
+    .from('events')
+    .update({ image_path: path })
+    .eq('id', id)
+  if (updErr) throw new Error(`Event update blocked by RLS: ${updErr.message}`)
+
+  // Build a public URL for display
+  const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
+  const publicUrl = pub?.publicUrl
+  if (!publicUrl) throw new Error('Failed to get public URL')
+
+  return { publicUrl, path }
 }
 
-// Diagnostic probe function as suggested by backend developer
-export async function runDiagnosticProbe(eventId: string): Promise<string> {
-  try {
-    console.log('=== DIAGNOSTIC PROBE START ===')
-    
-    // 1. Check auth session
-    const { data: session } = await supabase.auth.getSession()
-    console.log('Auth session?', !!session?.session, session?.session?.user?.id)
-    
-    if (!session?.session) {
-      return '❌ No auth session found'
-    }
-    
-    // 2. Test storage write with text probe
-    const testPath = `events/${eventId}/${Date.now()}-probe.txt`
-    const body = new Blob(['probe'], { type: 'text/plain' })
-    const { error: probeErr } = await supabase.storage
-      .from(STORAGE_BUCKET)
-      .upload(testPath, body, { upsert: false, contentType: 'text/plain' })
-    
-    console.log('Storage probe upload OK?', !probeErr, probeErr?.message)
-    
-    if (probeErr) {
-      return `❌ Storage write blocked: ${probeErr.message}`
-    }
-    
-    // 3. Test events table update
-    const { error: updErr } = await supabase
-      .from('events')
-      .update({ image_path: testPath })
-      .eq('id', eventId)
-    
-    console.log('Events update OK?', !updErr, updErr?.message)
-    
-    if (updErr) {
-      return `❌ Events table update blocked: ${updErr.message}`
-    }
-    
-    // 4. Clean up test file
-    await supabase.storage.from(STORAGE_BUCKET).remove([testPath])
-    
-    console.log('=== DIAGNOSTIC PROBE END ===')
-    return '✅ All checks passed - storage write and events update both work'
-    
-  } catch (error) {
-    console.error('Diagnostic probe error:', error)
-    return `❌ Probe failed: ${error}`
-  }
+/** Minimal probe that works on client (does NOT call listBuckets) */
+export async function storageWriteProbe(eventId: string) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess?.session) return '❌ Not authenticated'
+  const path = `events/${eventId}/${Date.now()}-probe.txt`
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(path, new Blob(['probe'], { type: 'text/plain' }), { upsert: false })
+  if (error) return `❌ Storage write blocked: ${error.message}`
+  // clean up
+  await supabase.storage.from(STORAGE_BUCKET).remove([path])
+  return '✅ Storage write OK'
 }
 
-// Test functions for debugging storage issues
-export async function testStorageBucket(): Promise<string> {
-  try {
-    console.log('Testing bucket:', STORAGE_BUCKET)
-    console.log('Project URL:', process.env.EXPO_PUBLIC_SUPABASE_URL)
-    
-    // First, list all buckets to see what exists
-    const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets()
-    console.log('Available buckets:', buckets?.map(b => b.name))
-    
-    if (bucketsError) {
-      return `❌ Failed to list buckets: ${bucketsError.message}`
-    }
-    
-    // Check if our target bucket exists
-    const bucketExists = buckets?.some(b => b.name === STORAGE_BUCKET)
-    if (!bucketExists) {
-      return `❌ Bucket '${STORAGE_BUCKET}' not found. Available buckets: ${buckets?.map(b => b.name).join(', ') || 'none'}`
-    }
-    
-    // Test access to the bucket
-    const { error } = await supabase
-      .storage
-      .from(STORAGE_BUCKET)
-      .list('', { limit: 1 })
+/** Quick end-to-end smoke test (client-safe) */
+export async function smokeTest(eventId: string) {
+  const { data: sess } = await supabase.auth.getSession()
+  if (!sess?.session) return '❌ Not authenticated'
 
-    if (error) {
-      return `❌ Bucket check failed: ${error.message}`
-    }
-    return '✅ Storage bucket is accessible (object API).'
-  } catch (error) {
-    return `❌ Bucket check error: ${error}`
-  }
-}
+  // 1) list a prefix (proves SELECT policy)
+  const prefix = `events/${eventId}`
+  const { error: listErr } = await supabase.storage.from(STORAGE_BUCKET).list(prefix, { limit: 1 })
+  if (listErr) return `❌ Bucket list failed: ${listErr.message}`
 
-export async function testStorageWrite(eventId: string): Promise<string> {
-  try {
-    const path = `events/${eventId}/test.txt`
-    const body = new Blob(['test upload'], { type: 'text/plain' })
+  // 2) probe upload
+  const probePath = `events/${eventId}/${Date.now()}-probe.txt`
+  const { error: upErr } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(probePath, new Blob(['probe'], { type: 'text/plain' }), { upsert: false })
+  if (upErr) return `❌ Probe upload failed: ${upErr.message}`
 
-    const { error } = await supabase
-      .storage
-      .from(STORAGE_BUCKET)
-      .upload(path, body, { upsert: true, contentType: 'text/plain' })
+  // 3) DB update check
+  const { error: updErr } = await supabase.from('events').update({ image_path: probePath }).eq('id', eventId)
+  if (updErr) return `❌ Events update failed: ${updErr.message}`
 
-    if (error) {
-      throw new Error(`Storage upload failed: ${error.message}`)
-    }
-    return `✅ Test upload successful to: ${path}`
-  } catch (error) {
-    return `❌ Test upload failed: ${error}`
-  }
-}
-
-// Comprehensive smoke test as suggested by backend developer
-export async function smokeTest(eventId: string): Promise<string> {
-  try {
-    console.log('=== SMOKE TEST START ===')
-    
-    // 1. Check auth
-    const { data: session } = await supabase.auth.getSession()
-    console.log('Auth?', !!session?.session, session?.session?.user?.id)
-    
-    if (!session?.session) {
-      return '❌ Not authenticated'
-    }
-    
-    // 2. Test bucket list (proves bucket exists)
-    const list = await supabase.storage.from(STORAGE_BUCKET).list('', { limit: 1 })
-    console.log('Bucket list error:', list.error?.message ?? 'none')
-    
-    if (list.error) {
-      return `❌ Bucket list failed: ${list.error.message}`
-    }
-    
-    // 3. Test probe upload
-    const path = `events/${eventId}/${Date.now()}-probe.txt`
-    const { error: upErr } = await supabase.storage.from(STORAGE_BUCKET)
-      .upload(path, new Blob(['probe'], { type: 'text/plain' }), { upsert: false })
-    console.log('Probe upload:', upErr?.message ?? 'ok')
-    
-    if (upErr) {
-      return `❌ Probe upload failed: ${upErr.message}`
-    }
-    
-    // 4. Test events table update
-    const { error: updErr } = await supabase
-      .from('events')
-      .update({ image_path: path })
-      .eq('id', eventId)
-    
-    if (updErr) {
-      return `❌ Events update failed: ${updErr.message}`
-    }
-    
-    // 5. Clean up
-    await supabase.storage.from(STORAGE_BUCKET).remove([path])
-    
-    console.log('=== SMOKE TEST END ===')
-    return '✅ All smoke test checks passed'
-    
-  } catch (error) {
-    console.error('Smoke test error:', error)
-    return `❌ Smoke test failed: ${error}`
-  }
+  // 4) cleanup
+  await supabase.storage.from(STORAGE_BUCKET).remove([probePath])
+  return '✅ Smoke test passed'
 }
