@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
-import { supabase } from '@/lib/supabase';
+import { supabase, debugSupabase, testStorageUpload, runDiagnosticProbe } from '@/lib/supabase';
 import { router } from 'expo-router';
 import {
   Home,
@@ -58,6 +58,8 @@ export default function DashboardScreen() {
   });
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
+  const [debugResults, setDebugResults] = useState<any>(null);
+  const [isDebugging, setIsDebugging] = useState(false);
 
   const isPending = profile?.role === 'pending';
   const isAdmin = profile?.role === 'admin' || profile?.role === 'leader';
@@ -412,6 +414,70 @@ export default function DashboardScreen() {
           </View>
         )}
 
+        {/* Debug Section - Only show for admins */}
+        {isAdmin && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>Debug Tools</Text>
+            <View style={styles.debugSection}>
+              <TouchableOpacity 
+                style={[styles.debugButton, isDebugging && styles.debugButtonDisabled]}
+                onPress={async () => {
+                  if (isDebugging) return;
+                  setIsDebugging(true);
+                  try {
+                    const results = await debugSupabase();
+                    setDebugResults(results);
+                  } catch (error) {
+                    console.error('Debug failed:', error);
+                    setDebugResults({ error: String(error) });
+                  } finally {
+                    setIsDebugging(false);
+                  }
+                }}
+                disabled={isDebugging}
+              >
+                <Text style={styles.debugButtonText}>
+                  {isDebugging ? 'Running Debug...' : 'Test Supabase Connection'}
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.debugButton, isDebugging && styles.debugButtonDisabled]}
+                onPress={async () => {
+                  if (isDebugging) return;
+                  setIsDebugging(true);
+                  try {
+                    const testEventId = 'test-event-' + Date.now();
+                    const results = await testStorageUpload(testEventId);
+                    setDebugResults({ storageTest: results });
+                  } catch (error) {
+                    console.error('Storage test failed:', error);
+                    setDebugResults({ storageTest: { error: String(error) } });
+                  } finally {
+                    setIsDebugging(false);
+                  }
+                }}
+                disabled={isDebugging}
+              >
+                <Text style={styles.debugButtonText}>
+                  {isDebugging ? 'Testing Storage...' : 'Test Storage Upload'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            
+            {debugResults && (
+              <View style={styles.debugResults}>
+                <Text style={styles.debugResultsTitle}>Debug Results:</Text>
+                <ScrollView style={styles.debugResultsScroll} horizontal>
+                  <Text style={styles.debugResultsText}>
+                    {JSON.stringify(debugResults, null, 2)}
+                  </Text>
+                </ScrollView>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
@@ -702,5 +768,43 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  debugSection: {
+    gap: 12,
+  },
+  debugButton: {
+    backgroundColor: '#1F2937',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  debugButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+  },
+  debugButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500' as const,
+  },
+  debugResults: {
+    marginTop: 16,
+    backgroundColor: '#1F2937',
+    borderRadius: 8,
+    padding: 12,
+  },
+  debugResultsTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
+    marginBottom: 8,
+  },
+  debugResultsScroll: {
+    maxHeight: 200,
+  },
+  debugResultsText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    fontFamily: 'monospace',
   },
 });
