@@ -40,21 +40,22 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         
         setSession(session);
         setUser(session?.user ?? null);
+        setIsLoading(false);
         
-        // Initialize biometrics asynchronously on native only
+        // Initialize biometrics asynchronously on native only - don't block app startup
         if (Platform.OS !== 'web') {
-          // Don't await this - let it run in background
-          initBiometrics().catch(error => {
-            console.warn('Biometric setup failed:', error);
-            if (mounted) {
-              setIsBiometricAvailable(false);
-              setIsBiometricEnabled(false);
-            }
-          });
+          setTimeout(() => {
+            initBiometrics().catch(error => {
+              console.warn('Biometric setup failed:', error);
+              if (mounted) {
+                setIsBiometricAvailable(false);
+                setIsBiometricEnabled(false);
+              }
+            });
+          }, 1000); // Delay biometric init by 1 second
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
-      } finally {
         if (mounted) {
           setIsLoading(false);
         }
@@ -64,17 +65,25 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     const initBiometrics = async () => {
       if (!mounted) return;
       
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      
-      if (mounted) {
-        setIsBiometricAvailable(compatible && enrolled);
-      }
-      
-      const biometricData = await AsyncStorage.getItem('biometric_credentials');
-      
-      if (mounted) {
-        setIsBiometricEnabled(!!biometricData);
+      try {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        
+        if (mounted) {
+          setIsBiometricAvailable(compatible && enrolled);
+        }
+        
+        const biometricData = await AsyncStorage.getItem('biometric_credentials');
+        
+        if (mounted) {
+          setIsBiometricEnabled(!!biometricData);
+        }
+      } catch (error) {
+        console.warn('Biometric initialization failed:', error);
+        if (mounted) {
+          setIsBiometricAvailable(false);
+          setIsBiometricEnabled(false);
+        }
       }
     };
     

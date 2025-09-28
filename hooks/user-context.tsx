@@ -41,7 +41,6 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     }
 
     setIsLoading(true);
-    console.log('🔍 Fetching user data for:', user.email, 'ID:', user.id);
 
     try {
       // Fetch profile and person in parallel
@@ -58,15 +57,13 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
           .maybeSingle()
       ]);
       
-      console.log('📋 Profile response:', profileResponse);
-      console.log('👤 Person response:', personResponse);
+
       
       setProfile(profileResponse.data);
       setPerson(personResponse.data);
 
       // Fetch family and members if person has family_id
       if (personResponse.data?.family_id) {
-        console.log('👨‍👩‍👧‍👦 Person has family_id:', personResponse.data.family_id);
         
         // Fetch family and members in parallel
         const [familyResponse, membersResponse] = await Promise.all([
@@ -84,18 +81,16 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
             .order('date_of_birth', { ascending: true })
         ]);
         
-        console.log('🏠 Family response:', familyResponse);
-        console.log('👥 Family members response:', membersResponse);
+
         
         setFamily(familyResponse.data);
         setFamilyMembers(membersResponse.data || []);
       } else {
-        console.log('❌ No family_id found for person');
         setFamily(null);
         setFamilyMembers([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching user data:', error);
+      console.error('Error fetching user data:', error);
       // Set defaults on error to prevent infinite loading
       setProfile(null);
       setPerson(null);

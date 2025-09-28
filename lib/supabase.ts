@@ -10,9 +10,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
   throw new Error('Supabase env vars missing');
 }
 
-console.log('SB URL:', SUPABASE_URL);
-// project ref is the subdomain slug:
-console.log('SB project-ref:', SUPABASE_URL.match(/^https:\/\/([a-z0-9]{20})\.supabase\.co/)?.[1]);
+
 
 export const supabase = createClient(
   SUPABASE_URL,

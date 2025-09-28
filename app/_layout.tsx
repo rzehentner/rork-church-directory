@@ -44,20 +44,16 @@ function RootLayoutNav() {
 }
 
 export default function RootLayout() {
-  const [isReady, setIsReady] = useState(Platform.OS === 'web');
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
-      // On web, we're immediately ready
-      return;
-    }
-
-    // On native, hide splash screen after initialization
     const initializeApp = async () => {
       try {
-        // Small delay to ensure everything is loaded
-        await new Promise(resolve => setTimeout(resolve, 100));
-        await SplashScreen.hideAsync();
+        if (Platform.OS !== 'web') {
+          // Small delay to ensure everything is loaded
+          await new Promise(resolve => setTimeout(resolve, 200));
+          await SplashScreen.hideAsync();
+        }
       } catch (error) {
         console.warn('Error hiding splash screen:', error);
       } finally {
@@ -68,7 +64,7 @@ export default function RootLayout() {
     initializeApp();
   }, []);
 
-  // On native, don't render until splash is handled
+  // Don't render until ready
   if (!isReady) {
     return null;
   }

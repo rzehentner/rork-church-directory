@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
-import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Home } from 'lucide-react-native';
 
@@ -10,13 +10,21 @@ export default function IndexScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, person, isLoading: userLoading } = useUser();
   const [isNavigating, setIsNavigating] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+
+  const addDebugInfo = (info: string) => {
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`]);
+  };
 
   useEffect(() => {
+    addDebugInfo('App started');
+    addDebugInfo(`Platform: ${Platform.OS}`);
+    
     // Shorter timeout for web to prevent hydration issues
-    const timeout = Platform.OS === 'web' ? 3000 : 8000;
+    const timeout = Platform.OS === 'web' ? 2000 : 5000;
     
     const forceTimer = setTimeout(() => {
-      console.warn('Forcing navigation due to timeout');
+      addDebugInfo('Force timeout triggered');
       if (!isNavigating) {
         setIsNavigating(true);
         router.replace('/(auth)/login');
@@ -27,17 +35,24 @@ export default function IndexScreen() {
   }, [isNavigating]);
 
   useEffect(() => {
-    if (!authLoading && !isNavigating) {
+    addDebugInfo(`Auth loading: ${authLoading}, User loading: ${userLoading}, Is navigating: ${isNavigating}`);
+    addDebugInfo(`User: ${user ? 'exists' : 'null'}, Profile: ${profile ? profile.role : 'null'}`);
+    
+    if (!authLoading && !userLoading && !isNavigating) {
+      addDebugInfo('Ready to navigate');
       setIsNavigating(true);
       
       if (user) {
         // Check if user is a visitor (pending) without a complete profile
         if (profile?.role === 'pending' && (!person || !person.first_name || !person.last_name)) {
+          addDebugInfo('Navigating to visitor profile');
           router.replace('/visitor-profile');
         } else {
+          addDebugInfo('Navigating to dashboard');
           router.replace('/(tabs)/dashboard');
         }
       } else {
+        addDebugInfo('Navigating to login');
         router.replace('/(auth)/login');
       }
     }
@@ -59,6 +74,16 @@ export default function IndexScreen() {
           <Text style={styles.loadingText}>
             {authLoading ? 'Loading your church family...' : 'Welcome back!'}
           </Text>
+        </View>
+        
+        {/* Debug Console */}
+        <View style={styles.debugContainer}>
+          <Text style={styles.debugTitle}>Debug Console:</Text>
+          <ScrollView style={styles.debugScroll} showsVerticalScrollIndicator={false}>
+            {debugInfo.map((info, index) => (
+              <Text key={index} style={styles.debugText}>{info}</Text>
+            ))}
+          </ScrollView>
         </View>
       </View>
     </SafeAreaView>
@@ -115,5 +140,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
+  },
+  debugContainer: {
+    marginTop: 32,
+    backgroundColor: '#1F2937',
+    borderRadius: 8,
+    padding: 16,
+    width: '100%',
+    maxHeight: 200,
+  },
+  debugTitle: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold' as const,
+    marginBottom: 8,
+  },
+  debugScroll: {
+    maxHeight: 150,
+  },
+  debugText: {
+    color: '#9CA3AF',
+    fontSize: 12,
+    marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });
