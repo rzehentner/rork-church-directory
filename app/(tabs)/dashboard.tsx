@@ -29,6 +29,7 @@ import {
   User,
   AlertCircle,
 } from 'lucide-react-native';
+import TagPill from '@/components/TagPill';
 
 interface DashboardStats {
   familyMembersCount: number;
@@ -51,12 +52,19 @@ interface RecentAnnouncement {
   author_name: string;
 }
 
+interface SimpleTag {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
 interface TaggedAnnouncement {
   id: string;
   title: string;
   created_at: string;
   author_name: string;
   tag_names: string[];
+  matching_tags: SimpleTag[];
 }
 
 interface TaggedEvent {
@@ -65,6 +73,7 @@ interface TaggedEvent {
   start_at: string;
   location?: string;
   tag_names: string[];
+  matching_tags: SimpleTag[];
 }
 
 export default function DashboardScreen() {
@@ -80,9 +89,7 @@ export default function DashboardScreen() {
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
   const [taggedAnnouncements, setTaggedAnnouncements] = useState<TaggedAnnouncement[]>([]);
-  const [isLoadingTaggedAnnouncements, setIsLoadingTaggedAnnouncements] = useState<boolean>(false);
   const [taggedEvents, setTaggedEvents] = useState<TaggedEvent[]>([]);
-  const [isLoadingTaggedEvents, setIsLoadingTaggedEvents] = useState<boolean>(false);
 
   const isPending = profile?.role === 'pending';
 
@@ -92,13 +99,13 @@ export default function DashboardScreen() {
       return;
     }
 
-    setIsLoadingTaggedEvents(true);
     try {
       console.log('🏷️ Loading tagged events for person:', myPersonId);
       
       // Get user's tags
       const personWithTags = await getPersonWithTags(myPersonId);
-      const userTagNames = personWithTags.tags.map(tag => tag.name);
+      const userTags = personWithTags.tags;
+      const userTagNames = userTags.map(tag => tag.name);
       
       console.log('User tags:', userTagNames);
       
@@ -146,16 +153,23 @@ export default function DashboardScreen() {
           const tags = await getEventTags(event.id);
           const tagNames = tags.map((tag: any) => tag.name);
           
-          // Check if any of the event's tags match user's tags
-          const hasMatchingTag = tagNames.some(tagName => userTagNames.includes(tagName));
+          // Find which tags match user's tags
+          const matchingTags = tags.filter((tag: any) => 
+            userTagNames.includes(tag.name)
+          );
           
-          if (hasMatchingTag) {
+          if (matchingTags.length > 0) {
             matchingEvents.push({
               id: event.id,
               title: event.title,
               start_at: event.start_at,
               location: event.location,
-              tag_names: tagNames
+              tag_names: tagNames,
+              matching_tags: matchingTags.map((tag: any) => ({
+                id: tag.id,
+                name: tag.name,
+                color: tag.color
+              }))
             });
           }
         } catch (error) {
@@ -167,8 +181,6 @@ export default function DashboardScreen() {
       setTaggedEvents(matchingEvents.slice(0, 3));
     } catch (error) {
       console.error('Error loading tagged events:', error);
-    } finally {
-      setIsLoadingTaggedEvents(false);
     }
   }, [myPersonId]);
 
@@ -178,13 +190,13 @@ export default function DashboardScreen() {
       return;
     }
 
-    setIsLoadingTaggedAnnouncements(true);
     try {
       console.log('🏷️ Loading tagged announcements for person:', myPersonId);
       
       // Get user's tags
       const personWithTags = await getPersonWithTags(myPersonId);
-      const userTagNames = personWithTags.tags.map(tag => tag.name);
+      const userTags = personWithTags.tags;
+      const userTagNames = userTags.map(tag => tag.name);
       
       console.log('User tags:', userTagNames);
       
@@ -232,10 +244,12 @@ export default function DashboardScreen() {
           const tags = await getAnnouncementTags(announcement.id);
           const tagNames = tags.map((tag: any) => tag.name);
           
-          // Check if any of the announcement's tags match user's tags
-          const hasMatchingTag = tagNames.some(tagName => userTagNames.includes(tagName));
+          // Find which tags match user's tags
+          const matchingTags = tags.filter((tag: any) => 
+            userTagNames.includes(tag.name)
+          );
           
-          if (hasMatchingTag) {
+          if (matchingTags.length > 0) {
             // Get author info
             const { data: authorPerson } = await supabase
               .from('persons')
@@ -250,7 +264,12 @@ export default function DashboardScreen() {
               author_name: authorPerson 
                 ? `${authorPerson.first_name} ${authorPerson.last_name}`
                 : 'Unknown Author',
-              tag_names: tagNames
+              tag_names: tagNames,
+              matching_tags: matchingTags.map((tag: any) => ({
+                id: tag.id,
+                name: tag.name,
+                color: tag.color
+              }))
             });
           }
         } catch (error) {
@@ -262,8 +281,6 @@ export default function DashboardScreen() {
       setTaggedAnnouncements(matchingAnnouncements.slice(0, 3));
     } catch (error) {
       console.error('Error loading tagged announcements:', error);
-    } finally {
-      setIsLoadingTaggedAnnouncements(false);
     }
   }, [myPersonId]);
 
@@ -522,6 +539,17 @@ export default function DashboardScreen() {
                   <Text style={styles.announcementMeta}>
                     By {announcement.author_name} • {formatTimeAgo(announcement.created_at)}
                   </Text>
+                  {announcement.matching_tags.length > 0 && (
+                    <View style={styles.tagsContainer}>
+                      {announcement.matching_tags.map((tag) => (
+                        <TagPill 
+                          key={tag.id} 
+                          tag={tag as any} 
+                          size="small" 
+                        />
+                      ))}
+                    </View>
+                  )}
                 </View>
                 <ChevronRight size={16} color="#9CA3AF" />
               </TouchableOpacity>
@@ -557,6 +585,17 @@ export default function DashboardScreen() {
                     <View style={styles.eventMeta}>
                       <MapPin size={12} color="#6B7280" />
                       <Text style={styles.eventLocation}>{event.location}</Text>
+                    </View>
+                  )}
+                  {event.matching_tags.length > 0 && (
+                    <View style={styles.tagsContainer}>
+                      {event.matching_tags.map((tag) => (
+                        <TagPill 
+                          key={tag.id} 
+                          tag={tag as any} 
+                          size="small" 
+                        />
+                      ))}
                     </View>
                   )}
                 </View>
@@ -917,5 +956,11 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
+  },
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
   },
 });
