@@ -12,6 +12,7 @@ import { useUser } from '@/hooks/user-context';
 import { useMe } from '@/hooks/me-context';
 import { getPersonWithTags } from '@/services/tags';
 import { getAnnouncementTags } from '@/lib/announcements';
+import { getEventTags } from '@/services/events';
 
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
@@ -58,6 +59,14 @@ interface TaggedAnnouncement {
   tag_names: string[];
 }
 
+interface TaggedEvent {
+  id: string;
+  title: string;
+  starts_at: string;
+  location?: string;
+  tag_names: string[];
+}
+
 export default function DashboardScreen() {
   const { profile, person, family, familyMembers, isLoading } = useUser();
   const { myPersonId } = useMe();
@@ -72,8 +81,96 @@ export default function DashboardScreen() {
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
   const [taggedAnnouncements, setTaggedAnnouncements] = useState<TaggedAnnouncement[]>([]);
   const [isLoadingTaggedAnnouncements, setIsLoadingTaggedAnnouncements] = useState<boolean>(false);
+  const [taggedEvents, setTaggedEvents] = useState<TaggedEvent[]>([]);
+  const [isLoadingTaggedEvents, setIsLoadingTaggedEvents] = useState<boolean>(false);
 
   const isPending = profile?.role === 'pending';
+
+  const loadTaggedEvents = useCallback(async () => {
+    if (!myPersonId) {
+      console.log('No person ID, skipping tagged events');
+      return;
+    }
+
+    setIsLoadingTaggedEvents(true);
+    try {
+      console.log('🏷️ Loading tagged events for person:', myPersonId);
+      
+      // Get user's tags
+      const personWithTags = await getPersonWithTags(myPersonId);
+      const userTagNames = personWithTags.tags.map(tag => tag.name);
+      
+      console.log('User tags:', userTagNames);
+      
+      if (userTagNames.length === 0) {
+        console.log('User has no tags, skipping tagged events');
+        setTaggedEvents([]);
+        return;
+      }
+
+      // Get all upcoming events
+      const { data: allEvents, error: eventsError } = await supabase
+        .from('events')
+        .select(`
+          id,
+          title,
+          starts_at,
+          location
+        `)
+        .gte('starts_at', new Date().toISOString())
+        .order('starts_at', { ascending: true })
+        .limit(10);
+
+      if (eventsError) {
+        console.error('Error fetching events:', JSON.stringify(eventsError, null, 2));
+        console.error('Error details:', {
+          message: eventsError.message,
+          details: eventsError.details,
+          hint: eventsError.hint,
+          code: eventsError.code
+        });
+        return;
+      }
+
+      if (!allEvents || allEvents.length === 0) {
+        console.log('No events found');
+        setTaggedEvents([]);
+        return;
+      }
+
+      // For each event, get its tags and check if any match user's tags
+      const matchingEvents: TaggedEvent[] = [];
+      
+      for (const event of allEvents) {
+        try {
+          const tags = await getEventTags(event.id);
+          const tagNames = tags.map((tag: any) => tag.name);
+          
+          // Check if any of the event's tags match user's tags
+          const hasMatchingTag = tagNames.some(tagName => userTagNames.includes(tagName));
+          
+          if (hasMatchingTag) {
+            matchingEvents.push({
+              id: event.id,
+              title: event.title,
+              starts_at: event.starts_at,
+              location: event.location,
+              tag_names: tagNames
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching tags for event:', event.id, error);
+        }
+      }
+
+      console.log('Found matching events:', matchingEvents.length);
+      setTaggedEvents(matchingEvents.slice(0, 3));
+    } catch (error) {
+      console.error('Error loading tagged events:', error);
+    } finally {
+      setIsLoadingTaggedEvents(false);
+    }
+  }, [myPersonId]);
 
   const loadTaggedAnnouncements = useCallback(async () => {
     if (!myPersonId) {
@@ -237,7 +334,8 @@ export default function DashboardScreen() {
   useEffect(() => {
     loadDashboardData();
     loadTaggedAnnouncements();
-  }, [loadDashboardData, loadTaggedAnnouncements]);
+    loadTaggedEvents();
+  }, [loadDashboardData, loadTaggedAnnouncements, loadTaggedEvents]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -462,6 +560,43 @@ export default function DashboardScreen() {
                   <Text style={styles.announcementMeta}>
                     By {announcement.author_name} • {formatTimeAgo(announcement.created_at)}
                   </Text>
+                </View>
+                <ChevronRight size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Events For You */}
+        {taggedEvents.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Events For You</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/events')}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {taggedEvents.map((event) => (
+              <TouchableOpacity 
+                key={event.id}
+                style={styles.eventItem}
+                onPress={() => router.push(`/event-detail?id=${event.id}`)}
+              >
+                <View style={styles.eventIcon}>
+                  <Calendar size={16} color="#7C3AED" />
+                </View>
+                <View style={styles.eventContent}>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <View style={styles.eventMeta}>
+                    <Clock size={12} color="#6B7280" />
+                    <Text style={styles.eventTime}>{formatDate(event.starts_at)}</Text>
+                  </View>
+                  {event.location && (
+                    <View style={styles.eventMeta}>
+                      <MapPin size={12} color="#6B7280" />
+                      <Text style={styles.eventLocation}>{event.location}</Text>
+                    </View>
+                  )}
                 </View>
                 <ChevronRight size={16} color="#9CA3AF" />
               </TouchableOpacity>
