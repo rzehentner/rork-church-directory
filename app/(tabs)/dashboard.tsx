@@ -192,32 +192,17 @@ export default function DashboardScreen() {
         setRecentAnnouncements(formattedAnnouncements);
       }
 
-      // Set tagged announcements (including untagged)
-      if (taggedAnnouncementsResult.data) {
-        console.log('Raw announcements:', taggedAnnouncementsResult.data.length);
-        console.log('My tags:', myTagNames);
-        
+      // Set tagged announcements (only with matching tags)
+      if (taggedAnnouncementsResult.data && myTagNames.length > 0) {
         const formatted = taggedAnnouncementsResult.data
           .map((announcement: any) => {
             const tags = announcement.announcement_audience_tags
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasNoTags = tags.length === 0;
-            const userHasNoTags = myTagNames.length === 0;
             const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
             
-            const shouldShow = hasNoTags || userHasNoTags || hasMatchingTag;
-            
-            console.log(`Announcement "${announcement.title}":`, {
-              tags,
-              hasNoTags,
-              userHasNoTags,
-              hasMatchingTag,
-              shouldShow
-            });
-            
-            if (!shouldShow) return null;
+            if (!hasMatchingTag) return null;
 
             return {
               id: announcement.id,
@@ -231,35 +216,22 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedAnnouncement[];
         
-        console.log('Filtered announcements:', formatted.length);
         setTaggedAnnouncements(formatted);
+      } else {
+        setTaggedAnnouncements([]);
       }
 
-      // Set tagged events (including untagged)
-      if (taggedEventsResult.data) {
-        console.log('Raw events:', taggedEventsResult.data.length);
-        
+      // Set tagged events (only with matching tags)
+      if (taggedEventsResult.data && myTagNames.length > 0) {
         const formatted = taggedEventsResult.data
           .map((event: any) => {
             const tags = event.event_audience_tags
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasNoTags = tags.length === 0;
-            const userHasNoTags = myTagNames.length === 0;
             const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
             
-            const shouldShow = hasNoTags || userHasNoTags || hasMatchingTag;
-            
-            console.log(`Event "${event.title}":`, {
-              tags,
-              hasNoTags,
-              userHasNoTags,
-              hasMatchingTag,
-              shouldShow
-            });
-            
-            if (!shouldShow) return null;
+            if (!hasMatchingTag) return null;
 
             return {
               id: event.id,
@@ -271,8 +243,9 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedEvent[];
         
-        console.log('Filtered events:', formatted.length);
         setTaggedEvents(formatted);
+      } else {
+        setTaggedEvents([]);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -444,18 +417,12 @@ export default function DashboardScreen() {
         </View>
 
         {/* For You Feed */}
-        {(taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
+        {myTagNames.length > 0 && (taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>For You</Text>
-            {myTagNames.length > 0 ? (
-              <Text style={styles.sectionSubtitle}>
-                Based on your tags: {myTagNames.join(', ')}
-              </Text>
-            ) : (
-              <Text style={styles.sectionSubtitle}>
-                Showing all announcements and events
-              </Text>
-            )}
+            <Text style={styles.sectionSubtitle}>
+              Based on your tags: {myTagNames.join(', ')}
+            </Text>
 
             {/* Tagged Announcements */}
             {taggedAnnouncements.length > 0 && (
@@ -476,17 +443,11 @@ export default function DashboardScreen() {
                         {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
                       </Text>
                       <View style={styles.taggedItemTags}>
-                        {announcement.tags.length === 0 ? (
-                          <View style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>General</Text>
+                        {announcement.tags.map((tag, idx) => (
+                          <View key={idx} style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>{tag}</Text>
                           </View>
-                        ) : (
-                          announcement.tags.map((tag, idx) => (
-                            <View key={idx} style={styles.miniTag}>
-                              <Text style={styles.miniTagText}>{tag}</Text>
-                            </View>
-                          ))
-                        )}
+                        ))}
                       </View>
                     </View>
                     <ChevronRight size={16} color="#9CA3AF" />
@@ -521,17 +482,11 @@ export default function DashboardScreen() {
                         </View>
                       )}
                       <View style={styles.taggedItemTags}>
-                        {event.tags.length === 0 ? (
-                          <View style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>General</Text>
+                        {event.tags.map((tag, idx) => (
+                          <View key={idx} style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>{tag}</Text>
                           </View>
-                        ) : (
-                          event.tags.map((tag, idx) => (
-                            <View key={idx} style={styles.miniTag}>
-                              <Text style={styles.miniTagText}>{tag}</Text>
-                            </View>
-                          ))
-                        )}
+                        ))}
                       </View>
                     </View>
                     <ChevronRight size={16} color="#9CA3AF" />
