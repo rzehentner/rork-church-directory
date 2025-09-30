@@ -497,43 +497,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Upcoming Events */}
-        {upcomingEvents.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Upcoming Events</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/events')}>
-                <Text style={styles.seeAllText}>See All</Text>
-              </TouchableOpacity>
-            </View>
-            {upcomingEvents.map((event) => (
-              <TouchableOpacity 
-                key={event.id}
-                style={styles.eventItem}
-                onPress={() => router.push(`/event-detail?id=${event.id}`)}
-              >
-                <View style={styles.eventIcon}>
-                  <Calendar size={16} color="#10B981" />
-                </View>
-                <View style={styles.eventContent}>
-                  <Text style={styles.eventTitle}>{event.title}</Text>
-                  <View style={styles.eventMeta}>
-                    <Clock size={12} color="#6B7280" />
-                    <Text style={styles.eventTime}>{formatDate(event.start_at)}</Text>
-                  </View>
-                  {event.location && (
-                    <View style={styles.eventMeta}>
-                      <MapPin size={12} color="#6B7280" />
-                      <Text style={styles.eventLocation}>{event.location}</Text>
-                    </View>
-                  )}
-                </View>
-                <ChevronRight size={16} color="#9CA3AF" />
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-
         {/* Announcements For You */}
         {taggedAnnouncements.length > 0 && (
           <View style={styles.card}>
@@ -548,7 +511,6 @@ export default function DashboardScreen() {
                 key={announcement.id} 
                 style={styles.announcementItem}
                 onPress={() => {
-                  // Navigate to announcements tab - you could add detail view later
                   router.push('/(tabs)/announcements');
                 }}
               >
@@ -584,6 +546,43 @@ export default function DashboardScreen() {
               >
                 <View style={styles.eventIcon}>
                   <Calendar size={16} color="#7C3AED" />
+                </View>
+                <View style={styles.eventContent}>
+                  <Text style={styles.eventTitle}>{event.title}</Text>
+                  <View style={styles.eventMeta}>
+                    <Clock size={12} color="#6B7280" />
+                    <Text style={styles.eventTime}>{formatDate(event.start_at)}</Text>
+                  </View>
+                  {event.location && (
+                    <View style={styles.eventMeta}>
+                      <MapPin size={12} color="#6B7280" />
+                      <Text style={styles.eventLocation}>{event.location}</Text>
+                    </View>
+                  )}
+                </View>
+                <ChevronRight size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Upcoming Events */}
+        {upcomingEvents.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Upcoming Events</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/events')}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {upcomingEvents.map((event) => (
+              <TouchableOpacity 
+                key={event.id}
+                style={styles.eventItem}
+                onPress={() => router.push(`/event-detail?id=${event.id}`)}
+              >
+                <View style={styles.eventIcon}>
+                  <Calendar size={16} color="#10B981" />
                 </View>
                 <View style={styles.eventContent}>
                   <Text style={styles.eventTitle}>{event.title}</Text>
