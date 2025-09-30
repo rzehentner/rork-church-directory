@@ -77,8 +77,8 @@ export default function DashboardScreen() {
   });
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
-  const [taggedAnnouncements, setTaggedAnnouncements] = useState<TaggedAnnouncement[]>([]);
-  const [taggedEvents, setTaggedEvents] = useState<TaggedEvent[]>([]);
+  const [forYouAnnouncements, setForYouAnnouncements] = useState<TaggedAnnouncement[]>([]);
+  const [forYouEvents, setForYouEvents] = useState<TaggedEvent[]>([]);
 
   const { data: personWithTags } = useQuery({
     queryKey: ['person-with-tags', myPersonId],
@@ -125,8 +125,8 @@ export default function DashboardScreen() {
           .from('persons')
           .select('id', { count: 'exact', head: true }),
         
-        // Tagged announcements (including untagged)
-        supabase
+        // For You announcements (with user's tags)
+        myTagNames.length > 0 ? supabase
           .from('announcements')
           .select(`
             id,
@@ -145,10 +145,10 @@ export default function DashboardScreen() {
           .eq('is_published', true)
           .lte('published_at', new Date().toISOString())
           .order('published_at', { ascending: false })
-          .limit(10),
+          .limit(20) : Promise.resolve({ data: [], error: null }),
         
-        // Tagged events (including untagged)
-        supabase
+        // For You events (with user's tags)
+        myTagNames.length > 0 ? supabase
           .from('events')
           .select(`
             id,
@@ -163,7 +163,7 @@ export default function DashboardScreen() {
           `)
           .gte('starts_at', new Date().toISOString())
           .order('starts_at', { ascending: true })
-          .limit(10)
+          .limit(20) : Promise.resolve({ data: [], error: null })
       ]);
 
       // Set stats
@@ -192,7 +192,7 @@ export default function DashboardScreen() {
         setRecentAnnouncements(formattedAnnouncements);
       }
 
-      // Set tagged announcements (only with matching tags)
+      // Process For You announcements (only with matching tags)
       if (taggedAnnouncementsResult.data && myTagNames.length > 0) {
         const formatted = taggedAnnouncementsResult.data
           .map((announcement: any) => {
@@ -200,7 +200,8 @@ export default function DashboardScreen() {
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
+            // Only include if has at least one matching tag
+            const hasMatchingTag = tags.length > 0 && tags.some((tag: string) => myTagNames.includes(tag));
             
             if (!hasMatchingTag) return null;
 
@@ -216,12 +217,13 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedAnnouncement[];
         
-        setTaggedAnnouncements(formatted);
+        console.log('For You announcements:', formatted.length);
+        setForYouAnnouncements(formatted.slice(0, 5));
       } else {
-        setTaggedAnnouncements([]);
+        setForYouAnnouncements([]);
       }
 
-      // Set tagged events (only with matching tags)
+      // Process For You events (only with matching tags)
       if (taggedEventsResult.data && myTagNames.length > 0) {
         const formatted = taggedEventsResult.data
           .map((event: any) => {
@@ -229,7 +231,8 @@ export default function DashboardScreen() {
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
+            // Only include if has at least one matching tag
+            const hasMatchingTag = tags.length > 0 && tags.some((tag: string) => myTagNames.includes(tag));
             
             if (!hasMatchingTag) return null;
 
@@ -243,9 +246,10 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedEvent[];
         
-        setTaggedEvents(formatted);
+        console.log('For You events:', formatted.length);
+        setForYouEvents(formatted.slice(0, 5));
       } else {
-        setTaggedEvents([]);
+        setForYouEvents([]);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -417,79 +421,83 @@ export default function DashboardScreen() {
         </View>
 
         {/* For You Feed */}
-        {myTagNames.length > 0 && (taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
+        {myTagNames.length > 0 && (forYouAnnouncements.length > 0 || forYouEvents.length > 0) && (
           <View style={styles.card}>
-            <Text style={styles.sectionTitle}>For You</Text>
-            <Text style={styles.sectionSubtitle}>
-              Based on your tags: {myTagNames.join(', ')}
-            </Text>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>For You</Text>
+                <Text style={styles.forYouSubtitle}>
+                  Based on: {myTagNames.slice(0, 3).join(', ')}{myTagNames.length > 3 ? ` +${myTagNames.length - 3}` : ''}
+                </Text>
+              </View>
+            </View>
 
-            {/* Tagged Announcements */}
-            {taggedAnnouncements.length > 0 && (
-              <View style={styles.taggedSection}>
-                <View style={styles.taggedHeader}>
-                  <Bell size={16} color="#F59E0B" />
-                  <Text style={styles.taggedHeaderText}>Announcements</Text>
+            {/* For You Events */}
+            {forYouEvents.length > 0 && (
+              <View style={styles.forYouSection}>
+                <View style={styles.forYouSectionHeader}>
+                  <Calendar size={18} color="#10B981" />
+                  <Text style={styles.forYouSectionTitle}>Upcoming Events</Text>
                 </View>
-                {taggedAnnouncements.map((announcement) => (
+                {forYouEvents.map((event) => (
                   <TouchableOpacity
-                    key={announcement.id}
-                    style={styles.taggedItem}
-                    onPress={() => router.push('/(tabs)/announcements')}
+                    key={event.id}
+                    style={styles.forYouItem}
+                    onPress={() => router.push(`/event-detail?id=${event.id}`)}
                   >
-                    <View style={styles.taggedItemContent}>
-                      <Text style={styles.taggedItemTitle}>{announcement.title}</Text>
-                      <Text style={styles.taggedItemMeta}>
-                        {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
-                      </Text>
-                      <View style={styles.taggedItemTags}>
-                        {announcement.tags.map((tag, idx) => (
-                          <View key={idx} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>{tag}</Text>
+                    <View style={styles.forYouItemContent}>
+                      <Text style={styles.forYouItemTitle}>{event.title}</Text>
+                      <View style={styles.forYouItemMeta}>
+                        <Clock size={12} color="#6B7280" />
+                        <Text style={styles.forYouItemMetaText}>{formatDate(event.starts_at)}</Text>
+                      </View>
+                      {event.location && (
+                        <View style={styles.forYouItemMeta}>
+                          <MapPin size={12} color="#6B7280" />
+                          <Text style={styles.forYouItemMetaText}>{event.location}</Text>
+                        </View>
+                      )}
+                      <View style={styles.forYouItemTags}>
+                        {event.tags.map((tag, idx) => (
+                          <View key={idx} style={styles.forYouTag}>
+                            <Text style={styles.forYouTagText}>{tag}</Text>
                           </View>
                         ))}
                       </View>
                     </View>
-                    <ChevronRight size={16} color="#9CA3AF" />
+                    <ChevronRight size={20} color="#9CA3AF" />
                   </TouchableOpacity>
                 ))}
               </View>
             )}
 
-            {/* Tagged Events */}
-            {taggedEvents.length > 0 && (
-              <View style={[styles.taggedSection, taggedAnnouncements.length > 0 && { marginTop: 16 }]}>
-                <View style={styles.taggedHeader}>
-                  <Calendar size={16} color="#10B981" />
-                  <Text style={styles.taggedHeaderText}>Events</Text>
+            {/* For You Announcements */}
+            {forYouAnnouncements.length > 0 && (
+              <View style={[styles.forYouSection, forYouEvents.length > 0 && { marginTop: 20 }]}>
+                <View style={styles.forYouSectionHeader}>
+                  <Bell size={18} color="#F59E0B" />
+                  <Text style={styles.forYouSectionTitle}>Announcements</Text>
                 </View>
-                {taggedEvents.map((event) => (
+                {forYouAnnouncements.map((announcement) => (
                   <TouchableOpacity
-                    key={event.id}
-                    style={styles.taggedItem}
-                    onPress={() => router.push(`/event-detail?id=${event.id}`)}
+                    key={announcement.id}
+                    style={styles.forYouItem}
+                    onPress={() => router.push('/(tabs)/announcements')}
                   >
-                    <View style={styles.taggedItemContent}>
-                      <Text style={styles.taggedItemTitle}>{event.title}</Text>
-                      <View style={styles.eventMeta}>
-                        <Clock size={12} color="#6B7280" />
-                        <Text style={styles.eventTime}>{formatDate(event.starts_at)}</Text>
-                      </View>
-                      {event.location && (
-                        <View style={styles.eventMeta}>
-                          <MapPin size={12} color="#6B7280" />
-                          <Text style={styles.eventLocation}>{event.location}</Text>
-                        </View>
-                      )}
-                      <View style={styles.taggedItemTags}>
-                        {event.tags.map((tag, idx) => (
-                          <View key={idx} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>{tag}</Text>
+                    <View style={styles.forYouItemContent}>
+                      <Text style={styles.forYouItemTitle}>{announcement.title}</Text>
+                      <Text style={styles.forYouItemAuthor}>
+                        {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
+                      </Text>
+                      <View style={styles.forYouItemTags}>
+                        {announcement.tags.map((tag, idx) => (
+                          <View key={idx} style={styles.forYouTag}>
+                            <Text style={styles.forYouTagText}>{tag}</Text>
                           </View>
                         ))}
                       </View>
                     </View>
-                    <ChevronRight size={16} color="#9CA3AF" />
+                    <ChevronRight size={20} color="#9CA3AF" />
                   </TouchableOpacity>
                 ))}
               </View>
@@ -755,63 +763,76 @@ const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '500' as const,
   },
-  sectionSubtitle: {
-    fontSize: 14,
+  forYouSubtitle: {
+    fontSize: 13,
     color: '#6B7280',
-    marginBottom: 16,
-    marginTop: -8,
+    marginTop: 4,
   },
-  taggedSection: {
-    marginBottom: 8,
+  forYouSection: {
+    marginTop: 16,
   },
-  taggedHeader: {
+  forYouSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
     marginBottom: 12,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
   },
-  taggedHeaderText: {
-    fontSize: 14,
+  forYouSectionTitle: {
+    fontSize: 16,
     fontWeight: '600' as const,
     color: '#1F2937',
   },
-  taggedItem: {
+  forYouItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
     gap: 12,
   },
-  taggedItemContent: {
+  forYouItemContent: {
     flex: 1,
   },
-  taggedItemTitle: {
-    fontSize: 15,
-    fontWeight: '500' as const,
+  forYouItemTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
     color: '#1F2937',
-    marginBottom: 4,
-  },
-  taggedItemMeta: {
-    fontSize: 12,
-    color: '#6B7280',
     marginBottom: 6,
   },
-  taggedItemTags: {
+  forYouItemAuthor: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 8,
+  },
+  forYouItemMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 4,
+  },
+  forYouItemMetaText: {
+    fontSize: 13,
+    color: '#6B7280',
+  },
+  forYouItemTags: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+    marginTop: 4,
   },
-  miniTag: {
+  forYouTag: {
     backgroundColor: '#EEF2FF',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
   },
-  miniTagText: {
-    fontSize: 11,
+  forYouTagText: {
+    fontSize: 12,
     color: '#6366F1',
-    fontWeight: '500' as const,
+    fontWeight: '600' as const,
   },
   eventItem: {
     flexDirection: 'row',
