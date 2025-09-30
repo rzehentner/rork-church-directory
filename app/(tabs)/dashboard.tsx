@@ -200,10 +200,13 @@ export default function DashboardScreen() {
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMyTag = myTagNames.length === 0 
-              ? true
-              : tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
-            if (!hasMyTag) return null;
+            // Show if: no tags on announcement, OR user has no tags, OR announcement has a matching tag
+            const hasNoTags = tags.length === 0;
+            const userHasNoTags = myTagNames.length === 0;
+            const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
+            
+            const shouldShow = hasNoTags || userHasNoTags || hasMatchingTag;
+            if (!shouldShow) return null;
 
             return {
               id: announcement.id,
@@ -228,10 +231,13 @@ export default function DashboardScreen() {
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMyTag = myTagNames.length === 0
-              ? true
-              : tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
-            if (!hasMyTag) return null;
+            // Show if: no tags on event, OR user has no tags, OR event has a matching tag
+            const hasNoTags = tags.length === 0;
+            const userHasNoTags = myTagNames.length === 0;
+            const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
+            
+            const shouldShow = hasNoTags || userHasNoTags || hasMatchingTag;
+            if (!shouldShow) return null;
 
             return {
               id: event.id,
@@ -446,20 +452,19 @@ export default function DashboardScreen() {
                       <Text style={styles.taggedItemMeta}>
                         {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
                       </Text>
-                      {announcement.tags.length > 0 && (
-                        <View style={styles.taggedItemTags}>
-                          {announcement.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
+                      <View style={styles.taggedItemTags}>
+                        {announcement.tags.length === 0 ? (
+                          <View style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>General</Text>
+                          </View>
+                        ) : (
+                          announcement.tags.map((tag, idx) => (
                             <View key={idx} style={styles.miniTag}>
                               <Text style={styles.miniTagText}>{tag}</Text>
                             </View>
-                          ))}
-                          {announcement.tags.length > 0 && announcement.tags.filter(tag => myTagNames.includes(tag)).length === 0 && (
-                            <View style={styles.miniTag}>
-                              <Text style={styles.miniTagText}>General</Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
+                          ))
+                        )}
+                      </View>
                     </View>
                     <ChevronRight size={16} color="#9CA3AF" />
                   </TouchableOpacity>
@@ -492,20 +497,19 @@ export default function DashboardScreen() {
                           <Text style={styles.eventLocation}>{event.location}</Text>
                         </View>
                       )}
-                      {event.tags.length > 0 && (
-                        <View style={styles.taggedItemTags}>
-                          {event.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
+                      <View style={styles.taggedItemTags}>
+                        {event.tags.length === 0 ? (
+                          <View style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>General</Text>
+                          </View>
+                        ) : (
+                          event.tags.map((tag, idx) => (
                             <View key={idx} style={styles.miniTag}>
                               <Text style={styles.miniTagText}>{tag}</Text>
                             </View>
-                          ))}
-                          {event.tags.length > 0 && event.tags.filter(tag => myTagNames.includes(tag)).length === 0 && (
-                            <View style={styles.miniTag}>
-                              <Text style={styles.miniTagText}>General</Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
+                          ))
+                        )}
+                      </View>
                     </View>
                     <ChevronRight size={16} color="#9CA3AF" />
                   </TouchableOpacity>
