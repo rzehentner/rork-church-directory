@@ -200,7 +200,9 @@ export default function DashboardScreen() {
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMyTag = tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
+            const hasMyTag = myTagNames.length === 0 
+              ? true
+              : tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
             if (!hasMyTag) return null;
 
             return {
@@ -226,7 +228,9 @@ export default function DashboardScreen() {
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMyTag = tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
+            const hasMyTag = myTagNames.length === 0
+              ? true
+              : tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
             if (!hasMyTag) return null;
 
             return {
@@ -414,9 +418,13 @@ export default function DashboardScreen() {
         {(taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>For You</Text>
-            {myTagNames.length > 0 && (
+            {myTagNames.length > 0 ? (
               <Text style={styles.sectionSubtitle}>
                 Based on your tags: {myTagNames.join(', ')}
+              </Text>
+            ) : (
+              <Text style={styles.sectionSubtitle}>
+                Showing all announcements and events
               </Text>
             )}
 
