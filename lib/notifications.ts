@@ -15,12 +15,17 @@ Notifications.setNotificationHandler({
 });
 
 export async function registerPushEndpoint() {
-  if (Platform.OS === 'web' || !Device.isDevice) {
-    console.log('Push notifications not supported on web or simulator');
-    return;
-  }
-
   try {
+    if (Platform.OS === 'web') {
+      console.log('Push notifications not supported on web');
+      return;
+    }
+
+    if (!Device.isDevice) {
+      console.log('Push notifications not supported on simulator');
+      return;
+    }
+
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
     
@@ -42,7 +47,6 @@ export async function registerPushEndpoint() {
       return;
     }
 
-    // Upsert endpoint
     const { error } = await supabase.from('notification_endpoints').upsert({
       user_id: user.id,
       provider: 'expo',
@@ -58,7 +62,7 @@ export async function registerPushEndpoint() {
       console.log('Push endpoint registered successfully');
     }
   } catch (error) {
-    console.error('Error in registerPushEndpoint:', error);
+    console.log('Push notification registration skipped:', error instanceof Error ? error.message : String(error));
   }
 }
 
