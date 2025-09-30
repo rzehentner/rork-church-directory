@@ -104,17 +104,20 @@ export default function DashboardScreen() {
           id,
           title,
           created_at,
-          persons!announcements_author_id_fkey (
-            first_name,
-            last_name
-          )
+          created_by
         `)
         .eq('is_published', true)
         .order('created_at', { ascending: false })
         .limit(10);
 
       if (announcementsError) {
-        console.error('Error fetching announcements:', announcementsError);
+        console.error('Error fetching announcements:', JSON.stringify(announcementsError, null, 2));
+        console.error('Error details:', {
+          message: announcementsError.message,
+          details: announcementsError.details,
+          hint: announcementsError.hint,
+          code: announcementsError.code
+        });
         return;
       }
 
@@ -136,12 +139,19 @@ export default function DashboardScreen() {
           const hasMatchingTag = tagNames.some(tagName => userTagNames.includes(tagName));
           
           if (hasMatchingTag) {
+            // Get author info
+            const { data: authorPerson } = await supabase
+              .from('persons')
+              .select('first_name, last_name')
+              .eq('user_id', announcement.created_by)
+              .single();
+            
             matchingAnnouncements.push({
               id: announcement.id,
               title: announcement.title,
               created_at: announcement.created_at,
-              author_name: announcement.persons 
-                ? `${(announcement.persons as any).first_name} ${(announcement.persons as any).last_name}`
+              author_name: authorPerson 
+                ? `${authorPerson.first_name} ${authorPerson.last_name}`
                 : 'Unknown Author',
               tag_names: tagNames
             });
@@ -174,15 +184,7 @@ export default function DashboardScreen() {
         // Recent announcements
         supabase
           .from('announcements')
-          .select(`
-            id,
-            title,
-            created_at,
-            persons!announcements_author_id_fkey (
-              first_name,
-              last_name
-            )
-          `)
+          .select('id, title, created_at, created_by')
           .order('created_at', { ascending: false })
           .limit(3),
         
@@ -207,14 +209,24 @@ export default function DashboardScreen() {
 
       // Set recent announcements
       if (announcementsResult.data) {
-        const formattedAnnouncements = announcementsResult.data.map(announcement => ({
-          id: announcement.id,
-          title: announcement.title,
-          created_at: announcement.created_at,
-          author_name: announcement.persons 
-            ? `${(announcement.persons as any).first_name} ${(announcement.persons as any).last_name}`
-            : 'Unknown Author'
-        }));
+        const formattedAnnouncements = await Promise.all(
+          announcementsResult.data.map(async (announcement) => {
+            const { data: authorPerson } = await supabase
+              .from('persons')
+              .select('first_name, last_name')
+              .eq('user_id', announcement.created_by)
+              .single();
+            
+            return {
+              id: announcement.id,
+              title: announcement.title,
+              created_at: announcement.created_at,
+              author_name: authorPerson 
+                ? `${authorPerson.first_name} ${authorPerson.last_name}`
+                : 'Unknown Author'
+            };
+          })
+        );
         setRecentAnnouncements(formattedAnnouncements);
       }
     } catch (error) {
