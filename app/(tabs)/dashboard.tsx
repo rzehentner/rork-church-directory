@@ -100,7 +100,7 @@ export default function DashboardScreen() {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      const [eventsResult, announcementsResult, directoryResult, taggedAnnouncementsResult, taggedEventsResult] = await Promise.all([
+      const [eventsResult, announcementsResult, directoryResult] = await Promise.all([
         // Upcoming events
         supabase
           .from('events')
@@ -128,46 +128,6 @@ export default function DashboardScreen() {
         supabase
           .from('persons')
           .select('id', { count: 'exact', head: true }),
-        
-        // For You announcements (with user's tags)
-        myTagNames.length > 0 ? supabase
-          .from('announcements')
-          .select(`
-            id,
-            title,
-            published_at,
-            persons!announcements_author_id_fkey (
-              first_name,
-              last_name
-            ),
-            announcement_audience_tags (
-              tags (
-                name
-              )
-            )
-          `)
-          .eq('is_published', true)
-          .lte('published_at', new Date().toISOString())
-          .order('published_at', { ascending: false })
-          .limit(20) : Promise.resolve({ data: [], error: null }),
-        
-        // For You events (with user's tags)
-        myTagNames.length > 0 ? supabase
-          .from('events')
-          .select(`
-            id,
-            title,
-            starts_at,
-            location,
-            event_audience_tags (
-              tags (
-                name
-              )
-            )
-          `)
-          .gte('starts_at', new Date().toISOString())
-          .order('starts_at', { ascending: true })
-          .limit(20) : Promise.resolve({ data: [], error: null })
       ]);
 
       // Set stats
@@ -196,76 +156,135 @@ export default function DashboardScreen() {
         setRecentAnnouncements(formattedAnnouncements);
       }
 
-      // Process For You announcements (only with matching tags)
-      if (taggedAnnouncementsResult.data && myTagNames.length > 0) {
-        console.log('Processing announcements, total fetched:', taggedAnnouncementsResult.data.length);
-        const formatted = taggedAnnouncementsResult.data
-          .map((announcement: any) => {
-            const tags = announcement.announcement_audience_tags
-              ?.map((aat: any) => aat.tags?.name)
-              .filter(Boolean) || [];
-            
-            console.log(`Announcement "${announcement.title}" has tags:`, tags);
-            
-            // Only include if has at least one matching tag
-            const hasMatchingTag = tags.length > 0 && tags.some((tag: string) => myTagNames.includes(tag));
-            
-            console.log(`  Has matching tag: ${hasMatchingTag}`);
-            
-            if (!hasMatchingTag) return null;
-
-            return {
-              id: announcement.id,
-              title: announcement.title,
-              published_at: announcement.published_at,
-              author_name: announcement.persons
-                ? `${announcement.persons.first_name} ${announcement.persons.last_name}`
-                : 'Unknown',
-              tags
-            };
-          })
-          .filter(Boolean) as TaggedAnnouncement[];
+      // Fetch For You content if user has tags
+      if (myTagNames.length > 0) {
+        console.log('Fetching For You content for tags:', myTagNames);
         
-        console.log('For You announcements after filtering:', formatted.length);
-        setForYouAnnouncements(formatted.slice(0, 5));
-      } else {
-        console.log('Skipping announcements - myTagNames:', myTagNames);
-        setForYouAnnouncements([]);
-      }
+        // Fetch events with matching tags
+        const eventsPromises = myTagNames.map(tagName => 
+          supabase
+            .from('event_audience_tags')
+            .select(`
+              event_id,
+              events!inner (
+                id,
+                title,
+                starts_at,
+                location
+              ),
+              tags!inner (
+                name
+              )
+            `)
+            .eq('tags.name', tagName)
+            .gte('events.starts_at', new Date().toISOString())
+        );
 
-      // Process For You events (only with matching tags)
-      if (taggedEventsResult.data && myTagNames.length > 0) {
-        console.log('Processing events, total fetched:', taggedEventsResult.data.length);
-        const formatted = taggedEventsResult.data
-          .map((event: any) => {
-            const tags = event.event_audience_tags
-              ?.map((eat: any) => eat.tags?.name)
-              .filter(Boolean) || [];
-            
-            console.log(`Event "${event.title}" has tags:`, tags);
-            
-            // Only include if has at least one matching tag
-            const hasMatchingTag = tags.length > 0 && tags.some((tag: string) => myTagNames.includes(tag));
-            
-            console.log(`  Has matching tag: ${hasMatchingTag}`);
-            
-            if (!hasMatchingTag) return null;
+        // Fetch announcements with matching tags
+        const announcementsPromises = myTagNames.map(tagName => 
+          supabase
+            .from('announcement_audience_tags')
+            .select(`
+              announcement_id,
+              announcements!inner (
+                id,
+                title,
+                published_at,
+                persons!announcements_author_id_fkey (
+                  first_name,
+                  last_name
+                )
+              ),
+              tags!inner (
+                name
+              )
+            `)
+            .eq('tags.name', tagName)
+            .eq('announcements.is_published', true)
+            .lte('announcements.published_at', new Date().toISOString())
+        );
 
-            return {
-              id: event.id,
-              title: event.title,
-              starts_at: event.starts_at,
-              location: event.location,
-              tags
-            };
-          })
-          .filter(Boolean) as TaggedEvent[];
+        const [eventsResults, announcementsResults] = await Promise.all([
+          Promise.all(eventsPromises),
+          Promise.all(announcementsPromises)
+        ]);
+
+        // Process events - deduplicate by event ID
+        const eventMap = new Map<string, TaggedEvent>();
+        eventsResults.forEach(result => {
+          if (result.data) {
+            result.data.forEach((item: any) => {
+              const event = item.events;
+              const tagName = item.tags.name;
+              
+              if (event && event.id) {
+                if (!eventMap.has(event.id)) {
+                  eventMap.set(event.id, {
+                    id: event.id,
+                    title: event.title,
+                    starts_at: event.starts_at,
+                    location: event.location,
+                    tags: [tagName]
+                  });
+                } else {
+                  const existing = eventMap.get(event.id)!;
+                  if (!existing.tags.includes(tagName)) {
+                    existing.tags.push(tagName);
+                  }
+                }
+              }
+            });
+          }
+        });
+
+        // Process announcements - deduplicate by announcement ID
+        const announcementMap = new Map<string, TaggedAnnouncement>();
+        announcementsResults.forEach(result => {
+          if (result.data) {
+            result.data.forEach((item: any) => {
+              const announcement = item.announcements;
+              const tagName = item.tags.name;
+              
+              if (announcement && announcement.id) {
+                if (!announcementMap.has(announcement.id)) {
+                  announcementMap.set(announcement.id, {
+                    id: announcement.id,
+                    title: announcement.title,
+                    published_at: announcement.published_at,
+                    author_name: announcement.persons
+                      ? `${announcement.persons.first_name} ${announcement.persons.last_name}`
+                      : 'Unknown',
+                    tags: [tagName]
+                  });
+                } else {
+                  const existing = announcementMap.get(announcement.id)!;
+                  if (!existing.tags.includes(tagName)) {
+                    existing.tags.push(tagName);
+                  }
+                }
+              }
+            });
+          }
+        });
+
+        // Convert maps to arrays and sort
+        const forYouEventsArray = Array.from(eventMap.values())
+          .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+          .slice(0, 5);
         
-        console.log('For You events after filtering:', formatted.length);
-        setForYouEvents(formatted.slice(0, 5));
+        const forYouAnnouncementsArray = Array.from(announcementMap.values())
+          .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+          .slice(0, 5);
+
+        console.log('For You events found:', forYouEventsArray.length);
+        console.log('For You announcements found:', forYouAnnouncementsArray.length);
+
+        setForYouEvents(forYouEventsArray);
+        setForYouAnnouncements(forYouAnnouncementsArray);
       } else {
-        console.log('Skipping events - myTagNames:', myTagNames);
+        console.log('No tags found for user');
         setForYouEvents([]);
+        setForYouAnnouncements([]);
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
