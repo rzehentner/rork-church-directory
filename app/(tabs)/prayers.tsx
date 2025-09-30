@@ -91,7 +91,7 @@ export default function PrayersScreen() {
   const renderPrayerCard = ({ item }: { item: PrayerRequest }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.headerLeft}>
+        <View style={styles.cardHeaderLeft}>
           <Text style={styles.subject}>{item.subject}</Text>
           {item.is_owner && (
             <View style={styles.ownerBadge}>
@@ -159,9 +159,12 @@ export default function PrayersScreen() {
 
   if (myRole === 'pending') {
     return (
-      <View style={styles.container}>
-        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-          <Text style={styles.headerTitle}>Prayer List</Text>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Heart size={28} color="#7C3AED" />
+            <Text style={styles.headerTitle}>Prayer List</Text>
+          </View>
         </View>
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Become a member to participate in the prayer list</Text>
@@ -171,11 +174,15 @@ export default function PrayersScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
-        <Text style={styles.headerTitle}>Prayer List</Text>
-        <TouchableOpacity onPress={() => router.push('/create-prayer')} style={styles.addButton}>
-          <Plus size={24} color="#7C3AED" />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Heart size={28} color="#7C3AED" />
+          <Text style={styles.headerTitle}>Prayer List</Text>
+        </View>
+        <TouchableOpacity onPress={() => router.push('/create-prayer')} style={styles.createButton}>
+          <Plus size={20} color="#FFFFFF" />
+          <Text style={styles.createButtonText}>Create</Text>
         </TouchableOpacity>
       </View>
 
@@ -225,16 +232,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row' as const,
     justifyContent: 'space-between' as const,
     alignItems: 'center' as const,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
+  headerLeft: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    gap: 12,
+  },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '600' as const,
-    color: '#111827',
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#1F2937',
   },
   tabs: {
     flexDirection: 'row' as const,
@@ -261,8 +273,19 @@ const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '600' as const,
   },
-  addButton: {
-    padding: 4,
+  createButton: {
+    flexDirection: 'row' as const,
+    alignItems: 'center' as const,
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+  },
+  createButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600' as const,
   },
   loadingContainer: {
     flex: 1,
@@ -300,7 +323,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start' as const,
     marginBottom: 8,
   },
-  headerLeft: {
+  cardHeaderLeft: {
     flex: 1,
     flexDirection: 'row' as const,
     alignItems: 'center' as const,
