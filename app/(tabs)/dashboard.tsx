@@ -160,127 +160,128 @@ export default function DashboardScreen() {
       if (myTagNames.length > 0) {
         console.log('Fetching For You content for tags:', myTagNames);
         
-        // Fetch events with matching tags
-        const eventsPromises = myTagNames.map(tagName => 
-          supabase
+        // First, get all tag IDs for the user's tags
+        const { data: tagsData } = await supabase
+          .from('tags')
+          .select('id, name')
+          .in('name', myTagNames);
+        
+        const tagIds = tagsData?.map(t => t.id) || [];
+        console.log('Tag IDs:', tagIds);
+        
+        if (tagIds.length > 0) {
+          // Fetch events that have any of these tags
+          const { data: eventTagsData } = await supabase
             .from('event_audience_tags')
             .select(`
               event_id,
+              tag_id,
               events!inner (
                 id,
                 title,
                 starts_at,
                 location
-              ),
-              tags!inner (
-                name
               )
             `)
-            .eq('tags.name', tagName)
-            .gte('events.starts_at', new Date().toISOString())
-        );
-
-        // Fetch announcements with matching tags
-        const announcementsPromises = myTagNames.map(tagName => 
-          supabase
+            .in('tag_id', tagIds)
+            .gte('events.starts_at', new Date().toISOString());
+          
+          console.log('Event tags data:', eventTagsData?.length || 0);
+          
+          // Fetch announcements that have any of these tags
+          const { data: announcementTagsData } = await supabase
             .from('announcement_audience_tags')
             .select(`
               announcement_id,
+              tag_id,
               announcements!inner (
                 id,
                 title,
                 published_at,
+                is_published,
                 persons!announcements_author_id_fkey (
                   first_name,
                   last_name
                 )
-              ),
-              tags!inner (
-                name
               )
             `)
-            .eq('tags.name', tagName)
+            .in('tag_id', tagIds)
             .eq('announcements.is_published', true)
-            .lte('announcements.published_at', new Date().toISOString())
-        );
-
-        const [eventsResults, announcementsResults] = await Promise.all([
-          Promise.all(eventsPromises),
-          Promise.all(announcementsPromises)
-        ]);
-
-        // Process events - deduplicate by event ID
-        const eventMap = new Map<string, TaggedEvent>();
-        eventsResults.forEach(result => {
-          if (result.data) {
-            result.data.forEach((item: any) => {
-              const event = item.events;
-              const tagName = item.tags.name;
-              
-              if (event && event.id) {
-                if (!eventMap.has(event.id)) {
-                  eventMap.set(event.id, {
-                    id: event.id,
-                    title: event.title,
-                    starts_at: event.starts_at,
-                    location: event.location,
-                    tags: [tagName]
-                  });
-                } else {
-                  const existing = eventMap.get(event.id)!;
-                  if (!existing.tags.includes(tagName)) {
-                    existing.tags.push(tagName);
-                  }
+            .lte('announcements.published_at', new Date().toISOString());
+          
+          console.log('Announcement tags data:', announcementTagsData?.length || 0);
+          
+          // Process events - deduplicate and collect tags
+          const eventMap = new Map<string, TaggedEvent>();
+          eventTagsData?.forEach((item: any) => {
+            const event = item.events;
+            const tagId = item.tag_id;
+            const tag = tagsData?.find(t => t.id === tagId);
+            
+            if (event && event.id && tag) {
+              if (!eventMap.has(event.id)) {
+                eventMap.set(event.id, {
+                  id: event.id,
+                  title: event.title,
+                  starts_at: event.starts_at,
+                  location: event.location,
+                  tags: [tag.name]
+                });
+              } else {
+                const existing = eventMap.get(event.id)!;
+                if (!existing.tags.includes(tag.name)) {
+                  existing.tags.push(tag.name);
                 }
               }
-            });
-          }
-        });
-
-        // Process announcements - deduplicate by announcement ID
-        const announcementMap = new Map<string, TaggedAnnouncement>();
-        announcementsResults.forEach(result => {
-          if (result.data) {
-            result.data.forEach((item: any) => {
-              const announcement = item.announcements;
-              const tagName = item.tags.name;
-              
-              if (announcement && announcement.id) {
-                if (!announcementMap.has(announcement.id)) {
-                  announcementMap.set(announcement.id, {
-                    id: announcement.id,
-                    title: announcement.title,
-                    published_at: announcement.published_at,
-                    author_name: announcement.persons
-                      ? `${announcement.persons.first_name} ${announcement.persons.last_name}`
-                      : 'Unknown',
-                    tags: [tagName]
-                  });
-                } else {
-                  const existing = announcementMap.get(announcement.id)!;
-                  if (!existing.tags.includes(tagName)) {
-                    existing.tags.push(tagName);
-                  }
+            }
+          });
+          
+          // Process announcements - deduplicate and collect tags
+          const announcementMap = new Map<string, TaggedAnnouncement>();
+          announcementTagsData?.forEach((item: any) => {
+            const announcement = item.announcements;
+            const tagId = item.tag_id;
+            const tag = tagsData?.find(t => t.id === tagId);
+            
+            if (announcement && announcement.id && tag) {
+              if (!announcementMap.has(announcement.id)) {
+                announcementMap.set(announcement.id, {
+                  id: announcement.id,
+                  title: announcement.title,
+                  published_at: announcement.published_at,
+                  author_name: announcement.persons
+                    ? `${announcement.persons.first_name} ${announcement.persons.last_name}`
+                    : 'Unknown',
+                  tags: [tag.name]
+                });
+              } else {
+                const existing = announcementMap.get(announcement.id)!;
+                if (!existing.tags.includes(tag.name)) {
+                  existing.tags.push(tag.name);
                 }
               }
-            });
-          }
-        });
-
-        // Convert maps to arrays and sort
-        const forYouEventsArray = Array.from(eventMap.values())
-          .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
-          .slice(0, 5);
-        
-        const forYouAnnouncementsArray = Array.from(announcementMap.values())
-          .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
-          .slice(0, 5);
-
-        console.log('For You events found:', forYouEventsArray.length);
-        console.log('For You announcements found:', forYouAnnouncementsArray.length);
-
-        setForYouEvents(forYouEventsArray);
-        setForYouAnnouncements(forYouAnnouncementsArray);
+            }
+          });
+          
+          // Convert maps to arrays and sort
+          const forYouEventsArray = Array.from(eventMap.values())
+            .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
+            .slice(0, 5);
+          
+          const forYouAnnouncementsArray = Array.from(announcementMap.values())
+            .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+            .slice(0, 5);
+          
+          console.log('For You events found:', forYouEventsArray.length);
+          console.log('For You announcements found:', forYouAnnouncementsArray.length);
+          
+          setForYouEvents(forYouEventsArray);
+          setForYouAnnouncements(forYouAnnouncementsArray);
+        } else {
+          console.log('No matching tag IDs found');
+          setForYouEvents([]);
+          setForYouAnnouncements([]);
+        }
       } else {
         console.log('No tags found for user');
         setForYouEvents([]);
