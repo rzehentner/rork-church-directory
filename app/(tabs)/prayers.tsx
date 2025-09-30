@@ -9,8 +9,9 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Stack, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Plus, Heart, Trash2, Edit, Clock } from 'lucide-react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { listPrayers, markPrayed, unmarkPrayedToday, deletePrayer, type PrayerRequest } from '@/services/prayer';
@@ -25,6 +26,7 @@ export default function PrayersScreen() {
   const { myRole } = useMe();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<TabStatus>('open');
+  const insets = useSafeAreaInsets();
 
   const { data: prayers = [], isLoading, refetch } = useQuery({
     queryKey: ['prayers', activeTab],
@@ -158,7 +160,9 @@ export default function PrayersScreen() {
   if (myRole === 'pending') {
     return (
       <View style={styles.container}>
-        <Stack.Screen options={{ title: 'Prayer List', headerShown: true }} />
+        <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+          <Text style={styles.headerTitle}>Prayer List</Text>
+        </View>
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText}>Become a member to participate in the prayer list</Text>
         </View>
@@ -168,17 +172,12 @@ export default function PrayersScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen
-        options={{
-          title: 'Prayer List',
-          headerShown: true,
-          headerRight: () => (
-            <TouchableOpacity onPress={() => router.push('/create-prayer')} style={styles.addButton}>
-              <Plus size={24} color="#7C3AED" />
-            </TouchableOpacity>
-          ),
-        }}
-      />
+      <View style={[styles.header, { paddingTop: insets.top + 12 }]}>
+        <Text style={styles.headerTitle}>Prayer List</Text>
+        <TouchableOpacity onPress={() => router.push('/create-prayer')} style={styles.addButton}>
+          <Plus size={24} color="#7C3AED" />
+        </TouchableOpacity>
+      </View>
 
       <View style={styles.tabs}>
         {(['open', 'answered', 'archived'] as TabStatus[]).map((tab) => (
@@ -222,6 +221,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F9FAFB',
   },
+  header: {
+    flexDirection: 'row' as const,
+    justifyContent: 'space-between' as const,
+    alignItems: 'center' as const,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600' as const,
+    color: '#111827',
+  },
   tabs: {
     flexDirection: 'row' as const,
     backgroundColor: '#FFFFFF',
@@ -248,7 +262,7 @@ const styles = StyleSheet.create({
     fontWeight: '600' as const,
   },
   addButton: {
-    marginRight: 16,
+    padding: 4,
   },
   loadingContainer: {
     flex: 1,
