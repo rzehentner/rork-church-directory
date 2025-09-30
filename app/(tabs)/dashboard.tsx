@@ -40,7 +40,7 @@ interface DashboardStats {
 interface UpcomingEvent {
   id: string;
   title: string;
-  starts_at: string;
+  start_at: string;
   location?: string;
 }
 
@@ -62,7 +62,7 @@ interface TaggedAnnouncement {
 interface TaggedEvent {
   id: string;
   title: string;
-  starts_at: string;
+  start_at: string;
   location?: string;
   tag_names: string[];
 }
@@ -114,11 +114,11 @@ export default function DashboardScreen() {
         .select(`
           id,
           title,
-          starts_at,
+          start_at,
           location
         `)
-        .gte('starts_at', new Date().toISOString())
-        .order('starts_at', { ascending: true })
+        .gte('start_at', new Date().toISOString())
+        .order('start_at', { ascending: true })
         .limit(10);
 
       if (eventsError) {
@@ -153,7 +153,7 @@ export default function DashboardScreen() {
             matchingEvents.push({
               id: event.id,
               title: event.title,
-              starts_at: event.starts_at,
+              start_at: event.start_at,
               location: event.location,
               tag_names: tagNames
             });
@@ -273,9 +273,9 @@ export default function DashboardScreen() {
         // Upcoming events
         supabase
           .from('events')
-          .select('id, title, starts_at, location')
-          .gte('starts_at', new Date().toISOString())
-          .order('starts_at', { ascending: true })
+          .select('id, title, start_at, location')
+          .gte('start_at', new Date().toISOString())
+          .order('start_at', { ascending: true })
           .limit(3),
         
         // Recent announcements
@@ -519,7 +519,7 @@ export default function DashboardScreen() {
                   <Text style={styles.eventTitle}>{event.title}</Text>
                   <View style={styles.eventMeta}>
                     <Clock size={12} color="#6B7280" />
-                    <Text style={styles.eventTime}>{formatDate(event.starts_at)}</Text>
+                    <Text style={styles.eventTime}>{formatDate(event.start_at)}</Text>
                   </View>
                   {event.location && (
                     <View style={styles.eventMeta}>
@@ -589,7 +589,7 @@ export default function DashboardScreen() {
                   <Text style={styles.eventTitle}>{event.title}</Text>
                   <View style={styles.eventMeta}>
                     <Clock size={12} color="#6B7280" />
-                    <Text style={styles.eventTime}>{formatDate(event.starts_at)}</Text>
+                    <Text style={styles.eventTime}>{formatDate(event.start_at)}</Text>
                   </View>
                   {event.location && (
                     <View style={styles.eventMeta}>
