@@ -125,49 +125,45 @@ export default function DashboardScreen() {
           .from('persons')
           .select('id', { count: 'exact', head: true }),
         
-        // Tagged announcements
-        myTagNames.length > 0
-          ? supabase
-              .from('announcements')
-              .select(`
-                id,
-                title,
-                published_at,
-                persons!announcements_author_id_fkey (
-                  first_name,
-                  last_name
-                ),
-                announcement_audience_tags!inner (
-                  tags!inner (
-                    name
-                  )
-                )
-              `)
-              .eq('is_published', true)
-              .lte('published_at', new Date().toISOString())
-              .order('published_at', { ascending: false })
-              .limit(5)
-          : Promise.resolve({ data: null, error: null }),
+        // Tagged announcements (including untagged)
+        supabase
+          .from('announcements')
+          .select(`
+            id,
+            title,
+            published_at,
+            persons!announcements_author_id_fkey (
+              first_name,
+              last_name
+            ),
+            announcement_audience_tags (
+              tags (
+                name
+              )
+            )
+          `)
+          .eq('is_published', true)
+          .lte('published_at', new Date().toISOString())
+          .order('published_at', { ascending: false })
+          .limit(10),
         
-        // Tagged events
-        myTagNames.length > 0
-          ? supabase
-              .from('events')
-              .select(`
-                id,
-                title,
-                start_at,
-                location,
-                event_audience_tags!inner (
-                  tags!inner (
-                    name
-                  )
-                )
-              `)
-              .gte('end_at', new Date().toISOString())
-              .order('start_at', { ascending: true })
-              .limit(5)
-          : Promise.resolve({ data: null, error: null })
+        // Tagged events (including untagged)
+        supabase
+          .from('events')
+          .select(`
+            id,
+            title,
+            starts_at,
+            location,
+            event_audience_tags (
+              tags (
+                name
+              )
+            )
+          `)
+          .gte('starts_at', new Date().toISOString())
+          .order('starts_at', { ascending: true })
+          .limit(10)
       ]);
 
       // Set stats
@@ -196,15 +192,15 @@ export default function DashboardScreen() {
         setRecentAnnouncements(formattedAnnouncements);
       }
 
-      // Set tagged announcements
-      if (taggedAnnouncementsResult.data && myTagNames.length > 0) {
+      // Set tagged announcements (including untagged)
+      if (taggedAnnouncementsResult.data) {
         const formatted = taggedAnnouncementsResult.data
           .map((announcement: any) => {
             const tags = announcement.announcement_audience_tags
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMyTag = tags.some((tag: string) => myTagNames.includes(tag));
+            const hasMyTag = tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
             if (!hasMyTag) return null;
 
             return {
@@ -222,21 +218,21 @@ export default function DashboardScreen() {
         setTaggedAnnouncements(formatted);
       }
 
-      // Set tagged events
-      if (taggedEventsResult.data && myTagNames.length > 0) {
+      // Set tagged events (including untagged)
+      if (taggedEventsResult.data) {
         const formatted = taggedEventsResult.data
           .map((event: any) => {
             const tags = event.event_audience_tags
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
-            const hasMyTag = tags.some((tag: string) => myTagNames.includes(tag));
+            const hasMyTag = tags.length === 0 || tags.some((tag: string) => myTagNames.includes(tag));
             if (!hasMyTag) return null;
 
             return {
               id: event.id,
               title: event.title,
-              starts_at: event.start_at,
+              starts_at: event.starts_at,
               location: event.location,
               tags
             };
@@ -414,13 +410,15 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* My Tags Feed */}
-        {myTagNames.length > 0 && (taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
+        {/* For You Feed */}
+        {(taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
           <View style={styles.card}>
             <Text style={styles.sectionTitle}>For You</Text>
-            <Text style={styles.sectionSubtitle}>
-              Based on your tags: {myTagNames.join(', ')}
-            </Text>
+            {myTagNames.length > 0 && (
+              <Text style={styles.sectionSubtitle}>
+                Based on your tags: {myTagNames.join(', ')}
+              </Text>
+            )}
 
             {/* Tagged Announcements */}
             {taggedAnnouncements.length > 0 && (
@@ -440,13 +438,20 @@ export default function DashboardScreen() {
                       <Text style={styles.taggedItemMeta}>
                         {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
                       </Text>
-                      <View style={styles.taggedItemTags}>
-                        {announcement.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
-                          <View key={idx} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
+                      {announcement.tags.length > 0 && (
+                        <View style={styles.taggedItemTags}>
+                          {announcement.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
+                            <View key={idx} style={styles.miniTag}>
+                              <Text style={styles.miniTagText}>{tag}</Text>
+                            </View>
+                          ))}
+                          {announcement.tags.length > 0 && announcement.tags.filter(tag => myTagNames.includes(tag)).length === 0 && (
+                            <View style={styles.miniTag}>
+                              <Text style={styles.miniTagText}>General</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
                     </View>
                     <ChevronRight size={16} color="#9CA3AF" />
                   </TouchableOpacity>
@@ -479,13 +484,20 @@ export default function DashboardScreen() {
                           <Text style={styles.eventLocation}>{event.location}</Text>
                         </View>
                       )}
-                      <View style={styles.taggedItemTags}>
-                        {event.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
-                          <View key={idx} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
+                      {event.tags.length > 0 && (
+                        <View style={styles.taggedItemTags}>
+                          {event.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
+                            <View key={idx} style={styles.miniTag}>
+                              <Text style={styles.miniTagText}>{tag}</Text>
+                            </View>
+                          ))}
+                          {event.tags.length > 0 && event.tags.filter(tag => myTagNames.includes(tag)).length === 0 && (
+                            <View style={styles.miniTag}>
+                              <Text style={styles.miniTagText}>General</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
                     </View>
                     <ChevronRight size={16} color="#9CA3AF" />
                   </TouchableOpacity>
