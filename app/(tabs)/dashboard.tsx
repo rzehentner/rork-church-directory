@@ -88,7 +88,11 @@ export default function DashboardScreen() {
   });
 
   const myTagNames = useMemo(
-    () => personWithTags?.tags?.map(t => t.name) || [],
+    () => {
+      const tags = personWithTags?.tags?.map(t => t.name) || [];
+      console.log('My tags:', tags);
+      return tags;
+    },
     [personWithTags?.tags]
   );
 
@@ -194,14 +198,19 @@ export default function DashboardScreen() {
 
       // Process For You announcements (only with matching tags)
       if (taggedAnnouncementsResult.data && myTagNames.length > 0) {
+        console.log('Processing announcements, total fetched:', taggedAnnouncementsResult.data.length);
         const formatted = taggedAnnouncementsResult.data
           .map((announcement: any) => {
             const tags = announcement.announcement_audience_tags
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
+            console.log(`Announcement "${announcement.title}" has tags:`, tags);
+            
             // Only include if has at least one matching tag
             const hasMatchingTag = tags.length > 0 && tags.some((tag: string) => myTagNames.includes(tag));
+            
+            console.log(`  Has matching tag: ${hasMatchingTag}`);
             
             if (!hasMatchingTag) return null;
 
@@ -217,22 +226,28 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedAnnouncement[];
         
-        console.log('For You announcements:', formatted.length);
+        console.log('For You announcements after filtering:', formatted.length);
         setForYouAnnouncements(formatted.slice(0, 5));
       } else {
+        console.log('Skipping announcements - myTagNames:', myTagNames);
         setForYouAnnouncements([]);
       }
 
       // Process For You events (only with matching tags)
       if (taggedEventsResult.data && myTagNames.length > 0) {
+        console.log('Processing events, total fetched:', taggedEventsResult.data.length);
         const formatted = taggedEventsResult.data
           .map((event: any) => {
             const tags = event.event_audience_tags
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
+            console.log(`Event "${event.title}" has tags:`, tags);
+            
             // Only include if has at least one matching tag
             const hasMatchingTag = tags.length > 0 && tags.some((tag: string) => myTagNames.includes(tag));
+            
+            console.log(`  Has matching tag: ${hasMatchingTag}`);
             
             if (!hasMatchingTag) return null;
 
@@ -246,9 +261,10 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedEvent[];
         
-        console.log('For You events:', formatted.length);
+        console.log('For You events after filtering:', formatted.length);
         setForYouEvents(formatted.slice(0, 5));
       } else {
+        console.log('Skipping events - myTagNames:', myTagNames);
         setForYouEvents([]);
       }
     } catch (error) {
