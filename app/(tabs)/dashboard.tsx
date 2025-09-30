@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
-import { useMe } from '@/hooks/me-context';
-import { getPersonWithTags } from '@/services/tags';
-import { useQuery } from '@tanstack/react-query';
+
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
 import {
@@ -49,25 +47,8 @@ interface RecentAnnouncement {
   author_name: string;
 }
 
-interface TaggedAnnouncement {
-  id: string;
-  title: string;
-  published_at: string;
-  author_name: string;
-  tags: string[];
-}
-
-interface TaggedEvent {
-  id: string;
-  title: string;
-  starts_at: string;
-  location?: string;
-  tags: string[];
-}
-
 export default function DashboardScreen() {
   const { profile, person, family, familyMembers, isLoading } = useUser();
-  const { myPersonId } = useMe();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats>({
     familyMembersCount: 0,
@@ -77,24 +58,6 @@ export default function DashboardScreen() {
   });
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
-  const [forYouAnnouncements, setForYouAnnouncements] = useState<TaggedAnnouncement[]>([]);
-  const [forYouEvents, setForYouEvents] = useState<TaggedEvent[]>([]);
-
-  const { data: personWithTags } = useQuery({
-    queryKey: ['person-with-tags', myPersonId],
-    queryFn: () => myPersonId ? getPersonWithTags(myPersonId) : null,
-    enabled: !!myPersonId,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  const myTagNames = useMemo(
-    () => {
-      const tags = personWithTags?.tags?.map(t => t.name) || [];
-      console.log('My tags:', tags);
-      return tags;
-    },
-    [personWithTags?.tags]
-  );
 
   const isPending = profile?.role === 'pending';
 
@@ -155,142 +118,10 @@ export default function DashboardScreen() {
         }));
         setRecentAnnouncements(formattedAnnouncements);
       }
-
-      // Fetch For You content if user has tags
-      if (myTagNames.length > 0) {
-        console.log('Fetching For You content for tags:', myTagNames);
-        
-        // First, get all tag IDs for the user's tags
-        const { data: tagsData } = await supabase
-          .from('tags')
-          .select('id, name')
-          .in('name', myTagNames);
-        
-        const tagIds = tagsData?.map(t => t.id) || [];
-        console.log('Tag IDs:', tagIds);
-        
-        if (tagIds.length > 0) {
-          // Fetch events that have any of these tags
-          const { data: eventTagsData } = await supabase
-            .from('event_audience_tags')
-            .select(`
-              event_id,
-              tag_id,
-              events!inner (
-                id,
-                title,
-                starts_at,
-                location
-              )
-            `)
-            .in('tag_id', tagIds)
-            .gte('events.starts_at', new Date().toISOString());
-          
-          console.log('Event tags data:', eventTagsData?.length || 0);
-          
-          // Fetch announcements that have any of these tags
-          const { data: announcementTagsData } = await supabase
-            .from('announcement_audience_tags')
-            .select(`
-              announcement_id,
-              tag_id,
-              announcements!inner (
-                id,
-                title,
-                published_at,
-                is_published,
-                persons!announcements_author_id_fkey (
-                  first_name,
-                  last_name
-                )
-              )
-            `)
-            .in('tag_id', tagIds)
-            .eq('announcements.is_published', true)
-            .lte('announcements.published_at', new Date().toISOString());
-          
-          console.log('Announcement tags data:', announcementTagsData?.length || 0);
-          
-          // Process events - deduplicate and collect tags
-          const eventMap = new Map<string, TaggedEvent>();
-          eventTagsData?.forEach((item: any) => {
-            const event = item.events;
-            const tagId = item.tag_id;
-            const tag = tagsData?.find(t => t.id === tagId);
-            
-            if (event && event.id && tag) {
-              if (!eventMap.has(event.id)) {
-                eventMap.set(event.id, {
-                  id: event.id,
-                  title: event.title,
-                  starts_at: event.starts_at,
-                  location: event.location,
-                  tags: [tag.name]
-                });
-              } else {
-                const existing = eventMap.get(event.id)!;
-                if (!existing.tags.includes(tag.name)) {
-                  existing.tags.push(tag.name);
-                }
-              }
-            }
-          });
-          
-          // Process announcements - deduplicate and collect tags
-          const announcementMap = new Map<string, TaggedAnnouncement>();
-          announcementTagsData?.forEach((item: any) => {
-            const announcement = item.announcements;
-            const tagId = item.tag_id;
-            const tag = tagsData?.find(t => t.id === tagId);
-            
-            if (announcement && announcement.id && tag) {
-              if (!announcementMap.has(announcement.id)) {
-                announcementMap.set(announcement.id, {
-                  id: announcement.id,
-                  title: announcement.title,
-                  published_at: announcement.published_at,
-                  author_name: announcement.persons
-                    ? `${announcement.persons.first_name} ${announcement.persons.last_name}`
-                    : 'Unknown',
-                  tags: [tag.name]
-                });
-              } else {
-                const existing = announcementMap.get(announcement.id)!;
-                if (!existing.tags.includes(tag.name)) {
-                  existing.tags.push(tag.name);
-                }
-              }
-            }
-          });
-          
-          // Convert maps to arrays and sort
-          const forYouEventsArray = Array.from(eventMap.values())
-            .sort((a, b) => new Date(a.starts_at).getTime() - new Date(b.starts_at).getTime())
-            .slice(0, 5);
-          
-          const forYouAnnouncementsArray = Array.from(announcementMap.values())
-            .sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
-            .slice(0, 5);
-          
-          console.log('For You events found:', forYouEventsArray.length);
-          console.log('For You announcements found:', forYouAnnouncementsArray.length);
-          
-          setForYouEvents(forYouEventsArray);
-          setForYouAnnouncements(forYouAnnouncementsArray);
-        } else {
-          console.log('No matching tag IDs found');
-          setForYouEvents([]);
-          setForYouAnnouncements([]);
-        }
-      } else {
-        console.log('No tags found for user');
-        setForYouEvents([]);
-        setForYouAnnouncements([]);
-      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
-  }, [familyMembers, myTagNames]);
+  }, [familyMembers]);
 
   useEffect(() => {
     loadDashboardData();
@@ -455,101 +286,6 @@ export default function DashboardScreen() {
             </TouchableOpacity>
           </View>
         </View>
-
-        {/* For You Feed */}
-        {myTagNames.length > 0 && (
-          <View style={styles.card}>
-            <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>For You</Text>
-                <Text style={styles.forYouSubtitle}>
-                  Based on: {myTagNames.slice(0, 3).join(', ')}{myTagNames.length > 3 ? ` +${myTagNames.length - 3}` : ''}
-                </Text>
-              </View>
-            </View>
-
-            {forYouEvents.length === 0 && forYouAnnouncements.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyStateText}>
-                  No personalized content available yet. Check back soon!
-                </Text>
-              </View>
-            ) : (
-              <>
-                {/* For You Events */}
-                {forYouEvents.length > 0 && (
-                  <View style={styles.forYouSection}>
-                    <View style={styles.forYouSectionHeader}>
-                      <Calendar size={18} color="#10B981" />
-                      <Text style={styles.forYouSectionTitle}>Upcoming Events</Text>
-                    </View>
-                    {forYouEvents.map((event) => (
-                      <TouchableOpacity
-                        key={event.id}
-                        style={styles.forYouItem}
-                        onPress={() => router.push(`/event-detail?id=${event.id}`)}
-                      >
-                        <View style={styles.forYouItemContent}>
-                          <Text style={styles.forYouItemTitle}>{event.title}</Text>
-                          <View style={styles.forYouItemMeta}>
-                            <Clock size={12} color="#6B7280" />
-                            <Text style={styles.forYouItemMetaText}>{formatDate(event.starts_at)}</Text>
-                          </View>
-                          {event.location && (
-                            <View style={styles.forYouItemMeta}>
-                              <MapPin size={12} color="#6B7280" />
-                              <Text style={styles.forYouItemMetaText}>{event.location}</Text>
-                            </View>
-                          )}
-                          <View style={styles.forYouItemTags}>
-                            {event.tags.map((tag, idx) => (
-                              <View key={idx} style={styles.forYouTag}>
-                                <Text style={styles.forYouTagText}>{tag}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                        <ChevronRight size={20} color="#9CA3AF" />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-
-                {/* For You Announcements */}
-                {forYouAnnouncements.length > 0 && (
-                  <View style={[styles.forYouSection, forYouEvents.length > 0 && { marginTop: 20 }]}>
-                    <View style={styles.forYouSectionHeader}>
-                      <Bell size={18} color="#F59E0B" />
-                      <Text style={styles.forYouSectionTitle}>Announcements</Text>
-                    </View>
-                    {forYouAnnouncements.map((announcement) => (
-                      <TouchableOpacity
-                        key={announcement.id}
-                        style={styles.forYouItem}
-                        onPress={() => router.push('/(tabs)/announcements')}
-                      >
-                        <View style={styles.forYouItemContent}>
-                          <Text style={styles.forYouItemTitle}>{announcement.title}</Text>
-                          <Text style={styles.forYouItemAuthor}>
-                            {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
-                          </Text>
-                          <View style={styles.forYouItemTags}>
-                            {announcement.tags.map((tag, idx) => (
-                              <View key={idx} style={styles.forYouTag}>
-                                <Text style={styles.forYouTagText}>{tag}</Text>
-                              </View>
-                            ))}
-                          </View>
-                        </View>
-                        <ChevronRight size={20} color="#9CA3AF" />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        )}
 
         {/* Upcoming Events */}
         {upcomingEvents.length > 0 && (
@@ -809,77 +545,6 @@ const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '500' as const,
   },
-  forYouSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 4,
-  },
-  forYouSection: {
-    marginTop: 16,
-  },
-  forYouSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  forYouSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#1F2937',
-  },
-  forYouItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    gap: 12,
-  },
-  forYouItemContent: {
-    flex: 1,
-  },
-  forYouItemTitle: {
-    fontSize: 16,
-    fontWeight: '600' as const,
-    color: '#1F2937',
-    marginBottom: 6,
-  },
-  forYouItemAuthor: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  forYouItemMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginBottom: 4,
-  },
-  forYouItemMetaText: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  forYouItemTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 4,
-  },
-  forYouTag: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  forYouTagText: {
-    fontSize: 12,
-    color: '#6366F1',
-    fontWeight: '600' as const,
-  },
   eventItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -973,14 +638,5 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 20,
-  },
-  emptyState: {
-    paddingVertical: 24,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
   },
 });
