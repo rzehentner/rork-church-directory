@@ -194,18 +194,29 @@ export default function DashboardScreen() {
 
       // Set tagged announcements (including untagged)
       if (taggedAnnouncementsResult.data) {
+        console.log('Raw announcements:', taggedAnnouncementsResult.data.length);
+        console.log('My tags:', myTagNames);
+        
         const formatted = taggedAnnouncementsResult.data
           .map((announcement: any) => {
             const tags = announcement.announcement_audience_tags
               ?.map((aat: any) => aat.tags?.name)
               .filter(Boolean) || [];
             
-            // Show if: no tags on announcement, OR user has no tags, OR announcement has a matching tag
             const hasNoTags = tags.length === 0;
             const userHasNoTags = myTagNames.length === 0;
             const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
             
             const shouldShow = hasNoTags || userHasNoTags || hasMatchingTag;
+            
+            console.log(`Announcement "${announcement.title}":`, {
+              tags,
+              hasNoTags,
+              userHasNoTags,
+              hasMatchingTag,
+              shouldShow
+            });
+            
             if (!shouldShow) return null;
 
             return {
@@ -220,23 +231,34 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedAnnouncement[];
         
+        console.log('Filtered announcements:', formatted.length);
         setTaggedAnnouncements(formatted);
       }
 
       // Set tagged events (including untagged)
       if (taggedEventsResult.data) {
+        console.log('Raw events:', taggedEventsResult.data.length);
+        
         const formatted = taggedEventsResult.data
           .map((event: any) => {
             const tags = event.event_audience_tags
               ?.map((eat: any) => eat.tags?.name)
               .filter(Boolean) || [];
             
-            // Show if: no tags on event, OR user has no tags, OR event has a matching tag
             const hasNoTags = tags.length === 0;
             const userHasNoTags = myTagNames.length === 0;
             const hasMatchingTag = tags.some((tag: string) => myTagNames.includes(tag));
             
             const shouldShow = hasNoTags || userHasNoTags || hasMatchingTag;
+            
+            console.log(`Event "${event.title}":`, {
+              tags,
+              hasNoTags,
+              userHasNoTags,
+              hasMatchingTag,
+              shouldShow
+            });
+            
             if (!shouldShow) return null;
 
             return {
@@ -249,6 +271,7 @@ export default function DashboardScreen() {
           })
           .filter(Boolean) as TaggedEvent[];
         
+        console.log('Filtered events:', formatted.length);
         setTaggedEvents(formatted);
       }
     } catch (error) {
