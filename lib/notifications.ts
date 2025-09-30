@@ -70,8 +70,8 @@ export async function fetchUserNotifications() {
     .limit(50);
 
   if (error) {
-    console.error('Error fetching notifications:', error);
-    return [];
+    console.error('Error fetching notifications:', error.message || JSON.stringify(error));
+    throw new Error(error.message || 'Failed to fetch notifications');
   }
 
   return data || [];

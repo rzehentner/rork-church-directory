@@ -34,12 +34,20 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
     data: notifications = [],
     isLoading,
     refetch,
+    error: queryError,
   } = useQuery({
     queryKey: ['notifications', user?.id],
     queryFn: fetchUserNotifications,
     enabled: !!user,
     refetchInterval: 30000, // Refetch every 30 seconds
+    retry: 1,
   });
+
+  useEffect(() => {
+    if (queryError) {
+      console.error('Error fetching notifications:', queryError instanceof Error ? queryError.message : String(queryError));
+    }
+  }, [queryError]);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read_at).length, [notifications]);
 
