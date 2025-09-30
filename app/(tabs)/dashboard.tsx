@@ -421,7 +421,7 @@ export default function DashboardScreen() {
         </View>
 
         {/* For You Feed */}
-        {myTagNames.length > 0 && (forYouAnnouncements.length > 0 || forYouEvents.length > 0) && (
+        {myTagNames.length > 0 && (
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <View>
@@ -432,75 +432,85 @@ export default function DashboardScreen() {
               </View>
             </View>
 
-            {/* For You Events */}
-            {forYouEvents.length > 0 && (
-              <View style={styles.forYouSection}>
-                <View style={styles.forYouSectionHeader}>
-                  <Calendar size={18} color="#10B981" />
-                  <Text style={styles.forYouSectionTitle}>Upcoming Events</Text>
-                </View>
-                {forYouEvents.map((event) => (
-                  <TouchableOpacity
-                    key={event.id}
-                    style={styles.forYouItem}
-                    onPress={() => router.push(`/event-detail?id=${event.id}`)}
-                  >
-                    <View style={styles.forYouItemContent}>
-                      <Text style={styles.forYouItemTitle}>{event.title}</Text>
-                      <View style={styles.forYouItemMeta}>
-                        <Clock size={12} color="#6B7280" />
-                        <Text style={styles.forYouItemMetaText}>{formatDate(event.starts_at)}</Text>
-                      </View>
-                      {event.location && (
-                        <View style={styles.forYouItemMeta}>
-                          <MapPin size={12} color="#6B7280" />
-                          <Text style={styles.forYouItemMetaText}>{event.location}</Text>
+            {forYouEvents.length === 0 && forYouAnnouncements.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>
+                  No personalized content available yet. Check back soon!
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* For You Events */}
+                {forYouEvents.length > 0 && (
+                  <View style={styles.forYouSection}>
+                    <View style={styles.forYouSectionHeader}>
+                      <Calendar size={18} color="#10B981" />
+                      <Text style={styles.forYouSectionTitle}>Upcoming Events</Text>
+                    </View>
+                    {forYouEvents.map((event) => (
+                      <TouchableOpacity
+                        key={event.id}
+                        style={styles.forYouItem}
+                        onPress={() => router.push(`/event-detail?id=${event.id}`)}
+                      >
+                        <View style={styles.forYouItemContent}>
+                          <Text style={styles.forYouItemTitle}>{event.title}</Text>
+                          <View style={styles.forYouItemMeta}>
+                            <Clock size={12} color="#6B7280" />
+                            <Text style={styles.forYouItemMetaText}>{formatDate(event.starts_at)}</Text>
+                          </View>
+                          {event.location && (
+                            <View style={styles.forYouItemMeta}>
+                              <MapPin size={12} color="#6B7280" />
+                              <Text style={styles.forYouItemMetaText}>{event.location}</Text>
+                            </View>
+                          )}
+                          <View style={styles.forYouItemTags}>
+                            {event.tags.map((tag, idx) => (
+                              <View key={idx} style={styles.forYouTag}>
+                                <Text style={styles.forYouTagText}>{tag}</Text>
+                              </View>
+                            ))}
+                          </View>
                         </View>
-                      )}
-                      <View style={styles.forYouItemTags}>
-                        {event.tags.map((tag, idx) => (
-                          <View key={idx} style={styles.forYouTag}>
-                            <Text style={styles.forYouTagText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                    <ChevronRight size={20} color="#9CA3AF" />
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
+                        <ChevronRight size={20} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
 
-            {/* For You Announcements */}
-            {forYouAnnouncements.length > 0 && (
-              <View style={[styles.forYouSection, forYouEvents.length > 0 && { marginTop: 20 }]}>
-                <View style={styles.forYouSectionHeader}>
-                  <Bell size={18} color="#F59E0B" />
-                  <Text style={styles.forYouSectionTitle}>Announcements</Text>
-                </View>
-                {forYouAnnouncements.map((announcement) => (
-                  <TouchableOpacity
-                    key={announcement.id}
-                    style={styles.forYouItem}
-                    onPress={() => router.push('/(tabs)/announcements')}
-                  >
-                    <View style={styles.forYouItemContent}>
-                      <Text style={styles.forYouItemTitle}>{announcement.title}</Text>
-                      <Text style={styles.forYouItemAuthor}>
-                        {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
-                      </Text>
-                      <View style={styles.forYouItemTags}>
-                        {announcement.tags.map((tag, idx) => (
-                          <View key={idx} style={styles.forYouTag}>
-                            <Text style={styles.forYouTagText}>{tag}</Text>
-                          </View>
-                        ))}
-                      </View>
+                {/* For You Announcements */}
+                {forYouAnnouncements.length > 0 && (
+                  <View style={[styles.forYouSection, forYouEvents.length > 0 && { marginTop: 20 }]}>
+                    <View style={styles.forYouSectionHeader}>
+                      <Bell size={18} color="#F59E0B" />
+                      <Text style={styles.forYouSectionTitle}>Announcements</Text>
                     </View>
-                    <ChevronRight size={20} color="#9CA3AF" />
-                  </TouchableOpacity>
-                ))}
-              </View>
+                    {forYouAnnouncements.map((announcement) => (
+                      <TouchableOpacity
+                        key={announcement.id}
+                        style={styles.forYouItem}
+                        onPress={() => router.push('/(tabs)/announcements')}
+                      >
+                        <View style={styles.forYouItemContent}>
+                          <Text style={styles.forYouItemTitle}>{announcement.title}</Text>
+                          <Text style={styles.forYouItemAuthor}>
+                            {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
+                          </Text>
+                          <View style={styles.forYouItemTags}>
+                            {announcement.tags.map((tag, idx) => (
+                              <View key={idx} style={styles.forYouTag}>
+                                <Text style={styles.forYouTagText}>{tag}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        </View>
+                        <ChevronRight size={20} color="#9CA3AF" />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
           </View>
         )}
@@ -928,5 +938,13 @@ const styles = StyleSheet.create({
   bottomSpacing: {
     height: 20,
   },
-
+  emptyState: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+  },
 });
