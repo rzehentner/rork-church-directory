@@ -9,6 +9,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
+import { useMe } from '@/hooks/me-context';
+import { getPersonWithTags } from '@/services/tags';
+import { getAnnouncementTags } from '@/lib/announcements';
 
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
@@ -47,8 +50,17 @@ interface RecentAnnouncement {
   author_name: string;
 }
 
+interface TaggedAnnouncement {
+  id: string;
+  title: string;
+  created_at: string;
+  author_name: string;
+  tag_names: string[];
+}
+
 export default function DashboardScreen() {
   const { profile, person, family, familyMembers, isLoading } = useUser();
+  const { myPersonId } = useMe();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats>({
     familyMembersCount: 0,
@@ -58,8 +70,95 @@ export default function DashboardScreen() {
   });
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
+  const [taggedAnnouncements, setTaggedAnnouncements] = useState<TaggedAnnouncement[]>([]);
+  const [isLoadingTaggedAnnouncements, setIsLoadingTaggedAnnouncements] = useState<boolean>(false);
 
   const isPending = profile?.role === 'pending';
+
+  const loadTaggedAnnouncements = useCallback(async () => {
+    if (!myPersonId) {
+      console.log('No person ID, skipping tagged announcements');
+      return;
+    }
+
+    setIsLoadingTaggedAnnouncements(true);
+    try {
+      console.log('🏷️ Loading tagged announcements for person:', myPersonId);
+      
+      // Get user's tags
+      const personWithTags = await getPersonWithTags(myPersonId);
+      const userTagNames = personWithTags.tags.map(tag => tag.name);
+      
+      console.log('User tags:', userTagNames);
+      
+      if (userTagNames.length === 0) {
+        console.log('User has no tags, skipping tagged announcements');
+        setTaggedAnnouncements([]);
+        return;
+      }
+
+      // Get all published announcements
+      const { data: allAnnouncements, error: announcementsError } = await supabase
+        .from('announcements')
+        .select(`
+          id,
+          title,
+          created_at,
+          persons!announcements_author_id_fkey (
+            first_name,
+            last_name
+          )
+        `)
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (announcementsError) {
+        console.error('Error fetching announcements:', announcementsError);
+        return;
+      }
+
+      if (!allAnnouncements || allAnnouncements.length === 0) {
+        console.log('No announcements found');
+        setTaggedAnnouncements([]);
+        return;
+      }
+
+      // For each announcement, get its tags and check if any match user's tags
+      const matchingAnnouncements: TaggedAnnouncement[] = [];
+      
+      for (const announcement of allAnnouncements) {
+        try {
+          const tags = await getAnnouncementTags(announcement.id);
+          const tagNames = tags.map((tag: any) => tag.name);
+          
+          // Check if any of the announcement's tags match user's tags
+          const hasMatchingTag = tagNames.some(tagName => userTagNames.includes(tagName));
+          
+          if (hasMatchingTag) {
+            matchingAnnouncements.push({
+              id: announcement.id,
+              title: announcement.title,
+              created_at: announcement.created_at,
+              author_name: announcement.persons 
+                ? `${(announcement.persons as any).first_name} ${(announcement.persons as any).last_name}`
+                : 'Unknown Author',
+              tag_names: tagNames
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching tags for announcement:', announcement.id, error);
+        }
+      }
+
+      console.log('Found matching announcements:', matchingAnnouncements.length);
+      setTaggedAnnouncements(matchingAnnouncements.slice(0, 3));
+    } catch (error) {
+      console.error('Error loading tagged announcements:', error);
+    } finally {
+      setIsLoadingTaggedAnnouncements(false);
+    }
+  }, [myPersonId]);
 
   const loadDashboardData = useCallback(async () => {
     try {
@@ -125,7 +224,8 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     loadDashboardData();
-  }, [loadDashboardData]);
+    loadTaggedAnnouncements();
+  }, [loadDashboardData, loadTaggedAnnouncements]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -317,6 +417,39 @@ export default function DashboardScreen() {
                       <Text style={styles.eventLocation}>{event.location}</Text>
                     </View>
                   )}
+                </View>
+                <ChevronRight size={16} color="#9CA3AF" />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Announcements For You */}
+        {taggedAnnouncements.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Announcements For You</Text>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/announcements')}>
+                <Text style={styles.seeAllText}>See All</Text>
+              </TouchableOpacity>
+            </View>
+            {taggedAnnouncements.map((announcement) => (
+              <TouchableOpacity 
+                key={announcement.id} 
+                style={styles.announcementItem}
+                onPress={() => {
+                  // Navigate to announcements tab - you could add detail view later
+                  router.push('/(tabs)/announcements');
+                }}
+              >
+                <View style={styles.announcementIcon}>
+                  <Bell size={16} color="#7C3AED" />
+                </View>
+                <View style={styles.announcementContent}>
+                  <Text style={styles.announcementTitle}>{announcement.title}</Text>
+                  <Text style={styles.announcementMeta}>
+                    By {announcement.author_name} • {formatTimeAgo(announcement.created_at)}
+                  </Text>
                 </View>
                 <ChevronRight size={16} color="#9CA3AF" />
               </TouchableOpacity>
