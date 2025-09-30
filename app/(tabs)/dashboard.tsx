@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
+import { useMe } from '@/hooks/me-context';
+import { getPersonWithTags } from '@/services/tags';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
 import {
@@ -22,7 +25,6 @@ import {
   Clock,
   MapPin,
   User,
-  Crown,
   AlertCircle,
 } from 'lucide-react-native';
 
@@ -47,8 +49,25 @@ interface RecentAnnouncement {
   author_name: string;
 }
 
+interface TaggedAnnouncement {
+  id: string;
+  title: string;
+  published_at: string;
+  author_name: string;
+  tags: string[];
+}
+
+interface TaggedEvent {
+  id: string;
+  title: string;
+  starts_at: string;
+  location?: string;
+  tags: string[];
+}
+
 export default function DashboardScreen() {
   const { profile, person, family, familyMembers, isLoading } = useUser();
+  const { myPersonId } = useMe();
   const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<DashboardStats>({
     familyMembersCount: 0,
@@ -58,15 +77,26 @@ export default function DashboardScreen() {
   });
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
+  const [taggedAnnouncements, setTaggedAnnouncements] = useState<TaggedAnnouncement[]>([]);
+  const [taggedEvents, setTaggedEvents] = useState<TaggedEvent[]>([]);
 
+  const { data: personWithTags } = useQuery({
+    queryKey: ['person-with-tags', myPersonId],
+    queryFn: () => myPersonId ? getPersonWithTags(myPersonId) : null,
+    enabled: !!myPersonId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const myTagNames = useMemo(
+    () => personWithTags?.tags?.map(t => t.name) || [],
+    [personWithTags?.tags]
+  );
 
   const isPending = profile?.role === 'pending';
-  const isAdmin = profile?.role === 'admin' || profile?.role === 'leader';
 
   const loadDashboardData = useCallback(async () => {
     try {
-      // Load stats
-      const [eventsResult, announcementsResult, directoryResult] = await Promise.all([
+      const [eventsResult, announcementsResult, directoryResult, taggedAnnouncementsResult, taggedEventsResult] = await Promise.all([
         // Upcoming events
         supabase
           .from('events')
@@ -93,7 +123,51 @@ export default function DashboardScreen() {
         // Total directory members
         supabase
           .from('persons')
-          .select('id', { count: 'exact', head: true })
+          .select('id', { count: 'exact', head: true }),
+        
+        // Tagged announcements
+        myTagNames.length > 0
+          ? supabase
+              .from('announcements')
+              .select(`
+                id,
+                title,
+                published_at,
+                persons!announcements_author_id_fkey (
+                  first_name,
+                  last_name
+                ),
+                announcement_audience_tags!inner (
+                  tags!inner (
+                    name
+                  )
+                )
+              `)
+              .eq('is_published', true)
+              .lte('published_at', new Date().toISOString())
+              .order('published_at', { ascending: false })
+              .limit(5)
+          : Promise.resolve({ data: null, error: null }),
+        
+        // Tagged events
+        myTagNames.length > 0
+          ? supabase
+              .from('events')
+              .select(`
+                id,
+                title,
+                start_at,
+                location,
+                event_audience_tags!inner (
+                  tags!inner (
+                    name
+                  )
+                )
+              `)
+              .gte('end_at', new Date().toISOString())
+              .order('start_at', { ascending: true })
+              .limit(5)
+          : Promise.resolve({ data: null, error: null })
       ]);
 
       // Set stats
@@ -121,10 +195,60 @@ export default function DashboardScreen() {
         }));
         setRecentAnnouncements(formattedAnnouncements);
       }
+
+      // Set tagged announcements
+      if (taggedAnnouncementsResult.data && myTagNames.length > 0) {
+        const formatted = taggedAnnouncementsResult.data
+          .map((announcement: any) => {
+            const tags = announcement.announcement_audience_tags
+              ?.map((aat: any) => aat.tags?.name)
+              .filter(Boolean) || [];
+            
+            const hasMyTag = tags.some((tag: string) => myTagNames.includes(tag));
+            if (!hasMyTag) return null;
+
+            return {
+              id: announcement.id,
+              title: announcement.title,
+              published_at: announcement.published_at,
+              author_name: announcement.persons
+                ? `${announcement.persons.first_name} ${announcement.persons.last_name}`
+                : 'Unknown',
+              tags
+            };
+          })
+          .filter(Boolean) as TaggedAnnouncement[];
+        
+        setTaggedAnnouncements(formatted);
+      }
+
+      // Set tagged events
+      if (taggedEventsResult.data && myTagNames.length > 0) {
+        const formatted = taggedEventsResult.data
+          .map((event: any) => {
+            const tags = event.event_audience_tags
+              ?.map((eat: any) => eat.tags?.name)
+              .filter(Boolean) || [];
+            
+            const hasMyTag = tags.some((tag: string) => myTagNames.includes(tag));
+            if (!hasMyTag) return null;
+
+            return {
+              id: event.id,
+              title: event.title,
+              starts_at: event.start_at,
+              location: event.location,
+              tags
+            };
+          })
+          .filter(Boolean) as TaggedEvent[];
+        
+        setTaggedEvents(formatted);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     }
-  }, [familyMembers]);
+  }, [familyMembers, myTagNames]);
 
   useEffect(() => {
     loadDashboardData();
@@ -290,45 +414,86 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.quickActions}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => router.push('/(tabs)/family')}
-            >
-              <Home size={20} color="#7C3AED" />
-              <Text style={styles.actionText}>My Family</Text>
-            </TouchableOpacity>
+        {/* My Tags Feed */}
+        {myTagNames.length > 0 && (taggedAnnouncements.length > 0 || taggedEvents.length > 0) && (
+          <View style={styles.card}>
+            <Text style={styles.sectionTitle}>For You</Text>
+            <Text style={styles.sectionSubtitle}>
+              Based on your tags: {myTagNames.join(', ')}
+            </Text>
 
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => router.push('/(tabs)/directory')}
-            >
-              <Users size={20} color="#7C3AED" />
-              <Text style={styles.actionText}>Directory</Text>
-            </TouchableOpacity>
+            {/* Tagged Announcements */}
+            {taggedAnnouncements.length > 0 && (
+              <View style={styles.taggedSection}>
+                <View style={styles.taggedHeader}>
+                  <Bell size={16} color="#F59E0B" />
+                  <Text style={styles.taggedHeaderText}>Announcements</Text>
+                </View>
+                {taggedAnnouncements.map((announcement) => (
+                  <TouchableOpacity
+                    key={announcement.id}
+                    style={styles.taggedItem}
+                    onPress={() => router.push('/(tabs)/announcements')}
+                  >
+                    <View style={styles.taggedItemContent}>
+                      <Text style={styles.taggedItemTitle}>{announcement.title}</Text>
+                      <Text style={styles.taggedItemMeta}>
+                        {announcement.author_name} • {formatTimeAgo(announcement.published_at)}
+                      </Text>
+                      <View style={styles.taggedItemTags}>
+                        {announcement.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
+                          <View key={idx} style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                    <ChevronRight size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => router.push('/(tabs)/events')}
-            >
-              <Calendar size={20} color="#7C3AED" />
-              <Text style={styles.actionText}>Events</Text>
-            </TouchableOpacity>
-
-            {isAdmin && (
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => router.push('/(tabs)/admin')}
-              >
-                <Crown size={20} color="#F59E0B" />
-                <Text style={styles.actionText}>Admin</Text>
-              </TouchableOpacity>
+            {/* Tagged Events */}
+            {taggedEvents.length > 0 && (
+              <View style={[styles.taggedSection, taggedAnnouncements.length > 0 && { marginTop: 16 }]}>
+                <View style={styles.taggedHeader}>
+                  <Calendar size={16} color="#10B981" />
+                  <Text style={styles.taggedHeaderText}>Events</Text>
+                </View>
+                {taggedEvents.map((event) => (
+                  <TouchableOpacity
+                    key={event.id}
+                    style={styles.taggedItem}
+                    onPress={() => router.push(`/event-detail?id=${event.id}`)}
+                  >
+                    <View style={styles.taggedItemContent}>
+                      <Text style={styles.taggedItemTitle}>{event.title}</Text>
+                      <View style={styles.eventMeta}>
+                        <Clock size={12} color="#6B7280" />
+                        <Text style={styles.eventTime}>{formatDate(event.starts_at)}</Text>
+                      </View>
+                      {event.location && (
+                        <View style={styles.eventMeta}>
+                          <MapPin size={12} color="#6B7280" />
+                          <Text style={styles.eventLocation}>{event.location}</Text>
+                        </View>
+                      )}
+                      <View style={styles.taggedItemTags}>
+                        {event.tags.filter(tag => myTagNames.includes(tag)).map((tag, idx) => (
+                          <View key={idx} style={styles.miniTag}>
+                            <Text style={styles.miniTagText}>{tag}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                    <ChevronRight size={16} color="#9CA3AF" />
+                  </TouchableOpacity>
+                ))}
+              </View>
             )}
           </View>
-        </View>
+        )}
 
         {/* Upcoming Events */}
         {upcomingEvents.length > 0 && (
@@ -588,26 +753,62 @@ const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '500' as const,
   },
-  quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  sectionSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+    marginTop: -8,
   },
-  actionButton: {
+  taggedSection: {
+    marginBottom: 8,
+  },
+  taggedHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    gap: 8,
-    minWidth: 120,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    gap: 6,
+    marginBottom: 12,
   },
-  actionText: {
+  taggedHeaderText: {
     fontSize: 14,
+    fontWeight: '600' as const,
     color: '#1F2937',
+  },
+  taggedItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 12,
+  },
+  taggedItemContent: {
+    flex: 1,
+  },
+  taggedItemTitle: {
+    fontSize: 15,
+    fontWeight: '500' as const,
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  taggedItemMeta: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 6,
+  },
+  taggedItemTags: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  miniTag: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  miniTagText: {
+    fontSize: 11,
+    color: '#6366F1',
     fontWeight: '500' as const,
   },
   eventItem: {
