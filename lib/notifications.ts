@@ -35,11 +35,19 @@ export async function registerPushEndpoint() {
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Failed to get push token for push notification!');
+      console.log('Push notification permission not granted');
       return;
     }
 
-    const token = (await Notifications.getExpoPushTokenAsync()).data;
+    // Get Expo push token with timeout
+    const tokenPromise = Notifications.getExpoPushTokenAsync();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Token fetch timeout')), 10000)
+    );
+    
+    const tokenResult = await Promise.race([tokenPromise, timeoutPromise]) as { data: string };
+    const token = tokenResult.data;
+    
     const user = (await supabase.auth.getUser()).data.user;
     
     if (!user) {
@@ -57,7 +65,7 @@ export async function registerPushEndpoint() {
     }, { onConflict: 'provider,token' });
 
     if (error) {
-      console.error('Error registering push endpoint:', error);
+      console.log('Error registering push endpoint:', error.message || String(error));
     } else {
       console.log('Push endpoint registered successfully');
     }

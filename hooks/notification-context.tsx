@@ -72,8 +72,10 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
   useEffect(() => {
     if (!user) return;
 
-    // Register push endpoint when user is authenticated
-    registerPushEndpoint();
+    // Register push endpoint when user is authenticated (non-blocking)
+    registerPushEndpoint().catch(error => {
+      console.log('Error in registerPushEndpoint:', error instanceof Error ? error.message : String(error));
+    });
 
     if (Platform.OS === 'web') return;
 
