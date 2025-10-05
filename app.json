@@ -42,7 +42,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.family-app-management-system",
+      "package": "com.rork.familyapp",
       "permissions": [
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
