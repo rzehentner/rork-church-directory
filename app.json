@@ -13,6 +13,22 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+  "scripts": {
+  	"start": "bunx rork start -p edd19ns3buegzug8rrdb6 --tunnel",
+  	"start-web": "bunx rork start -p edd19ns3buegzug8rrdb6 --web --tunnel",
+  	"start-web-dev": "DEBUG=expo* bunx rork start -p edd19ns3buegzug8rrdb6 --web --tunnel",
+  	"start:tunnel": "npx expo start --clear --tunnel",
+  	"start:lan": "npx expo start --clear --lan",
+  	"clean:locks": "rm -f package-lock.json yarn.lock pnpm-lock.yaml",
+  	"clean:expo": "rm -rf .expo .expo-shared dist web-build",
+  	"clean:caches": "rm -rf node_modules/.cache .cache",
+  	"clean:modules": "rm -rf node_modules && bun install",
+  	"clean": "bun run clean:locks && bun run clean:expo && bun run clean:caches",
+  	"reset": "bun run clean && bun run doctor && bun run deps:check",
+  	"doctor": "npx expo-doctor@latest",
+  	"deps:check": "npx expo install --check",
+  	"lint": "expo lint"
+		},
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.rork.family-app-management-system",
