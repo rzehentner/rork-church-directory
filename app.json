@@ -26,17 +26,8 @@
         "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save photos."
       },
       "entitlements": {
-        "com": {
-          "apple": {
-            "developer": {
-              "networking": {
-                "wifi-info": true
-              }
-            }
-          }
-        }
-      }
-    },
+				"com.apple.developer.networking.wifi-info": true
+			},
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
@@ -90,18 +81,7 @@
           "calendarPermission": "The app needs to access your calendar."
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./local/assets/notification_icon.png",
-          "color": "#ffffff",
-          "defaultChannel": "default",
-          "sounds": [
-            "./local/assets/notification_sound.wav"
-          ],
-          "enableBackgroundRemoteNotifications": false
-        }
-      ],
+      "expo-notifications",
       [
         "expo-media-library",
         {
