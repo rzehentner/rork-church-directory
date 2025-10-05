@@ -26,8 +26,9 @@
         "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save photos."
       },
       "entitlements": {
-				"com.apple.developer.networking.wifi-info": true
-			},
+        "com.apple.developer.networking.wifi-info": true
+      }
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
