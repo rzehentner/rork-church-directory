@@ -116,8 +116,8 @@
       "typedRoutes": true
     },
     "updates": {
-		"enabled": false,
-		"fallbackToCacheTimeout": 0
-		}	
+      "enabled": false,
+      "fallbackToCacheTimeout": 0
+    }
   }
 }
