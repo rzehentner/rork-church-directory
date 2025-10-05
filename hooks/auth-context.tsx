@@ -46,13 +46,13 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         if (Platform.OS !== 'web') {
           setTimeout(() => {
             initBiometrics().catch(error => {
-              console.warn('Biometric setup failed:', error);
+              console.warn('Biometric setup failed (non-critical):', error);
               if (mounted) {
                 setIsBiometricAvailable(false);
                 setIsBiometricEnabled(false);
               }
             });
-          }, 1000); // Delay biometric init by 1 second
+          }, 2000); // Delay biometric init by 2 seconds
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
@@ -66,6 +66,16 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       if (!mounted) return;
       
       try {
+        // Check if LocalAuthentication is available
+        if (!LocalAuthentication || typeof LocalAuthentication.hasHardwareAsync !== 'function') {
+          console.log('LocalAuthentication not available');
+          if (mounted) {
+            setIsBiometricAvailable(false);
+            setIsBiometricEnabled(false);
+          }
+          return;
+        }
+        
         const compatible = await LocalAuthentication.hasHardwareAsync();
         const enrolled = await LocalAuthentication.isEnrolledAsync();
         
@@ -79,7 +89,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           setIsBiometricEnabled(!!biometricData);
         }
       } catch (error) {
-        console.warn('Biometric initialization failed:', error);
+        console.warn('Biometric initialization failed (non-critical):', error);
         if (mounted) {
           setIsBiometricAvailable(false);
           setIsBiometricEnabled(false);
