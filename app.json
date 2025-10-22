@@ -130,17 +130,6 @@
     ],
     "experiments": {
       "typedRoutes": true
-    },
-    "updates": {
-      "enabled": false,
-      "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_ERROR_RECOVERY",
-      "url": null
-    },
-    "extra": {
-      "eas": {
-        "projectId": null
-      }
     }
   }
 }
