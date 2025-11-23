@@ -1,5 +1,5 @@
 import * as Calendar from 'expo-calendar'
-import * as FileSystem from 'expo-file-system'
+import { File, Paths } from 'expo-file-system'
 import * as Sharing from 'expo-sharing'
 import { Platform } from 'react-native'
 import { getEventICS } from '@/services/events'
@@ -66,8 +66,9 @@ export async function shareICS(eventId: string, title: string) {
       `URL:${deepLink}\nEND:VEVENT`
     )
     
-    const fileUri = `${FileSystem.cacheDirectory}${title.replace(/\W+/g,'_')}.ics`
-    await FileSystem.writeAsStringAsync(fileUri, finalIcs, { encoding: FileSystem.EncodingType.UTF8 })
+    const file = new File(Paths.cache, `${title.replace(/\W+/g,'_')}.ics`)
+    file.write(finalIcs)
+    const fileUri = file.uri
     
     if (Platform.OS === 'web') {
       const link = document.createElement('a')

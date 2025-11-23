@@ -9,8 +9,8 @@ export default function ExampleUsage() {
 
   const tagsQuery = useQuery({
     queryKey: ['tags'],
-    queryFn: listTags,
-    staleTime: 10 * 60 * 1000, // 10 minutes
+    queryFn: () => listTags(),
+    staleTime: 10 * 60 * 1000,
   });
 
   const personWithTagsQuery = useQuery({
@@ -63,13 +63,15 @@ export default function ExampleUsage() {
           <Text style={styles.loadingText}>Loading tags...</Text>
         ) : tagsQuery.error ? (
           <Text style={styles.errorText}>Error loading tags</Text>
-        ) : (
-          tagsQuery.data?.map((tag) => (
+        ) : tagsQuery.data && Array.isArray(tagsQuery.data) && tagsQuery.data.length > 0 ? (
+          tagsQuery.data.map((tag) => (
             <View key={tag.id} style={styles.tagItem}>
-              <View style={[styles.tagColor, { backgroundColor: tag.color }]} />
+              <View style={[styles.tagColor, { backgroundColor: tag.color || '#6B7280' }]} />
               <Text style={styles.tagName}>{tag.name}</Text>
             </View>
           ))
+        ) : (
+          <Text style={styles.infoText}>No tags available</Text>
         )}
       </View>
 

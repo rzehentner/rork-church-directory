@@ -13,8 +13,7 @@ import DateTimePicker from '@react-native-community/datetimepicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
 import { createEvent, setEventTags, scheduleReminder } from '@/services/events'
-import { uploadEventImage, runDiagnosticProbe, testStorageBucket, smokeTest } from '@/services/event-images'
-import { supabase } from '@/lib/supabase'
+import { uploadEventImage } from '@/services/event-images'
 import { useToast } from '@/hooks/toast-context'
 import { useUser } from '@/hooks/user-context'
 import EventTagPicker from '@/components/EventTagPicker'
@@ -40,8 +39,8 @@ export default function CreateEventScreen() {
   const [selectedRoles, setSelectedRoles] = useState<('admin'|'leader'|'member'|'visitor')[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [imageUri, setImageUri] = useState<string | null>(null)
-  const [enableReminders, setEnableReminders] = useState(true)
-  const [reminderMinutes, setReminderMinutes] = useState(60)
+  const [enableReminders] = useState(true)
+  const [reminderMinutes] = useState(60)
   const [loading, setLoading] = useState(false)
   const { profile } = useUser()
   const { showToast } = useToast()
@@ -554,151 +553,7 @@ export default function CreateEventScreen() {
               Tap to select an event photo. You can crop and adjust it before saving.
             </Text>
             
-            {/* Debug buttons */}
-            <View style={styles.debugSection}>
-              <TouchableOpacity
-                style={styles.debugButton}
-                onPress={async () => {
-                  const result = await testStorageBucket()
-                  console.log('Storage bucket test result:', result)
-                  showToast('info', result)
-                }}
-              >
-                <Text style={styles.debugButtonText}>Test Storage Bucket</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.debugButton, { backgroundColor: '#F59E0B', marginTop: 8 }]}
-                onPress={async () => {
-                  if (!title.trim()) {
-                    showToast('error', 'Please enter an event title first to create a test event ID')
-                    return
-                  }
-                  
-                  // Create a temporary event for testing
-                  try {
-                    const tempEvent = await createEvent({
-                      title: `TEST - ${title.trim()}`,
-                      description: 'Temporary event for diagnostic testing',
-                      start_at: startDate.toISOString(),
-                      end_at: endDate.toISOString(),
-                      is_all_day: false,
-                      location: null,
-                      is_public: true,
-                      roles_allowed: null,
-                    })
-                    
-                    console.log('Created test event:', tempEvent.id)
-                    const result = await runDiagnosticProbe(tempEvent.id)
-                    console.log('Diagnostic probe result:', result)
-                    showToast('info', result)
-                    
-                    // Clean up test event
-                    await supabase.from('events').delete().eq('id', tempEvent.id)
-                    console.log('Cleaned up test event')
-                  } catch (error) {
-                    console.error('Diagnostic test failed:', error)
-                    showToast('error', `Diagnostic test failed: ${error}`)
-                  }
-                }}
-              >
-                <Text style={styles.debugButtonText}>Run Diagnostic Probe</Text>
-              </TouchableOpacity>
-              
-              {imageUri && (
-                <TouchableOpacity
-                  style={[styles.debugButton, { backgroundColor: '#10B981', marginTop: 8 }]}
-                  onPress={async () => {
-                    if (!title.trim()) {
-                      showToast('error', 'Please enter an event title first')
-                      return
-                    }
-                    
-                    try {
-                      // Create a temporary event for testing
-                      const tempEvent = await createEvent({
-                        title: `TEST IMAGE - ${title.trim()}`,
-                        description: 'Temporary event for image upload testing',
-                        start_at: startDate.toISOString(),
-                        end_at: endDate.toISOString(),
-                        is_all_day: false,
-                        location: null,
-                        is_public: true,
-                        roles_allowed: null,
-                      })
-                      
-                      console.log('Created test event for image upload:', tempEvent.id)
-                      
-                      // Test the full diagnostic probe with the actual image
-                      const out: Record<string, any> = { eventId: tempEvent.id }
-                      
-                      // Session check
-                      const { data: session } = await supabase.auth.getSession()
-                      out.authSession = !!session?.session
-                      out.userId = session?.session?.user?.id ?? null
-                      
-                      // Event row check
-                      const { data: evt, error: evtErr } = await supabase
-                        .from('events').select('id').eq('id', tempEvent.id).maybeSingle()
-                      out.eventRow = !!evt
-                      out.eventError = evtErr?.message ?? null
-                      
-                      // Storage probe
-                      const testPath = `events/${tempEvent.id}/${Date.now()}-probe.txt`
-                      const body = new Blob(['probe'], { type: 'text/plain' })
-                      const { error: probeErr } = await supabase.storage
-                        .from('event-images')
-                        .upload(testPath, body, { upsert: false, contentType: 'text/plain' })
-                      out.storageProbeOk = !probeErr
-                      out.storageProbeErr = probeErr?.message ?? null
-                      
-                      // Events update test
-                      const { error: updErr } = await supabase
-                        .from('events')
-                        .update({ image_path: testPath })
-                        .eq('id', tempEvent.id)
-                      out.eventsUpdateOk = !updErr
-                      out.eventsUpdateErr = updErr?.message ?? null
-                      
-                      // Image blob test
-                      try {
-                        const resp = await fetch(imageUri)
-                        const blob = await resp.blob()
-                        out.imageBlob = { size: blob.size, type: blob.type || '(empty)' }
-                      } catch (e: any) {
-                        out.imageBlob = { error: String(e) }
-                      }
-                      
-                      console.log('Full diagnostic probe result:', out)
-                      
-                      // Show results
-                      let message = ''
-                      if (!out.storageProbeOk) {
-                        message = `❌ Storage write blocked: ${out.storageProbeErr}`
-                      } else if (!out.eventsUpdateOk) {
-                        message = `❌ Events update blocked: ${out.eventsUpdateErr}`
-                      } else if (out.imageBlob.error) {
-                        message = `❌ Image blob error: ${out.imageBlob.error}`
-                      } else {
-                        message = `✅ All checks passed! Image: ${out.imageBlob.size} bytes, ${out.imageBlob.type}`
-                      }
-                      
-                      showToast('info', message)
-                      
-                      // Clean up test event
-                      await supabase.from('events').delete().eq('id', tempEvent.id)
-                      console.log('Cleaned up test event')
-                      
-                    } catch (error) {
-                      console.error('Full diagnostic test failed:', error)
-                      showToast('error', `Full diagnostic test failed: ${error}`)
-                    }
-                  }}
-                >
-                  <Text style={styles.debugButtonText}>Test Image Upload Flow</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+
           </View>
 
           <View style={styles.section}>
@@ -966,22 +821,5 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
-  debugSection: {
-    marginTop: 16,
-    paddingTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-  },
-  debugButton: {
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  debugButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
+
 })

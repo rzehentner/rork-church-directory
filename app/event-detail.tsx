@@ -24,11 +24,11 @@ import {
 import { 
   getEvent, 
   rsvpEvent, 
-  eventImageUrl, 
   getEventRSVPs,
   type RSVP, 
   type EventRSVP 
 } from '@/services/events'
+import { eventImageUrl } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
 import { useMe } from '@/hooks/me-context'
 import { useToast } from '@/hooks/toast-context'
