@@ -130,7 +130,7 @@ export default function SettingsScreen() {
           <Text style={styles.title}>Settings</Text>
           <TouchableOpacity
             style={styles.notificationButton}
-            onPress={() => router.push('/notifications')}
+            onPress={() => router.push('/notifications' as any)}
           >
             <Bell size={24} color="#6B7280" />
             {unreadCount > 0 && (

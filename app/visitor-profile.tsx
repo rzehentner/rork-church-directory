@@ -183,7 +183,7 @@ export default function VisitorProfileScreen() {
         [
           {
             text: 'Continue',
-            onPress: () => router.replace('/(tabs)/family'),
+            onPress: () => router.replace('/(tabs)/family' as any),
           },
         ]
       );
@@ -209,7 +209,7 @@ export default function VisitorProfileScreen() {
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Continue',
-          onPress: () => router.replace('/(tabs)/family'),
+          onPress: () => router.replace('/(tabs)/family' as any),
         },
       ]
     );
@@ -227,7 +227,7 @@ export default function VisitorProfileScreen() {
 
   // If user is not pending, redirect to family tab
   if (profile?.role !== 'pending') {
-    router.replace('/(tabs)/family');
+    router.replace('/(tabs)/family' as any);
     return null;
   }
 

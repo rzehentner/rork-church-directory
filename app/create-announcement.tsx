@@ -183,7 +183,7 @@ export default function CreateAnnouncementScreen() {
       queryClient.invalidateQueries({ queryKey: ['announcement', announcementId] });
       queryClient.invalidateQueries({ queryKey: ['announcement-tags', announcementId] });
       showSuccess(isEditMode ? 'Announcement updated successfully' : 'Announcement created successfully');
-      router.push('/(tabs)/admin');
+      router.push('/(tabs)/admin' as any);
     },
     onError: (error) => {
       console.error(isEditMode ? '❌ Failed to update announcement:' : '❌ Failed to create announcement:', error);

@@ -120,7 +120,7 @@ export default function CreateEventScreen() {
 
       showToast('success', 'Event created successfully')
       // Navigate to the events tab and refresh the list
-      router.replace('/(tabs)/events')
+      router.replace('/(tabs)/events' as any)
     } catch (error) {
       console.error('Failed to create event:', error)
       showToast('error', 'Failed to create event')

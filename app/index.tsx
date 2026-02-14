@@ -27,7 +27,7 @@ export default function IndexScreen() {
       addDebugInfo('Force timeout triggered');
       if (!isNavigating) {
         setIsNavigating(true);
-        router.replace('/(auth)/login');
+        router.replace('/(auth)/login' as any);
       }
     }, timeout);
 
@@ -46,14 +46,14 @@ export default function IndexScreen() {
         // Check if user is a visitor (pending) without a complete profile
         if (profile?.role === 'pending' && (!person || !person.first_name || !person.last_name)) {
           addDebugInfo('Navigating to visitor profile');
-          router.replace('/visitor-profile');
+          router.replace('/visitor-profile' as any);
         } else {
           addDebugInfo('Navigating to dashboard');
-          router.replace('/(tabs)/dashboard');
+          router.replace('/(tabs)/dashboard' as any);
         }
       } else {
         addDebugInfo('Navigating to login');
-        router.replace('/(auth)/login');
+        router.replace('/(auth)/login' as any);
       }
     }
   }, [user, profile, person, authLoading, userLoading, isNavigating]);
