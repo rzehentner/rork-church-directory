@@ -102,7 +102,7 @@ export default function PrayersScreen() {
         {canEdit(item) && (
           <View style={styles.actions}>
             <TouchableOpacity
-              onPress={() => router.push(`/edit-prayer?id=${item.id}`)}
+              onPress={() => router.push(`/edit-prayer?id=${item.id}` as any)}
               style={styles.actionButton}
             >
               <Edit size={18} color="#6B7280" />
@@ -180,7 +180,7 @@ export default function PrayersScreen() {
           <Heart size={28} color="#7C3AED" />
           <Text style={styles.headerTitle}>Prayer List</Text>
         </View>
-        <TouchableOpacity onPress={() => router.push('/create-prayer')} style={styles.createButton}>
+        <TouchableOpacity onPress={() => router.push('/create-prayer' as any)} style={styles.createButton}>
           <Plus size={20} color="#FFFFFF" />
           <Text style={styles.createButtonText}>Create</Text>
         </TouchableOpacity>

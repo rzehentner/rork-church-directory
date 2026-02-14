@@ -252,7 +252,7 @@ export default function AnnouncementsScreen() {
   };
 
   const handleCreateAnnouncement = () => {
-    router.push('/create-announcement');
+    router.push('/create-announcement' as any);
   };
   
   const clearSearch = () => {

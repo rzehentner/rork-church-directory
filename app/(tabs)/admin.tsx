@@ -592,7 +592,7 @@ export default function AdminScreen() {
 
   const handleEditAnnouncement = (announcement: AdminAnnouncement) => {
     resetSwipe(announcement.id);
-    router.push(`/create-announcement?edit=${announcement.id}`);
+    router.push(`/create-announcement?edit=${announcement.id}` as any);
   };
 
   const handleRepublish = (announcement: AdminAnnouncement) => {
@@ -749,7 +749,7 @@ export default function AdminScreen() {
         <Text style={styles.sectionTitle}>Announcement Management</Text>
         <TouchableOpacity
           style={styles.createButton}
-          onPress={() => router.push('/create-announcement')}
+          onPress={() => router.push('/create-announcement' as any)}
         >
           <Plus size={16} color="#FFFFFF" />
           <Text style={styles.createButtonText}>New Announcement</Text>
@@ -1496,7 +1496,7 @@ export default function AdminScreen() {
               </Text>
               <TouchableOpacity
                 style={styles.bulletinButton}
-                onPress={() => router.push('/create-bulletin')}
+                onPress={() => router.push('/create-bulletin' as any)}
               >
                 <Plus size={18} color="#FFFFFF" />
                 <Text style={styles.bulletinButtonText}>Create Bulletin</Text>

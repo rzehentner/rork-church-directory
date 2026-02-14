@@ -27,7 +27,7 @@ export default function AuthScreen() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/(tabs)/family');
+      router.replace('/(tabs)/family' as any);
     }
   }, [user]);
 

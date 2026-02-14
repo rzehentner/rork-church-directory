@@ -71,7 +71,7 @@ export default function TabLayout() {
         options={{
           title: "Admin",
           tabBarIcon: ({ color }) => <Shield size={24} color={color} />,
-          href: isAdmin ? '/admin' : null,
+          href: isAdmin ? '/admin' as any : null,
         }}
       />
       <Tabs.Screen

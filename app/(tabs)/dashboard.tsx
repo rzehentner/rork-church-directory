@@ -418,7 +418,7 @@ export default function DashboardScreen() {
           <View style={styles.headerRight}>
             <TouchableOpacity 
               style={styles.notificationButton}
-              onPress={() => router.push('/notifications')}
+              onPress={() => router.push('/notifications' as any)}
             >
               <Bell size={24} color="#6B7280" />
               {stats.unreadAnnouncementsCount > 0 && (
@@ -455,7 +455,7 @@ export default function DashboardScreen() {
               </View>
               <TouchableOpacity
                 style={styles.profileButton}
-                onPress={() => router.push('/visitor-profile')}
+                onPress={() => router.push('/visitor-profile' as any)}
               >
                 <ChevronRight size={16} color="#7C3AED" />
               </TouchableOpacity>
@@ -468,7 +468,7 @@ export default function DashboardScreen() {
           <View style={styles.statsRow}>
             <TouchableOpacity 
               style={styles.statCard}
-              onPress={() => router.push('/(tabs)/family')}
+              onPress={() => router.push('/(tabs)/family' as any)}
             >
               <View style={[styles.statIcon, { backgroundColor: '#EBF8FF' }]}>
                 <Home size={20} color="#3B82F6" />
@@ -479,7 +479,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity 
               style={styles.statCard}
-              onPress={() => router.push('/(tabs)/events')}
+              onPress={() => router.push('/(tabs)/events' as any)}
             >
               <View style={[styles.statIcon, { backgroundColor: '#F0FDF4' }]}>
                 <Calendar size={20} color="#10B981" />
@@ -492,7 +492,7 @@ export default function DashboardScreen() {
           <View style={styles.statsRow}>
             <TouchableOpacity 
               style={styles.statCard}
-              onPress={() => router.push('/(tabs)/announcements')}
+              onPress={() => router.push('/(tabs)/announcements' as any)}
             >
               <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
                 <Bell size={20} color="#F59E0B" />
@@ -503,7 +503,7 @@ export default function DashboardScreen() {
 
             <TouchableOpacity 
               style={styles.statCard}
-              onPress={() => router.push('/(tabs)/directory')}
+              onPress={() => router.push('/(tabs)/directory' as any)}
             >
               <View style={[styles.statIcon, { backgroundColor: '#F3E8FF' }]}>
                 <Users size={20} color="#7C3AED" />
@@ -519,7 +519,7 @@ export default function DashboardScreen() {
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Announcements For You</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/announcements')}>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/announcements' as any)}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -528,7 +528,7 @@ export default function DashboardScreen() {
                 key={announcement.id} 
                 style={styles.announcementItem}
                 onPress={() => {
-                  router.push('/(tabs)/announcements');
+                  router.push('/(tabs)/announcements' as any);
                 }}
               >
                 <View style={styles.announcementIcon}>
@@ -562,7 +562,7 @@ export default function DashboardScreen() {
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Events For You</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/events')}>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/events' as any)}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -570,7 +570,7 @@ export default function DashboardScreen() {
               <TouchableOpacity 
                 key={event.id}
                 style={styles.eventItem}
-                onPress={() => router.push(`/event-detail?id=${event.id}`)}
+                onPress={() => router.push(`/event-detail?id=${event.id}` as any)}
               >
                 <View style={styles.eventIcon}>
                   <Calendar size={16} color="#7C3AED" />
@@ -610,7 +610,7 @@ export default function DashboardScreen() {
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Upcoming Events</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/events')}>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/events' as any)}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -618,7 +618,7 @@ export default function DashboardScreen() {
               <TouchableOpacity 
                 key={event.id}
                 style={styles.eventItem}
-                onPress={() => router.push(`/event-detail?id=${event.id}`)}
+                onPress={() => router.push(`/event-detail?id=${event.id}` as any)}
               >
                 <View style={styles.eventIcon}>
                   <Calendar size={16} color="#10B981" />
@@ -647,7 +647,7 @@ export default function DashboardScreen() {
           <View style={styles.card}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionTitle}>Recent Announcements</Text>
-              <TouchableOpacity onPress={() => router.push('/(tabs)/announcements')}>
+              <TouchableOpacity onPress={() => router.push('/(tabs)/announcements' as any)}>
                 <Text style={styles.seeAllText}>See All</Text>
               </TouchableOpacity>
             </View>
@@ -680,7 +680,7 @@ export default function DashboardScreen() {
               </View>
               <TouchableOpacity
                 style={styles.familyButton}
-                onPress={() => router.push('/(tabs)/family')}
+                onPress={() => router.push('/(tabs)/family' as any)}
               >
                 <Plus size={16} color="#FFFFFF" />
               </TouchableOpacity>

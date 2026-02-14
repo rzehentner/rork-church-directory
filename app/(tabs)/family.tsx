@@ -316,7 +316,7 @@ export default function FamilyScreen() {
           style: 'destructive',
           onPress: async () => {
             await signOut();
-            router.replace('/(auth)/login');
+            router.replace('/(auth)/login' as any);
           }
         },
       ]
@@ -499,7 +499,7 @@ export default function FamilyScreen() {
               </View>
               <TouchableOpacity
                 style={styles.profileButton}
-                onPress={() => router.push('/visitor-profile')}
+                onPress={() => router.push('/visitor-profile' as any)}
               >
                 <Text style={styles.profileButtonText}>Complete Profile</Text>
                 <ArrowRight size={16} color="#FFFFFF" />
@@ -533,7 +533,7 @@ export default function FamilyScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={[styles.familyButton, styles.secondaryButton]}
-                    onPress={() => router.push('/join-family')}
+                    onPress={() => router.push('/join-family' as any)}
                   >
                     <Link2 size={20} color="#7C3AED" />
                     <Text style={[styles.familyButtonText, styles.secondaryButtonText]}>
