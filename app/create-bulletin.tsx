@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,7 @@ import {
 import * as Print from 'expo-print';
 import { shareAsync } from 'expo-sharing';
 import { useToast } from '@/hooks/toast-context';
+import { useChurchSettings } from '@/hooks/church-settings-context';
 import { listUpcomingEvents } from '@/services/events';
 import { listPrayers, type PrayerRequest } from '@/services/prayer';
 import { listTags, type Tag } from '@/services/tags';
@@ -55,6 +56,7 @@ interface ScheduleItem {
 
 export default function CreateBulletinScreen() {
   const { showSuccess, showError } = useToast();
+  const { settings: churchSettings } = useChurchSettings();
   const [isGenerating, setIsGenerating] = useState(false);
   const [churchName, setChurchName] = useState('');
   const [bulletinDate, setBulletinDate] = useState(format(new Date(), 'MMMM d, yyyy'));
@@ -62,16 +64,35 @@ export default function CreateBulletinScreen() {
   const [includeEvents, setIncludeEvents] = useState(true);
   const [includeAnnouncements, setIncludeAnnouncements] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['schedule', 'custom']));
+  const [initialized, setInitialized] = useState(false);
 
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
   const [excludedTagIds, setExcludedTagIds] = useState<Set<string>>(new Set());
   const [tagFilterMode, setTagFilterMode] = useState<'include' | 'exclude'>('include');
 
-  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([
-    { day: 'Sunday', time: '10:00 AM', activity: 'Sunday School' },
-    { day: 'Sunday', time: '11:00 AM', activity: 'Worship Service' },
-    { day: 'Wednesday', time: '6:00 PM', activity: 'Mid-Week Bible Study' },
-  ]);
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+
+  useEffect(() => {
+    if (!initialized && churchSettings) {
+      if (churchSettings.churchName) {
+        setChurchName(churchSettings.churchName);
+      }
+      if (churchSettings.serviceTimes && churchSettings.serviceTimes.length > 0) {
+        setScheduleItems(churchSettings.serviceTimes.map(st => ({
+          day: st.day,
+          time: st.time,
+          activity: st.activity,
+        })));
+      } else {
+        setScheduleItems([
+          { day: 'Sunday', time: '10:00 AM', activity: 'Sunday School' },
+          { day: 'Sunday', time: '11:00 AM', activity: 'Worship Service' },
+          { day: 'Wednesday', time: '6:00 PM', activity: 'Mid-Week Bible Study' },
+        ]);
+      }
+      setInitialized(true);
+    }
+  }, [churchSettings, initialized]);
 
   const [customSections, setCustomSections] = useState<BulletinSection[]>([
     { id: '1', title: 'Nursery Schedule', content: '', enabled: true, order: 0 },

@@ -38,11 +38,14 @@ import {
   Search,
   Eye,
   Filter,
-  FileText
+  FileText,
+  Settings
 } from 'lucide-react-native';
 import { listTags, createTag, updateTag, deleteTag, reactivateTag, type Tag } from '@/services/tags';
 import { unpublishAnnouncement, publishAnnouncement } from '@/lib/announcements';
 import { router } from 'expo-router';
+import { useChurchSettings, type ServiceTime } from '@/hooks/church-settings-context';
+import { Building2, MapPin, Phone as PhoneIcon, Globe, Save } from 'lucide-react-native';
 
 const SWIPE_THRESHOLD = 120;
 
@@ -89,7 +92,9 @@ export default function AdminScreen() {
   const { profile } = useUser();
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements' | 'bulletin'>('approvals');
+  const { settings: churchSettings, updateSettings: updateChurchSettings, updateServiceTimes, isSaving: churchSaving } = useChurchSettings();
+  const [localChurchSettings, setLocalChurchSettings] = useState(churchSettings);
+  const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements' | 'bulletin' | 'church'>('approvals');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUnpublished, setShowUnpublished] = useState(false);
   const [showCreateTagModal, setShowCreateTagModal] = useState(false);
@@ -1423,6 +1428,228 @@ export default function AdminScreen() {
     </Modal>
   );
 
+  const handleSaveChurchSettings = () => {
+    updateChurchSettings(localChurchSettings);
+    showSuccess('Church settings saved');
+  };
+
+  const addServiceTime = () => {
+    const updated = [...localChurchSettings.serviceTimes, { day: '', time: '', activity: '' }];
+    setLocalChurchSettings(prev => ({ ...prev, serviceTimes: updated }));
+  };
+
+  const removeServiceTime = (index: number) => {
+    const updated = localChurchSettings.serviceTimes.filter((_, i) => i !== index);
+    setLocalChurchSettings(prev => ({ ...prev, serviceTimes: updated }));
+  };
+
+  const updateServiceTime = (index: number, field: keyof ServiceTime, value: string) => {
+    const updated = localChurchSettings.serviceTimes.map((item, i) =>
+      i === index ? { ...item, [field]: value } : item
+    );
+    setLocalChurchSettings(prev => ({ ...prev, serviceTimes: updated }));
+  };
+
+  const renderChurchSettings = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Church Information</Text>
+      </View>
+
+      <View style={styles.churchCard}>
+        <View style={styles.churchCardHeader}>
+          <Building2 size={20} color="#7C3AED" />
+          <Text style={styles.churchCardTitle}>General</Text>
+        </View>
+
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Church Name</Text>
+          <TextInput
+            style={styles.churchInput}
+            value={localChurchSettings.churchName}
+            onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, churchName: v }))}
+            placeholder="e.g. First Baptist Church"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Pastor / Minister</Text>
+          <TextInput
+            style={styles.churchInput}
+            value={localChurchSettings.pastorName}
+            onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, pastorName: v }))}
+            placeholder="e.g. Pastor John Smith"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+      </View>
+
+      <View style={styles.churchCard}>
+        <View style={styles.churchCardHeader}>
+          <MapPin size={20} color="#3B82F6" />
+          <Text style={styles.churchCardTitle}>Address</Text>
+        </View>
+
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Street Address</Text>
+          <TextInput
+            style={styles.churchInput}
+            value={localChurchSettings.address}
+            onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, address: v }))}
+            placeholder="123 Main Street"
+            placeholderTextColor="#9CA3AF"
+          />
+        </View>
+
+        <View style={styles.churchFieldRow}>
+          <View style={styles.churchFieldFlex2}>
+            <Text style={styles.churchFieldLabel}>City</Text>
+            <TextInput
+              style={styles.churchInput}
+              value={localChurchSettings.city}
+              onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, city: v }))}
+              placeholder="City"
+              placeholderTextColor="#9CA3AF"
+            />
+          </View>
+          <View style={styles.churchFieldFlex1}>
+            <Text style={styles.churchFieldLabel}>State</Text>
+            <TextInput
+              style={styles.churchInput}
+              value={localChurchSettings.state}
+              onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, state: v }))}
+              placeholder="ST"
+              placeholderTextColor="#9CA3AF"
+              maxLength={2}
+              autoCapitalize="characters"
+            />
+          </View>
+          <View style={styles.churchFieldFlex1}>
+            <Text style={styles.churchFieldLabel}>ZIP</Text>
+            <TextInput
+              style={styles.churchInput}
+              value={localChurchSettings.zip}
+              onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, zip: v }))}
+              placeholder="12345"
+              placeholderTextColor="#9CA3AF"
+              keyboardType="number-pad"
+              maxLength={10}
+            />
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.churchCard}>
+        <View style={styles.churchCardHeader}>
+          <PhoneIcon size={20} color="#10B981" />
+          <Text style={styles.churchCardTitle}>Contact</Text>
+        </View>
+
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Phone Number</Text>
+          <TextInput
+            style={styles.churchInput}
+            value={localChurchSettings.phone}
+            onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, phone: v }))}
+            placeholder="(555) 123-4567"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="phone-pad"
+          />
+        </View>
+
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Email</Text>
+          <TextInput
+            style={styles.churchInput}
+            value={localChurchSettings.email}
+            onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, email: v }))}
+            placeholder="info@ourchurch.org"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+        </View>
+
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Website</Text>
+          <TextInput
+            style={styles.churchInput}
+            value={localChurchSettings.website}
+            onChangeText={(v) => setLocalChurchSettings(prev => ({ ...prev, website: v }))}
+            placeholder="https://ourchurch.org"
+            placeholderTextColor="#9CA3AF"
+            keyboardType="url"
+            autoCapitalize="none"
+          />
+        </View>
+      </View>
+
+      <View style={styles.churchCard}>
+        <View style={styles.churchCardHeader}>
+          <Clock size={20} color="#F59E0B" />
+          <Text style={styles.churchCardTitle}>Regular Service Times</Text>
+        </View>
+        <Text style={styles.churchHint}>
+          These will auto-populate the weekly schedule in bulletins
+        </Text>
+
+        {localChurchSettings.serviceTimes.map((item, index) => (
+          <View key={index} style={styles.serviceTimeRow}>
+            <TextInput
+              style={[styles.serviceTimeInput, styles.serviceTimeDay]}
+              value={item.day}
+              onChangeText={(v) => updateServiceTime(index, 'day', v)}
+              placeholder="Day"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={[styles.serviceTimeInput, styles.serviceTimeTime]}
+              value={item.time}
+              onChangeText={(v) => updateServiceTime(index, 'time', v)}
+              placeholder="Time"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TextInput
+              style={[styles.serviceTimeInput, styles.serviceTimeActivity]}
+              value={item.activity}
+              onChangeText={(v) => updateServiceTime(index, 'activity', v)}
+              placeholder="Service / Activity"
+              placeholderTextColor="#9CA3AF"
+            />
+            <TouchableOpacity
+              style={styles.serviceTimeRemove}
+              onPress={() => removeServiceTime(index)}
+            >
+              <Trash2 size={16} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <TouchableOpacity style={styles.addServiceTimeButton} onPress={addServiceTime}>
+          <Plus size={16} color="#7C3AED" />
+          <Text style={styles.addServiceTimeText}>Add Service Time</Text>
+        </TouchableOpacity>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.saveChurchButton, churchSaving && styles.saveChurchButtonDisabled]}
+        onPress={handleSaveChurchSettings}
+        disabled={churchSaving}
+        activeOpacity={0.7}
+      >
+        {churchSaving ? (
+          <ActivityIndicator size="small" color="#FFFFFF" />
+        ) : (
+          <Save size={18} color="#FFFFFF" />
+        )}
+        <Text style={styles.saveChurchButtonText}>
+          {churchSaving ? 'Saving...' : 'Save Church Settings'}
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -1480,6 +1707,18 @@ export default function AdminScreen() {
             Bulletin
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'church' && styles.activeTab]}
+          onPress={() => {
+            setLocalChurchSettings(churchSettings);
+            setActiveTab('church');
+          }}
+        >
+          <Settings size={16} color={activeTab === 'church' ? '#7C3AED' : '#6B7280'} />
+          <Text style={[styles.tabText, activeTab === 'church' && styles.activeTabText]}>
+            Church
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -1504,6 +1743,7 @@ export default function AdminScreen() {
             </View>
           </View>
         )}
+        {activeTab === 'church' && renderChurchSettings()}
       </ScrollView>
 
       {renderCreateTagModal()}
@@ -2332,6 +2572,130 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   bulletinButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  churchCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  churchCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  churchCardTitle: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#1F2937',
+  },
+  churchField: {
+    marginBottom: 14,
+  },
+  churchFieldLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#4B5563',
+    marginBottom: 6,
+  },
+  churchInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: '#1F2937',
+    backgroundColor: '#FAFAFA',
+  },
+  churchFieldRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  churchFieldFlex1: {
+    flex: 1,
+  },
+  churchFieldFlex2: {
+    flex: 2,
+  },
+  churchHint: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  serviceTimeRow: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  serviceTimeInput: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    fontSize: 13,
+    color: '#1F2937',
+    backgroundColor: '#FAFAFA',
+  },
+  serviceTimeDay: {
+    width: 80,
+  },
+  serviceTimeTime: {
+    width: 80,
+  },
+  serviceTimeActivity: {
+    flex: 1,
+  },
+  serviceTimeRemove: {
+    padding: 6,
+  },
+  addServiceTimeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    borderStyle: 'dashed',
+    gap: 6,
+    marginTop: 4,
+  },
+  addServiceTimeText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#7C3AED',
+  },
+  saveChurchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#7C3AED',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+    marginBottom: 24,
+  },
+  saveChurchButtonDisabled: {
+    opacity: 0.7,
+  },
+  saveChurchButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600' as const,

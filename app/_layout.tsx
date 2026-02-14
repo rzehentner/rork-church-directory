@@ -9,6 +9,7 @@ import { UserProvider } from "@/hooks/user-context";
 import { MeProvider } from "@/hooks/me-context";
 import { ToastProvider, ToastRenderer } from "@/hooks/toast-context";
 import { NotificationProvider } from "@/hooks/notification-context";
+import { ChurchSettingsProvider } from "@/hooks/church-settings-context";
 
 // Prevent auto hide only on native platforms
 if (Platform.OS !== 'web') {
@@ -192,10 +193,12 @@ export default function RootLayout() {
             <AuthProvider>
               <UserProvider>
                 <MeProvider>
-                  <NotificationProvider>
-                    <RootLayoutNav />
-                    <ToastRenderer />
-                  </NotificationProvider>
+                  <ChurchSettingsProvider>
+                    <NotificationProvider>
+                      <RootLayoutNav />
+                      <ToastRenderer />
+                    </NotificationProvider>
+                  </ChurchSettingsProvider>
                 </MeProvider>
               </UserProvider>
             </AuthProvider>
