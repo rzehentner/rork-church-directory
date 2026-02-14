@@ -153,6 +153,7 @@ function RootLayoutNav() {
       <Stack.Screen name="create-announcement" options={{ title: "Create Announcement" }} />
       <Stack.Screen name="join-family" options={{ title: "Join Family" }} />
       <Stack.Screen name="notifications" options={{ title: "Notifications" }} />
+      <Stack.Screen name="create-bulletin" options={{ title: "Create Bulletin" }} />
     </Stack>
   );
 }

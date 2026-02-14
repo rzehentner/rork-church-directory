@@ -37,7 +37,8 @@ import {
   EyeOff,
   Search,
   Eye,
-  Filter
+  Filter,
+  FileText
 } from 'lucide-react-native';
 import { listTags, createTag, updateTag, deleteTag, reactivateTag, type Tag } from '@/services/tags';
 import { unpublishAnnouncement, publishAnnouncement } from '@/lib/announcements';
@@ -88,7 +89,7 @@ export default function AdminScreen() {
   const { profile } = useUser();
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
-  const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements' | 'bulletin'>('approvals');
   const [searchQuery, setSearchQuery] = useState('');
   const [showUnpublished, setShowUnpublished] = useState(false);
   const [showCreateTagModal, setShowCreateTagModal] = useState(false);
@@ -1470,12 +1471,39 @@ export default function AdminScreen() {
             Announcements
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'bulletin' && styles.activeTab]}
+          onPress={() => setActiveTab('bulletin')}
+        >
+          <FileText size={16} color={activeTab === 'bulletin' ? '#7C3AED' : '#6B7280'} />
+          <Text style={[styles.tabText, activeTab === 'bulletin' && styles.activeTabText]}>
+            Bulletin
+          </Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {activeTab === 'approvals' && renderApprovals()}
         {activeTab === 'tags' && renderTags()}
         {activeTab === 'announcements' && renderAnnouncements()}
+        {activeTab === 'bulletin' && (
+          <View style={styles.section}>
+            <View style={styles.bulletinPromo}>
+              <FileText size={48} color="#7C3AED" />
+              <Text style={styles.bulletinTitle}>Weekly Bulletin</Text>
+              <Text style={styles.bulletinSubtitle}>
+                Generate a print-ready bulletin with prayers, events, schedules, and custom sections
+              </Text>
+              <TouchableOpacity
+                style={styles.bulletinButton}
+                onPress={() => router.push('/create-bulletin')}
+              >
+                <Plus size={18} color="#FFFFFF" />
+                <Text style={styles.bulletinButtonText}>Create Bulletin</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </ScrollView>
 
       {renderCreateTagModal()}
@@ -2267,5 +2295,45 @@ const styles = StyleSheet.create({
   },
   republishActionButton: {
     backgroundColor: '#10B981',
+  },
+  bulletinPromo: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 24,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  bulletinTitle: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    color: '#1F2937',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  bulletinSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+  },
+  bulletinButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+  },
+  bulletinButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });
