@@ -315,69 +315,73 @@ export async function getEventRSVPs(eventId: string): Promise<EventRSVP[]> {
   console.log('getEventRSVPs called with eventId:', eventId)
   
   // First try the event_rsvps view
-  const { data, error } = await supabase
-    .from('event_rsvps')
-    .select('person_id, first_name, last_name, email, phone, family_name, status, responded_at')
-    .eq('event_id', eventId)
-    .order('last_name', { ascending: true })
-  
-  console.log('getEventRSVPs response from event_rsvps view:', { data: data?.length, error })
-  
-  // If the view doesn't exist (PGRST205) or other permission issues, try fallback
-  if (error) {
-    console.error('getEventRSVPs error from event_rsvps view:', error)
-    console.log('Error code:', error.code, 'Error details:', error.details)
+  try {
+    const { data, error } = await supabase
+      .from('event_rsvps')
+      .select('person_id, first_name, last_name, email, phone, family_name, status, responded_at')
+      .eq('event_id', eventId)
+      .order('last_name', { ascending: true })
     
-    // If it's a "relation does not exist" error (PGRST205), try fallback query
-    if (error.code === 'PGRST205' || error.message?.includes('does not exist')) {
-      console.log('event_rsvps view not found, trying fallback query...')
-      
-      // Fallback: Query event_attendees directly with JOIN to persons
-      const { data: fallbackData, error: fallbackError } = await supabase
-        .from('event_attendees')
-        .select(`
-          person_id,
-          status,
-          responded_at,
-          persons!inner (
-            first_name,
-            last_name,
-            email,
-            phone,
-            families (
-              family_name
-            )
-          )
-        `)
-        .eq('event_id', eventId)
-        .order('persons(last_name)', { ascending: true })
-      
-      console.log('getEventRSVPs fallback response:', { data: fallbackData?.length, error: fallbackError })
-      
-      if (fallbackError) {
-        console.error('getEventRSVPs fallback error:', fallbackError)
-        throw fallbackError
-      }
-      
-      // Transform the fallback data to match EventRSVP format
-      const transformedData: EventRSVP[] = (fallbackData ?? []).map(item => ({
-        person_id: item.person_id,
-        first_name: (item.persons as any).first_name,
-        last_name: (item.persons as any).last_name,
-        email: (item.persons as any).email,
-        phone: (item.persons as any).phone,
-        family_name: (item.persons as any).families?.family_name || '',
-        status: item.status,
-        responded_at: item.responded_at
-      }))
-      
-      console.log('getEventRSVPs transformed fallback data:', transformedData.length, 'items')
-      return transformedData
+    console.log('getEventRSVPs response from event_rsvps view:', { count: data?.length, error: error ? JSON.stringify(error) : null })
+    
+    if (!error && data) {
+      return data
     }
     
-    // For other errors, throw them
-    throw error
+    if (error) {
+      console.warn('getEventRSVPs event_rsvps view error:', JSON.stringify(error))
+    }
+  } catch (viewError) {
+    console.warn('getEventRSVPs view exception:', viewError instanceof Error ? viewError.message : String(viewError))
   }
-  
-  return data ?? []
+
+  // Fallback: Query event_attendees directly with JOIN to persons
+  console.log('Trying fallback query via event_attendees...')
+  try {
+    const { data: fallbackData, error: fallbackError } = await supabase
+      .from('event_attendees')
+      .select(`
+        person_id,
+        status,
+        responded_at,
+        persons!inner (
+          first_name,
+          last_name,
+          email,
+          phone,
+          families (
+            family_name
+          )
+        )
+      `)
+      .eq('event_id', eventId)
+    
+    console.log('getEventRSVPs fallback response:', { count: fallbackData?.length, error: fallbackError ? JSON.stringify(fallbackError) : null })
+    
+    if (fallbackError) {
+      console.warn('getEventRSVPs fallback error:', JSON.stringify(fallbackError))
+      return []
+    }
+    
+    const transformedData: EventRSVP[] = (fallbackData ?? []).map(item => {
+      const person = item.persons as any
+      return {
+        person_id: item.person_id,
+        first_name: person?.first_name ?? '',
+        last_name: person?.last_name ?? '',
+        email: person?.email ?? null,
+        phone: person?.phone ?? null,
+        family_name: person?.families?.family_name ?? '',
+        status: item.status,
+        responded_at: item.responded_at
+      }
+    })
+    
+    transformedData.sort((a, b) => (a.last_name ?? '').localeCompare(b.last_name ?? ''))
+    console.log('getEventRSVPs transformed fallback data:', transformedData.length, 'items')
+    return transformedData
+  } catch (fallbackException) {
+    console.warn('getEventRSVPs fallback exception:', fallbackException instanceof Error ? fallbackException.message : String(fallbackException))
+    return []
+  }
 }
