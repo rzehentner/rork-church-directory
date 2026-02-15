@@ -2,5 +2,5 @@ import React from "react";
 import { Redirect } from "expo-router";
 
 export default function TabsIndex() {
-  return <Redirect href="/dashboard" />;
+  return <Redirect href="/dashboard" as any />;
 }
