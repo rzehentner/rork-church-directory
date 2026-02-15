@@ -1,7 +1,7 @@
 import { Tabs } from "expo-router";
 import { Users, Home, Shield, Settings, Bell, Calendar, LayoutDashboard, Heart } from "lucide-react-native";
 import React from "react";
-import { useUser } from "../../hooks/user-context";
+import { useUser } from "@/hooks/user-context";
 
 export default function TabLayout() {
   const { profile, isLoading } = useUser();
