@@ -76,8 +76,7 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
             .from('persons')
             .select('*')
             .eq('family_id', personResponse.data.family_id)
-            .order('is_head_of_family', { ascending: false })
-            .order('is_spouse', { ascending: false })
+            .order('family_role', { ascending: true })
             .order('date_of_birth', { ascending: true })
         ]);
         

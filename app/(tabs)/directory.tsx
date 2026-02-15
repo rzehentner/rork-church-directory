@@ -25,6 +25,8 @@ import { useMe } from '@/hooks/me-context';
 import { listTags, findPeopleByTags, getPersonWithTags, type Tag } from '@/services/tags';
 import { adminListUsers, type AdminUserListItem } from '@/lib/admin-users';
 
+type FamilyRole = 'head' | 'spouse' | 'child' | 'other';
+
 interface DirectoryEntry {
   family_id: string | null;
   family_name_display: string | null;
@@ -40,6 +42,7 @@ interface DirectoryEntry {
   phone: string | null;
   is_head_of_family: boolean;
   is_spouse: boolean;
+  family_role: FamilyRole;
   photo_url: string | null;
   family_photo_path: string | null;
   user_id?: string | null;
@@ -71,6 +74,7 @@ interface EditingMember {
   date_of_birth: string;
   is_head_of_family: boolean;
   is_spouse: boolean;
+  family_role: FamilyRole;
   photo_url: string | null;
   isNew?: boolean;
 }
@@ -84,10 +88,11 @@ interface EditingPerson {
   date_of_birth: string;
   is_head_of_family: boolean;
   is_spouse: boolean;
+  family_role: FamilyRole;
   photo_url: string | null;
   family_id: string | null;
   user_id: string | null;
-  user_role: 'pending' | 'member' | 'leader' | 'admin' | null;
+  user_role: 'pending' | 'visitor' | 'member' | 'leader' | 'admin' | null;
 }
 
 export default function DirectoryScreen() {
@@ -114,7 +119,7 @@ export default function DirectoryScreen() {
   const [matchAllTags, setMatchAllTags] = useState(false);
   const [isFilterModalVisible, setIsFilterModalVisible] = useState(false);
   const [filteredPersonIds, setFilteredPersonIds] = useState<string[]>([]);
-  const [selectedUserRole, setSelectedUserRole] = useState<'pending' | 'member' | 'leader' | 'admin' | null>(null);
+  const [selectedUserRole, setSelectedUserRole] = useState<'pending' | 'visitor' | 'member' | 'leader' | 'admin' | null>(null);
   const [adminUsersList, setAdminUsersList] = useState<AdminUserListItem[]>([]);
   const [personTags, setPersonTags] = useState<Record<string, Tag[]>>({});
 
@@ -277,6 +282,7 @@ export default function DirectoryScreen() {
             photo_url: person.photo_url,
             is_head_of_family: person.is_head_of_family,
             is_spouse: person.is_spouse,
+            family_role: person.family_role || (person.is_head_of_family ? 'head' : person.is_spouse ? 'spouse' : 'other'),
             family_id: person.family_id,
             user_id: person.user_id,
             user_role: isAdmin && person.profiles ? person.profiles.role : null,
@@ -603,13 +609,11 @@ export default function DirectoryScreen() {
 
     // Sort members within each family
     Object.keys(grouped).forEach((key) => {
+      const roleOrder: Record<FamilyRole, number> = { head: 0, spouse: 1, child: 2, other: 3 };
       grouped[key].sort((a, b) => {
-        if (a.is_head_of_family !== b.is_head_of_family) {
-          return a.is_head_of_family ? -1 : 1;
-        }
-        if (a.is_spouse !== b.is_spouse) {
-          return a.is_spouse ? -1 : 1;
-        }
+        const aOrder = roleOrder[a.family_role] ?? 3;
+        const bOrder = roleOrder[b.family_role] ?? 3;
+        if (aOrder !== bOrder) return aOrder - bOrder;
         return (a.first_name || '').localeCompare(b.first_name || '');
       });
     });
@@ -657,8 +661,7 @@ export default function DirectoryScreen() {
         .from('persons')
         .select('*')
         .eq('family_id', familyInfo.family_id)
-        .order('is_head_of_family', { ascending: false })
-        .order('is_spouse', { ascending: false })
+        .order('family_role', { ascending: true })
         .order('first_name');
       
       if (error) throw error;
@@ -672,6 +675,7 @@ export default function DirectoryScreen() {
         date_of_birth: member.date_of_birth || '',
         is_head_of_family: member.is_head_of_family || false,
         is_spouse: member.is_spouse || false,
+        family_role: member.family_role || (member.is_head_of_family ? 'head' as const : member.is_spouse ? 'spouse' as const : 'other' as const),
         photo_url: member.photo_url,
         isNew: false,
       })) || []);
@@ -717,8 +721,9 @@ export default function DirectoryScreen() {
               email: member.email || null,
               phone: member.phone || null,
               date_of_birth: member.date_of_birth || null,
-              is_head_of_family: member.is_head_of_family,
-              is_spouse: member.is_spouse,
+              is_head_of_family: member.family_role === 'head',
+              is_spouse: member.family_role === 'spouse',
+              family_role: member.family_role,
               photo_url: member.photo_url,
             });
           
@@ -733,8 +738,9 @@ export default function DirectoryScreen() {
               email: member.email || null,
               phone: member.phone || null,
               date_of_birth: member.date_of_birth || null,
-              is_head_of_family: member.is_head_of_family,
-              is_spouse: member.is_spouse,
+              is_head_of_family: member.family_role === 'head',
+              is_spouse: member.family_role === 'spouse',
+              family_role: member.family_role,
               photo_url: member.photo_url,
             })
             .eq('id', member.id);
@@ -796,6 +802,7 @@ export default function DirectoryScreen() {
       date_of_birth: '',
       is_head_of_family: false,
       is_spouse: false,
+      family_role: 'other',
       photo_url: null,
       isNew: true,
     };
@@ -918,6 +925,7 @@ export default function DirectoryScreen() {
       date_of_birth: '',
       is_head_of_family: person.is_head_of_family || false,
       is_spouse: person.is_spouse || false,
+      family_role: person.family_role || 'other',
       photo_url: person.photo_url,
       family_id: person.family_id,
       user_id: null,
@@ -968,6 +976,7 @@ export default function DirectoryScreen() {
           date_of_birth: personData.date_of_birth || '',
           is_head_of_family: personData.is_head_of_family || false,
           is_spouse: personData.is_spouse || false,
+          family_role: personData.family_role || (personData.is_head_of_family ? 'head' as const : personData.is_spouse ? 'spouse' as const : 'other' as const),
           photo_url: personData.photo_url,
           family_id: personData.family_id,
           user_id: personData.user_id,
@@ -1003,8 +1012,9 @@ export default function DirectoryScreen() {
           email: editingPerson.email || null,
           phone: editingPerson.phone || null,
           date_of_birth: editingPerson.date_of_birth || null,
-          is_head_of_family: editingPerson.is_head_of_family,
-          is_spouse: editingPerson.is_spouse,
+          is_head_of_family: editingPerson.family_role === 'head',
+          is_spouse: editingPerson.family_role === 'spouse',
+          family_role: editingPerson.family_role,
           photo_url: editingPerson.photo_url,
         })
         .eq('id', editingPerson.id);
@@ -1386,8 +1396,9 @@ export default function DirectoryScreen() {
                       <View style={styles.memberInfo}>
                         <Text style={styles.memberName}>
                           {member.first_name || ''} {member.last_name || ''}
-                          {member.is_head_of_family && ' (Head)'}
-                          {member.is_spouse && ' (Spouse)'}
+                          {member.family_role === 'head' && ' (Head)'}
+                          {member.family_role === 'spouse' && ' (Spouse)'}
+                          {member.family_role === 'child' && ' (Child)'}
                         </Text>
                         {member.email && (
                           <TouchableOpacity 
@@ -1489,8 +1500,9 @@ export default function DirectoryScreen() {
                         <Users size={12} color="#9CA3AF" />
                         <Text style={styles.personFamilyText}>
                           {person.family_name_display}
-                          {person.is_head_of_family && ' (Head)'}
-                          {person.is_spouse && ' (Spouse)'}
+                          {person.family_role === 'head' && ' (Head)'}
+                          {person.family_role === 'spouse' && ' (Spouse)'}
+                          {person.family_role === 'child' && ' (Child)'}
                         </Text>
                       </View>
                     )}
@@ -1780,24 +1792,23 @@ export default function DirectoryScreen() {
                           />
                         </View>
                         <View style={styles.memberEditRowItem}>
-                          <Text style={styles.modalLabel}>Role</Text>
+                          <Text style={styles.modalLabel}>Family Role</Text>
                           <View style={styles.roleContainer}>
-                            <TouchableOpacity
-                              style={[styles.roleButton, member.is_head_of_family && styles.roleButtonActive]}
-                              onPress={() => handleUpdateMember(index, { 
-                                is_head_of_family: !member.is_head_of_family
-                              })}
-                            >
-                              <Text style={[styles.roleButtonText, member.is_head_of_family && styles.roleButtonTextActive]}>Head</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                              style={[styles.roleButton, member.is_spouse && styles.roleButtonActive]}
-                              onPress={() => handleUpdateMember(index, { 
-                                is_spouse: !member.is_spouse
-                              })}
-                            >
-                              <Text style={[styles.roleButtonText, member.is_spouse && styles.roleButtonTextActive]}>Spouse</Text>
-                            </TouchableOpacity>
+                            {(['head', 'spouse', 'child', 'other'] as const).map((role) => (
+                              <TouchableOpacity
+                                key={role}
+                                style={[styles.roleButton, member.family_role === role && styles.roleButtonActive]}
+                                onPress={() => handleUpdateMember(index, { 
+                                  family_role: role,
+                                  is_head_of_family: role === 'head',
+                                  is_spouse: role === 'spouse',
+                                })}
+                              >
+                                <Text style={[styles.roleButtonText, member.family_role === role && styles.roleButtonTextActive]}>
+                                  {role.charAt(0).toUpperCase() + role.slice(1)}
+                                </Text>
+                              </TouchableOpacity>
+                            ))}
                           </View>
                         </View>
                       </View>
@@ -1933,24 +1944,22 @@ export default function DirectoryScreen() {
                   
                   <Text style={styles.modalLabel}>Family Role</Text>
                   <View style={styles.roleContainer}>
-                    <TouchableOpacity
-                      style={[styles.roleButton, editingPerson.is_head_of_family && styles.roleButtonActive]}
-                      onPress={() => setEditingPerson(prev => prev ? { 
-                        ...prev, 
-                        is_head_of_family: !prev.is_head_of_family
-                      } : null)}
-                    >
-                      <Text style={[styles.roleButtonText, editingPerson.is_head_of_family && styles.roleButtonTextActive]}>Head of Family</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={[styles.roleButton, editingPerson.is_spouse && styles.roleButtonActive]}
-                      onPress={() => setEditingPerson(prev => prev ? { 
-                        ...prev, 
-                        is_spouse: !prev.is_spouse
-                      } : null)}
-                    >
-                      <Text style={[styles.roleButtonText, editingPerson.is_spouse && styles.roleButtonTextActive]}>Spouse</Text>
-                    </TouchableOpacity>
+                    {(['head', 'spouse', 'child', 'other'] as const).map((role) => (
+                      <TouchableOpacity
+                        key={role}
+                        style={[styles.roleButton, editingPerson.family_role === role && styles.roleButtonActive]}
+                        onPress={() => setEditingPerson(prev => prev ? { 
+                          ...prev, 
+                          family_role: role,
+                          is_head_of_family: role === 'head',
+                          is_spouse: role === 'spouse',
+                        } : null)}
+                      >
+                        <Text style={[styles.roleButtonText, editingPerson.family_role === role && styles.roleButtonTextActive]}>
+                          {role.charAt(0).toUpperCase() + role.slice(1)}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
                 </View>
 
@@ -1970,7 +1979,7 @@ export default function DirectoryScreen() {
                       Debug: Role value = {JSON.stringify(editingPerson.user_role)}
                     </Text>
                     <View style={styles.userRoleContainer}>
-                      {(['pending', 'member', 'leader', 'admin'] as const).map((role) => {
+                      {(['pending', 'visitor', 'member', 'leader', 'admin'] as const).map((role) => {
                         // Direct comparison without normalization to preserve exact matching
                         const isActive = editingPerson.user_role === role;
                         
@@ -2011,6 +2020,7 @@ export default function DirectoryScreen() {
                     <View style={styles.roleDescriptions}>
                       <Text style={styles.roleDescriptionTitle}>Role Permissions:</Text>
                       <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Pending:</Text> Awaiting approval, limited access</Text>
+                      <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Visitor:</Text> New user, not yet linked to a person</Text>
                       <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Member:</Text> Can view directory and manage own profile</Text>
                       <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Leader:</Text> Can manage tags and view member details</Text>
                       <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Admin:</Text> Full access to all features</Text>

@@ -225,8 +225,8 @@ export default function VisitorProfileScreen() {
     );
   }
 
-  // If user is not pending, redirect to family tab
-  if (profile?.role !== 'pending') {
+  // If user is not pending/visitor, redirect to family tab
+  if (profile?.role !== 'pending' && profile?.role !== 'visitor') {
     router.replace('/(tabs)/family' as any);
     return null;
   }

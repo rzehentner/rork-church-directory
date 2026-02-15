@@ -2,7 +2,7 @@ import { supabase } from './supabase';
 
 export interface AdminUserListItem {
   user_id: string;
-  role: 'pending' | 'member' | 'leader' | 'admin';
+  role: 'pending' | 'visitor' | 'member' | 'leader' | 'admin';
   person_id: string;
   first_name: string | null;
   last_name: string | null;
@@ -15,7 +15,7 @@ export interface AdminUserListItem {
  * Uses RPC to bypass RLS restrictions
  */
 export async function adminListUsers(
-  roles?: ('pending' | 'member' | 'leader' | 'admin')[] | null
+  roles?: ('pending' | 'visitor' | 'member' | 'leader' | 'admin')[] | null
 ): Promise<AdminUserListItem[]> {
   console.log('🔍 adminListUsers called with roles:', roles);
   

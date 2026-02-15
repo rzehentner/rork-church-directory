@@ -75,6 +75,7 @@ export default function FamilyScreen() {
     date_of_birth: '',
     is_head_of_family: false,
     is_spouse: false,
+    family_role: 'other' as 'head' | 'spouse' | 'child' | 'other',
   });
   
   const [editMemberForm, setEditMemberForm] = useState({
@@ -85,6 +86,7 @@ export default function FamilyScreen() {
     date_of_birth: '',
     is_head_of_family: false,
     is_spouse: false,
+    family_role: 'other' as 'head' | 'spouse' | 'child' | 'other',
   });
   
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -350,8 +352,9 @@ export default function FamilyScreen() {
           email: newMemberForm.email || null,
           phone: newMemberForm.phone || null,
           date_of_birth: newMemberForm.date_of_birth || null,
-          is_head_of_family: newMemberForm.is_head_of_family,
-          is_spouse: newMemberForm.is_spouse,
+          is_head_of_family: newMemberForm.family_role === 'head',
+          is_spouse: newMemberForm.family_role === 'spouse',
+          family_role: newMemberForm.family_role,
           family_id: family.id,
           user_id: null, // This person is not associated with a user account
         });
@@ -369,6 +372,7 @@ export default function FamilyScreen() {
           date_of_birth: '',
           is_head_of_family: false,
           is_spouse: false,
+          family_role: 'other',
         });
         // Refetch family data to show the new member
         await refetch();
@@ -388,6 +392,7 @@ export default function FamilyScreen() {
       date_of_birth: member.date_of_birth || '',
       is_head_of_family: member.is_head_of_family || false,
       is_spouse: member.is_spouse || false,
+      family_role: member.family_role || (member.is_head_of_family ? 'head' : member.is_spouse ? 'spouse' : 'other'),
     });
   };
 
@@ -411,8 +416,9 @@ export default function FamilyScreen() {
           email: editMemberForm.email || null,
           phone: editMemberForm.phone || null,
           date_of_birth: editMemberForm.date_of_birth || null,
-          is_head_of_family: editMemberForm.is_head_of_family,
-          is_spouse: editMemberForm.is_spouse,
+          is_head_of_family: editMemberForm.family_role === 'head',
+          is_spouse: editMemberForm.family_role === 'spouse',
+          family_role: editMemberForm.family_role,
         })
         .eq('id', editingMemberId);
 
@@ -429,6 +435,7 @@ export default function FamilyScreen() {
           date_of_birth: '',
           is_head_of_family: false,
           is_spouse: false,
+          family_role: 'other',
         });
         // Refetch family data to show the updated member
         await refetch();
@@ -448,6 +455,7 @@ export default function FamilyScreen() {
       date_of_birth: '',
       is_head_of_family: false,
       is_spouse: false,
+      family_role: 'other',
     });
   };
 
@@ -796,39 +804,27 @@ export default function FamilyScreen() {
                         </TouchableOpacity>
                         
                         <View style={styles.checkboxContainer}>
-                          <TouchableOpacity 
-                            style={styles.checkbox}
-                            onPress={() => {
-                              console.log('Toggling head of family:', !editMemberForm.is_head_of_family);
-                              setEditMemberForm(prev => ({ 
-                                ...prev, 
-                                is_head_of_family: !prev.is_head_of_family 
-                              }));
-                            }}
-                            testID="edit-head-of-family-checkbox"
-                          >
-                            <View style={[styles.checkboxInner, editMemberForm.is_head_of_family && styles.checkboxChecked]}>
-                              {editMemberForm.is_head_of_family && <Check size={16} color="#FFFFFF" />}
-                            </View>
-                            <Text style={styles.checkboxLabel}>Head of Family</Text>
-                          </TouchableOpacity>
-                          
-                          <TouchableOpacity 
-                            style={styles.checkbox}
-                            onPress={() => {
-                              console.log('Toggling spouse:', !editMemberForm.is_spouse);
-                              setEditMemberForm(prev => ({ 
-                                ...prev, 
-                                is_spouse: !prev.is_spouse 
-                              }));
-                            }}
-                            testID="edit-spouse-checkbox"
-                          >
-                            <View style={[styles.checkboxInner, editMemberForm.is_spouse && styles.checkboxChecked]}>
-                              {editMemberForm.is_spouse && <Check size={16} color="#FFFFFF" />}
-                            </View>
-                            <Text style={styles.checkboxLabel}>Spouse</Text>
-                          </TouchableOpacity>
+                          {(['head', 'spouse', 'child', 'other'] as const).map((role) => (
+                            <TouchableOpacity 
+                              key={role}
+                              style={styles.checkbox}
+                              onPress={() => {
+                                console.log('Setting family role:', role);
+                                setEditMemberForm(prev => ({ 
+                                  ...prev, 
+                                  family_role: role,
+                                  is_head_of_family: role === 'head',
+                                  is_spouse: role === 'spouse',
+                                }));
+                              }}
+                              testID={`edit-role-${role}`}
+                            >
+                              <View style={[styles.checkboxInner, editMemberForm.family_role === role && styles.checkboxChecked]}>
+                                {editMemberForm.family_role === role && <Check size={16} color="#FFFFFF" />}
+                              </View>
+                              <Text style={styles.checkboxLabel}>{role.charAt(0).toUpperCase() + role.slice(1)}</Text>
+                            </TouchableOpacity>
+                          ))}
                         </View>
                         
                         <View style={styles.formActions}>
@@ -861,10 +857,10 @@ export default function FamilyScreen() {
                                 <Text style={styles.meText}>Me</Text>
                               </View>
                             )}
-                            {member.is_head_of_family && (
+                            {member.family_role === 'head' && (
                               <Crown size={16} color="#F59E0B" />
                             )}
-                            {member.is_spouse && (
+                            {member.family_role === 'spouse' && (
                               <Heart size={16} color="#EC4899" />
                             )}
                             {!member.user_id && (
@@ -990,39 +986,27 @@ export default function FamilyScreen() {
                     </TouchableOpacity>
                     
                     <View style={styles.checkboxContainer}>
-                      <TouchableOpacity 
-                        style={styles.checkbox}
-                        onPress={() => {
-                          console.log('Toggling new member head of family:', !newMemberForm.is_head_of_family);
-                          setNewMemberForm(prev => ({ 
-                            ...prev, 
-                            is_head_of_family: !prev.is_head_of_family 
-                          }));
-                        }}
-                        testID="new-head-of-family-checkbox"
-                      >
-                        <View style={[styles.checkboxInner, newMemberForm.is_head_of_family && styles.checkboxChecked]}>
-                          {newMemberForm.is_head_of_family && <Check size={16} color="#FFFFFF" />}
-                        </View>
-                        <Text style={styles.checkboxLabel}>Head of Family</Text>
-                      </TouchableOpacity>
-                      
-                      <TouchableOpacity 
-                        style={styles.checkbox}
-                        onPress={() => {
-                          console.log('Toggling new member spouse:', !newMemberForm.is_spouse);
-                          setNewMemberForm(prev => ({ 
-                            ...prev, 
-                            is_spouse: !prev.is_spouse 
-                          }));
-                        }}
-                        testID="new-spouse-checkbox"
-                      >
-                        <View style={[styles.checkboxInner, newMemberForm.is_spouse && styles.checkboxChecked]}>
-                          {newMemberForm.is_spouse && <Check size={16} color="#FFFFFF" />}
-                        </View>
-                        <Text style={styles.checkboxLabel}>Spouse</Text>
-                      </TouchableOpacity>
+                      {(['head', 'spouse', 'child', 'other'] as const).map((role) => (
+                        <TouchableOpacity 
+                          key={role}
+                          style={styles.checkbox}
+                          onPress={() => {
+                            console.log('Setting new member family role:', role);
+                            setNewMemberForm(prev => ({ 
+                              ...prev, 
+                              family_role: role,
+                              is_head_of_family: role === 'head',
+                              is_spouse: role === 'spouse',
+                            }));
+                          }}
+                          testID={`new-role-${role}`}
+                        >
+                          <View style={[styles.checkboxInner, newMemberForm.family_role === role && styles.checkboxChecked]}>
+                            {newMemberForm.family_role === role && <Check size={16} color="#FFFFFF" />}
+                          </View>
+                          <Text style={styles.checkboxLabel}>{role.charAt(0).toUpperCase() + role.slice(1)}</Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
                     
                     <View style={styles.formActions}>

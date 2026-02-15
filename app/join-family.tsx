@@ -104,6 +104,7 @@ export default function JoinFamilyScreen() {
             date_of_birth: entry.date_of_birth,
             is_head_of_family: entry.is_head_of_family || false,
             is_spouse: entry.is_spouse || false,
+            family_role: entry.family_role || (entry.is_head_of_family ? 'head' as const : entry.is_spouse ? 'spouse' as const : 'other' as const),
             photo_url: entry.photo_url,
             created_at: '',
           });
@@ -324,10 +325,10 @@ export default function JoinFamilyScreen() {
                             ]}>
                               {member.first_name} {member.last_name}
                             </Text>
-                            {member.is_head_of_family && (
+                            {member.family_role === 'head' && (
                               <Crown size={14} color="#F59E0B" />
                             )}
-                            {member.is_spouse && (
+                            {member.family_role === 'spouse' && (
                               <Heart size={14} color="#EC4899" />
                             )}
                           </View>

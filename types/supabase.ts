@@ -4,19 +4,20 @@ export interface Database {
       profiles: {
         Row: {
           id: string;
-          role: 'pending' | 'member' | 'leader' | 'admin';
+          person_id: string | null;
+          role: 'pending' | 'visitor' | 'member' | 'leader' | 'admin';
           approved_at: string | null;
           approved_by: string | null;
           created_at: string;
         };
         Insert: {
           id: string;
-          role?: 'pending' | 'member' | 'leader' | 'admin';
+          role?: 'pending' | 'visitor' | 'member' | 'leader' | 'admin';
           approved_at?: string | null;
           approved_by?: string | null;
         };
         Update: {
-          role?: 'pending' | 'member' | 'leader' | 'admin';
+          role?: 'pending' | 'visitor' | 'member' | 'leader' | 'admin';
           approved_at?: string | null;
           approved_by?: string | null;
         };
@@ -33,6 +34,7 @@ export interface Database {
           date_of_birth: string | null;
           is_head_of_family: boolean;
           is_spouse: boolean;
+          family_role: 'head' | 'spouse' | 'child' | 'other';
           photo_url: string | null;
           created_at: string;
         };
@@ -44,6 +46,7 @@ export interface Database {
           date_of_birth?: string | null;
           is_head_of_family?: boolean;
           is_spouse?: boolean;
+          family_role?: 'head' | 'spouse' | 'child' | 'other';
           photo_url?: string | null;
           user_id?: string | null;
           family_id?: string | null;
@@ -56,6 +59,7 @@ export interface Database {
           date_of_birth?: string | null;
           is_head_of_family?: boolean;
           is_spouse?: boolean;
+          family_role?: 'head' | 'spouse' | 'child' | 'other';
           photo_url?: string | null;
           family_id?: string | null;
         };
@@ -64,6 +68,8 @@ export interface Database {
         Row: {
           id: string;
           family_name: string;
+          last_name: string | null;
+          display_name_override: string | null;
           family_name_display: string | null;
           address_street: string | null;
           address_city: string | null;
@@ -76,6 +82,8 @@ export interface Database {
         };
         Insert: {
           family_name: string;
+          last_name?: string | null;
+          display_name_override?: string | null;
           address_street?: string | null;
           address_city?: string | null;
           address_state?: string | null;
@@ -84,6 +92,8 @@ export interface Database {
         };
         Update: {
           family_name?: string;
+          last_name?: string | null;
+          display_name_override?: string | null;
           address_street?: string | null;
           address_city?: string | null;
           address_state?: string | null;
@@ -247,8 +257,10 @@ export interface Database {
           last_name: string;
           email: string | null;
           phone: string | null;
+          date_of_birth: string | null;
           is_head_of_family: boolean;
           is_spouse: boolean;
+          family_role: 'head' | 'spouse' | 'child' | 'other';
           photo_url: string | null;
         };
       };
@@ -274,6 +286,7 @@ export interface Database {
           date_of_birth: string | null;
           is_head_of_family: boolean;
           is_spouse: boolean;
+          family_role: 'head' | 'spouse' | 'child' | 'other';
           photo_url: string | null;
           created_at: string;
           tag_names: string[] | null;

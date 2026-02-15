@@ -43,8 +43,8 @@ export default function IndexScreen() {
       setIsNavigating(true);
       
       if (user) {
-        // Check if user is a visitor (pending) without a complete profile
-        if (profile?.role === 'pending' && (!person || !person.first_name || !person.last_name)) {
+        // Check if user is a visitor or pending without a complete profile
+        if ((profile?.role === 'pending' || profile?.role === 'visitor') && (!person || !person.first_name || !person.last_name)) {
           addDebugInfo('Navigating to visitor profile');
           router.replace('/visitor-profile' as any);
         } else {
