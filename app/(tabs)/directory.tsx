@@ -702,75 +702,17 @@ export default function DirectoryScreen() {
           onPress: async () => {
             setIsSaving(true);
             try {
-              console.log('🗑️ Starting family deletion:', editingFamily.id);
+              console.log('🗑️ Starting family deletion via RPC:', editingFamily.id);
               
-              // Step 1: Get all members
-              const { data: members, error: membersError } = await supabase
-                .from('persons')
-                .select('id, user_id')
-                .eq('family_id', editingFamily.id);
+              const { error: rpcError } = await supabase.rpc('admin_delete_family', {
+                p_family_id: editingFamily.id,
+              });
               
-              if (membersError) throw membersError;
-              
-              if (members && members.length > 0) {
-                // Step 2: Remove taggings for all members
-                const memberIds = members.map(m => m.id);
-                try {
-                  const { error: tagDeleteError } = await supabase
-                    .from('taggings')
-                    .delete()
-                    .eq('subject_kind', 'person')
-                    .in('subject_id', memberIds);
-                  
-                  if (tagDeleteError) {
-                    console.warn('⚠️ Could not remove member taggings:', tagDeleteError.message);
-                  }
-                } catch (tagErr) {
-                  console.warn('⚠️ Taggings cleanup failed:', tagErr);
-                }
-                
-                // Step 3: Unlink members who have user accounts (set family_id to null)
-                const membersWithAccounts = members.filter(m => m.user_id);
-                const membersWithoutAccounts = members.filter(m => !m.user_id);
-                
-                if (membersWithAccounts.length > 0) {
-                  console.log('👤 Unlinking', membersWithAccounts.length, 'members with user accounts');
-                  const { error: unlinkError } = await supabase
-                    .from('persons')
-                    .update({ family_id: null })
-                    .in('id', membersWithAccounts.map(m => m.id));
-                  
-                  if (unlinkError) {
-                    console.warn('⚠️ Could not unlink members:', unlinkError.message);
-                  }
-                }
-                
-                // Step 4: Delete members without user accounts
-                if (membersWithoutAccounts.length > 0) {
-                  console.log('🗑️ Deleting', membersWithoutAccounts.length, 'members without user accounts');
-                  const { error: deleteMembersError } = await supabase
-                    .from('persons')
-                    .delete()
-                    .in('id', membersWithoutAccounts.map(m => m.id));
-                  
-                  if (deleteMembersError) {
-                    console.warn('⚠️ Could not delete members:', deleteMembersError.message);
-                  }
-                }
+              if (rpcError) {
+                console.error('❌ admin_delete_family RPC error:', rpcError);
+                throw rpcError;
               }
               
-              // Step 5: Delete the family
-              const { error: deleteFamilyError } = await supabase
-                .from('families')
-                .delete()
-                .eq('id', editingFamily.id);
-              
-              if (deleteFamilyError) {
-                console.error('❌ Family delete error:', deleteFamilyError);
-                throw deleteFamilyError;
-              }
-              
-              // Step 6: Verify deletion
               const { data: checkFamily } = await supabase
                 .from('families')
                 .select('id')
@@ -778,10 +720,10 @@ export default function DirectoryScreen() {
                 .maybeSingle();
               
               if (checkFamily) {
-                console.error('❌ Family still exists after delete - RLS may be blocking');
+                console.error('❌ Family still exists after RPC delete');
                 Alert.alert(
                   'Delete Failed',
-                  'The family could not be deleted. This may be due to database permissions. Please contact your backend administrator.'
+                  'The family could not be deleted. Please check your database RPC function.'
                 );
                 return;
               }
@@ -1240,58 +1182,17 @@ export default function DirectoryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('🗑️ Starting person deletion:', editingPerson.id);
+              console.log('🗑️ Starting person deletion via RPC:', editingPerson.id);
               
-              // Step 1: Remove all tag associations for this person
-              try {
-                const { data: personTags } = await supabase
-                  .from('taggings')
-                  .select('id')
-                  .eq('subject_kind', 'person')
-                  .eq('subject_id', editingPerson.id);
-                
-                if (personTags && personTags.length > 0) {
-                  console.log('🏷️ Removing', personTags.length, 'tag associations');
-                  const { error: tagDeleteError } = await supabase
-                    .from('taggings')
-                    .delete()
-                    .eq('subject_kind', 'person')
-                    .eq('subject_id', editingPerson.id);
-                  
-                  if (tagDeleteError) {
-                    console.warn('⚠️ Could not remove taggings:', tagDeleteError.message);
-                  }
-                }
-              } catch (tagErr) {
-                console.warn('⚠️ Taggings cleanup failed (may not exist):', tagErr);
+              const { error: rpcError } = await supabase.rpc('admin_delete_person', {
+                p_person_id: editingPerson.id,
+              });
+              
+              if (rpcError) {
+                console.error('❌ admin_delete_person RPC error:', rpcError);
+                throw rpcError;
               }
               
-              // Step 2: If person has a user account, unlink it first
-              if (editingPerson.user_id) {
-                console.log('👤 Person has user account, clearing user_id before delete');
-                const { error: unlinkError } = await supabase
-                  .from('persons')
-                  .update({ user_id: null })
-                  .eq('id', editingPerson.id);
-                
-                if (unlinkError) {
-                  console.warn('⚠️ Could not unlink user:', unlinkError.message);
-                }
-              }
-              
-              // Step 3: Delete the person record
-              const { error: deleteError, count } = await supabase
-                .from('persons')
-                .delete()
-                .eq('id', editingPerson.id)
-                .select('id');
-              
-              if (deleteError) {
-                console.error('❌ Delete error:', deleteError);
-                throw deleteError;
-              }
-              
-              // Step 4: Verify the person was actually deleted
               const { data: checkPerson } = await supabase
                 .from('persons')
                 .select('id')
@@ -1299,10 +1200,10 @@ export default function DirectoryScreen() {
                 .maybeSingle();
               
               if (checkPerson) {
-                console.error('❌ Person still exists after delete - RLS may be blocking');
+                console.error('❌ Person still exists after RPC delete');
                 Alert.alert(
                   'Delete Failed',
-                  'The person could not be deleted. This may be due to database permissions. Please contact your backend administrator to check RLS policies on the persons table.'
+                  'The person could not be deleted. Please check your database RPC function.'
                 );
                 return;
               }
