@@ -688,6 +688,126 @@ export default function DirectoryScreen() {
     setIsEditModalVisible(true);
   };
 
+  const handleDeleteFamily = () => {
+    if (!editingFamily || !isAdmin) return;
+    
+    Alert.alert(
+      'Delete Family',
+      `Are you sure you want to delete the "${editingFamily.name}" family and all its members without user accounts? Members with user accounts will be unassigned from this family. This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            setIsSaving(true);
+            try {
+              console.log('🗑️ Starting family deletion:', editingFamily.id);
+              
+              // Step 1: Get all members
+              const { data: members, error: membersError } = await supabase
+                .from('persons')
+                .select('id, user_id')
+                .eq('family_id', editingFamily.id);
+              
+              if (membersError) throw membersError;
+              
+              if (members && members.length > 0) {
+                // Step 2: Remove taggings for all members
+                const memberIds = members.map(m => m.id);
+                try {
+                  const { error: tagDeleteError } = await supabase
+                    .from('taggings')
+                    .delete()
+                    .eq('subject_kind', 'person')
+                    .in('subject_id', memberIds);
+                  
+                  if (tagDeleteError) {
+                    console.warn('⚠️ Could not remove member taggings:', tagDeleteError.message);
+                  }
+                } catch (tagErr) {
+                  console.warn('⚠️ Taggings cleanup failed:', tagErr);
+                }
+                
+                // Step 3: Unlink members who have user accounts (set family_id to null)
+                const membersWithAccounts = members.filter(m => m.user_id);
+                const membersWithoutAccounts = members.filter(m => !m.user_id);
+                
+                if (membersWithAccounts.length > 0) {
+                  console.log('👤 Unlinking', membersWithAccounts.length, 'members with user accounts');
+                  const { error: unlinkError } = await supabase
+                    .from('persons')
+                    .update({ family_id: null })
+                    .in('id', membersWithAccounts.map(m => m.id));
+                  
+                  if (unlinkError) {
+                    console.warn('⚠️ Could not unlink members:', unlinkError.message);
+                  }
+                }
+                
+                // Step 4: Delete members without user accounts
+                if (membersWithoutAccounts.length > 0) {
+                  console.log('🗑️ Deleting', membersWithoutAccounts.length, 'members without user accounts');
+                  const { error: deleteMembersError } = await supabase
+                    .from('persons')
+                    .delete()
+                    .in('id', membersWithoutAccounts.map(m => m.id));
+                  
+                  if (deleteMembersError) {
+                    console.warn('⚠️ Could not delete members:', deleteMembersError.message);
+                  }
+                }
+              }
+              
+              // Step 5: Delete the family
+              const { error: deleteFamilyError } = await supabase
+                .from('families')
+                .delete()
+                .eq('id', editingFamily.id);
+              
+              if (deleteFamilyError) {
+                console.error('❌ Family delete error:', deleteFamilyError);
+                throw deleteFamilyError;
+              }
+              
+              // Step 6: Verify deletion
+              const { data: checkFamily } = await supabase
+                .from('families')
+                .select('id')
+                .eq('id', editingFamily.id)
+                .maybeSingle();
+              
+              if (checkFamily) {
+                console.error('❌ Family still exists after delete - RLS may be blocking');
+                Alert.alert(
+                  'Delete Failed',
+                  'The family could not be deleted. This may be due to database permissions. Please contact your backend administrator.'
+                );
+                return;
+              }
+              
+              console.log('✅ Family deleted successfully:', editingFamily.id);
+              
+              queryClient.invalidateQueries({ queryKey: ['directory'] });
+              
+              setIsEditModalVisible(false);
+              setEditingFamily(null);
+              setEditingMembers([]);
+              
+              Alert.alert('Success', 'Family deleted successfully.');
+            } catch (error) {
+              console.error('❌ Error deleting family:', error);
+              const message = error instanceof Error ? error.message : 'Failed to delete family. Please try again.';
+              Alert.alert('Error', message);
+            } finally {
+              setIsSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleSaveFamily = async () => {
     if (!editingFamily) return;
     
@@ -1108,7 +1228,7 @@ export default function DirectoryScreen() {
   };
 
   const handleDeletePerson = () => {
-    if (!editingPerson) return;
+    if (!editingPerson || !isAdmin) return;
     
     Alert.alert(
       'Delete Person',
@@ -1120,14 +1240,75 @@ export default function DirectoryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              const { error } = await supabase
+              console.log('🗑️ Starting person deletion:', editingPerson.id);
+              
+              // Step 1: Remove all tag associations for this person
+              try {
+                const { data: personTags } = await supabase
+                  .from('taggings')
+                  .select('id')
+                  .eq('subject_kind', 'person')
+                  .eq('subject_id', editingPerson.id);
+                
+                if (personTags && personTags.length > 0) {
+                  console.log('🏷️ Removing', personTags.length, 'tag associations');
+                  const { error: tagDeleteError } = await supabase
+                    .from('taggings')
+                    .delete()
+                    .eq('subject_kind', 'person')
+                    .eq('subject_id', editingPerson.id);
+                  
+                  if (tagDeleteError) {
+                    console.warn('⚠️ Could not remove taggings:', tagDeleteError.message);
+                  }
+                }
+              } catch (tagErr) {
+                console.warn('⚠️ Taggings cleanup failed (may not exist):', tagErr);
+              }
+              
+              // Step 2: If person has a user account, unlink it first
+              if (editingPerson.user_id) {
+                console.log('👤 Person has user account, clearing user_id before delete');
+                const { error: unlinkError } = await supabase
+                  .from('persons')
+                  .update({ user_id: null })
+                  .eq('id', editingPerson.id);
+                
+                if (unlinkError) {
+                  console.warn('⚠️ Could not unlink user:', unlinkError.message);
+                }
+              }
+              
+              // Step 3: Delete the person record
+              const { error: deleteError, count } = await supabase
                 .from('persons')
                 .delete()
-                .eq('id', editingPerson.id);
+                .eq('id', editingPerson.id)
+                .select('id');
               
-              if (error) throw error;
+              if (deleteError) {
+                console.error('❌ Delete error:', deleteError);
+                throw deleteError;
+              }
               
-              // Refresh directory data
+              // Step 4: Verify the person was actually deleted
+              const { data: checkPerson } = await supabase
+                .from('persons')
+                .select('id')
+                .eq('id', editingPerson.id)
+                .maybeSingle();
+              
+              if (checkPerson) {
+                console.error('❌ Person still exists after delete - RLS may be blocking');
+                Alert.alert(
+                  'Delete Failed',
+                  'The person could not be deleted. This may be due to database permissions. Please contact your backend administrator to check RLS policies on the persons table.'
+                );
+                return;
+              }
+              
+              console.log('✅ Person deleted successfully:', editingPerson.id);
+              
               queryClient.invalidateQueries({ queryKey: ['directory'] });
               
               setIsEditPersonModalVisible(false);
@@ -1135,8 +1316,9 @@ export default function DirectoryScreen() {
               
               Alert.alert('Success', 'Person deleted successfully.');
             } catch (error) {
-              console.error('Error deleting person:', error);
-              Alert.alert('Error', 'Failed to delete person. Please try again.');
+              console.error('❌ Error deleting person:', error);
+              const message = error instanceof Error ? error.message : 'Failed to delete person. Please try again.';
+              Alert.alert('Error', message);
             }
           },
         },
@@ -1825,6 +2007,22 @@ export default function DirectoryScreen() {
                 </View>
               </>
             )}
+
+            {/* Delete Family Button */}
+            <View style={styles.modalSection}>
+              <TouchableOpacity
+                style={styles.deleteFamilyButton}
+                onPress={handleDeleteFamily}
+                disabled={isSaving}
+                testID="delete-family-button"
+              >
+                <Trash2 size={20} color="#EF4444" />
+                <Text style={styles.deleteFamilyButtonText}>Delete Family</Text>
+              </TouchableOpacity>
+              <Text style={styles.deleteFamilyWarning}>
+                Members with user accounts will be unassigned. Members without accounts will be permanently deleted.
+              </Text>
+            </View>
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -3086,5 +3284,30 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 4,
     marginTop: 8,
+  },
+  deleteFamilyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FEF2F2',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    gap: 8,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  deleteFamilyButtonText: {
+    fontSize: 16,
+    fontWeight: '500' as const,
+    color: '#EF4444',
+  },
+  deleteFamilyWarning: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 8,
+    marginBottom: 24,
   },
 });
