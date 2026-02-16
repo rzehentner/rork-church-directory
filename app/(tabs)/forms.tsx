@@ -1,0 +1,364 @@
+import React, { useState, useCallback } from 'react'
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  FlatList,
+  ActivityIndicator,
+  RefreshControl,
+} from 'react-native'
+import { Stack, router } from 'expo-router'
+import { useQuery } from '@tanstack/react-query'
+import { Calendar, MapPin, Users, Clock, ChevronRight } from 'lucide-react-native'
+import { getMySignupForms } from '@/services/signup-forms'
+import type { MySignupForm } from '@/types/supabase'
+
+function getStatusBadge(status: MySignupForm['my_signup_status']) {
+  if (status === 'confirmed') {
+    return { label: 'Signed Up', bg: '#D1FAE5', color: '#065F46' }
+  }
+  if (status === 'waitlisted') {
+    return { label: 'Waitlisted', bg: '#FEF3C7', color: '#92400E' }
+  }
+  return { label: 'Sign Up', bg: '#EEF2FF', color: '#4338CA' }
+}
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
+
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr)
+  return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })
+}
+
+function SpotsIndicator({ confirmed, max }: { confirmed: number; max: number | null }) {
+  if (!max) return null
+  const remaining = max - confirmed
+  const pct = Math.min(confirmed / max, 1)
+
+  return (
+    <View style={styles.spotsContainer}>
+      <View style={styles.spotsBarBg}>
+        <View
+          style={[
+            styles.spotsBarFill,
+            {
+              width: `${pct * 100}%` as any,
+              backgroundColor: remaining <= 0 ? '#EF4444' : remaining <= 5 ? '#F59E0B' : '#10B981',
+            },
+          ]}
+        />
+      </View>
+      <Text style={[styles.spotsText, remaining <= 0 && styles.spotsTextFull]}>
+        {remaining <= 0 ? 'Full — waitlist only' : `${remaining} spot${remaining !== 1 ? 's' : ''} left`}
+      </Text>
+    </View>
+  )
+}
+
+function FormCard({ form }: { form: MySignupForm }) {
+  const badge = getStatusBadge(form.my_signup_status)
+  const isPast = new Date(form.event_end) < new Date()
+  const deadlinePassed = form.deadline ? new Date(form.deadline) < new Date() : false
+
+  return (
+    <TouchableOpacity
+      style={[styles.card, (isPast || deadlinePassed) && styles.cardDisabled]}
+      onPress={() => {
+        if (!isPast && !deadlinePassed) {
+          router.push(`/signup-form?formId=${form.form_id}` as any)
+        }
+      }}
+      activeOpacity={0.7}
+      testID={`form-card-${form.form_id}`}
+    >
+      <View style={styles.cardTop}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{form.form_title}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.statusText, { color: badge.color }]}>{badge.label}</Text>
+          </View>
+        </View>
+        {form.event_title !== form.form_title && (
+          <Text style={styles.eventName} numberOfLines={1}>{form.event_title}</Text>
+        )}
+      </View>
+
+      <View style={styles.cardMeta}>
+        <View style={styles.metaRow}>
+          <Calendar size={15} color="#6B7280" />
+          <Text style={styles.metaText}>
+            {formatDate(form.event_start)} at {formatTime(form.event_start)}
+          </Text>
+        </View>
+        {form.event_location && (
+          <View style={styles.metaRow}>
+            <MapPin size={15} color="#6B7280" />
+            <Text style={styles.metaText} numberOfLines={1}>{form.event_location}</Text>
+          </View>
+        )}
+        {form.deadline && (
+          <View style={styles.metaRow}>
+            <Clock size={15} color={deadlinePassed ? '#EF4444' : '#6B7280'} />
+            <Text style={[styles.metaText, deadlinePassed && styles.metaTextDanger]}>
+              {deadlinePassed ? 'Deadline passed' : `Deadline: ${formatDate(form.deadline)}`}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      <SpotsIndicator confirmed={form.confirmed_count} max={form.max_signups} />
+
+      <View style={styles.cardFooter}>
+        <View style={styles.metaRow}>
+          <Users size={14} color="#9CA3AF" />
+          <Text style={styles.footerText}>{form.confirmed_count} signed up</Text>
+        </View>
+        <ChevronRight size={18} color="#9CA3AF" />
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+export default function FormsScreen() {
+  const [refreshing, setRefreshing] = useState(false)
+
+  const { data: forms, isLoading, error, refetch } = useQuery({
+    queryKey: ['my-signup-forms'],
+    queryFn: getMySignupForms,
+  })
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true)
+    await refetch()
+    setRefreshing(false)
+  }, [refetch])
+
+  const renderEmpty = () => (
+    <View style={styles.emptyContainer}>
+      <View style={styles.emptyIconCircle}>
+        <Calendar size={36} color="#9CA3AF" />
+      </View>
+      <Text style={styles.emptyTitle}>No Signup Forms</Text>
+      <Text style={styles.emptySubtitle}>
+        When events have signup forms available, they'll appear here.
+      </Text>
+    </View>
+  )
+
+  if (isLoading && !forms) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Stack.Screen options={{ title: 'Signup Forms' }} />
+        <ActivityIndicator size="large" color="#4338CA" />
+        <Text style={styles.loadingText}>Loading forms...</Text>
+      </View>
+    )
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Stack.Screen options={{ title: 'Signup Forms' }} />
+        <Text style={styles.errorTitle}>Could not load forms</Text>
+        <Text style={styles.errorSubtitle}>{error instanceof Error ? error.message : 'Unknown error'}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+          <Text style={styles.retryText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    )
+  }
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: 'Signup Forms' }} />
+      <FlatList
+        data={forms ?? []}
+        keyExtractor={(item) => item.form_id}
+        renderItem={({ item }) => <FormCard form={item} />}
+        contentContainerStyle={styles.listContent}
+        ListEmptyComponent={renderEmpty}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4338CA" />
+        }
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+  },
+  loadingText: {
+    fontSize: 15,
+    color: '#6B7280',
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    padding: 32,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: '#DC2626',
+    marginBottom: 8,
+  },
+  errorSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  retryButton: {
+    backgroundColor: '#4338CA',
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  retryText: {
+    color: '#fff',
+    fontWeight: '600' as const,
+    fontSize: 15,
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  cardDisabled: {
+    opacity: 0.55,
+  },
+  cardTop: {
+    marginBottom: 12,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  cardTitle: {
+    fontSize: 17,
+    fontWeight: '700' as const,
+    color: '#111827',
+    flex: 1,
+  },
+  eventName: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '700' as const,
+  },
+  cardMeta: {
+    gap: 6,
+    marginBottom: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  metaText: {
+    fontSize: 13,
+    color: '#6B7280',
+    flex: 1,
+  },
+  metaTextDanger: {
+    color: '#EF4444',
+    fontWeight: '500' as const,
+  },
+  spotsContainer: {
+    marginBottom: 12,
+  },
+  spotsBarBg: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  spotsBarFill: {
+    height: 6,
+    borderRadius: 3,
+  },
+  spotsText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500' as const,
+  },
+  spotsTextFull: {
+    color: '#EF4444',
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+  },
+  footerText: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingTop: 80,
+    paddingHorizontal: 32,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#E5E7EB',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    color: '#374151',
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    color: '#9CA3AF',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+})

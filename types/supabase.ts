@@ -1,3 +1,101 @@
+export type SignupFormType = 'event' | 'general';
+export type SignupFieldType = 'text' | 'email' | 'phone' | 'boolean' | 'select' | 'textarea' | 'date' | 'number';
+export type SignupStatus = 'confirmed' | 'waitlisted' | 'cancelled';
+
+export interface SignupForm {
+  id: string;
+  form_type: SignupFormType;
+  event_id: string | null;
+  title: string;
+  description: string | null;
+  is_active: boolean;
+  max_signups: number | null;
+  deadline: string | null;
+  allow_guest_signup: boolean;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SignupFormField {
+  id: string;
+  form_id: string;
+  field_key: string;
+  field_label: string;
+  field_type: SignupFieldType;
+  is_required: boolean;
+  is_standard: boolean;
+  options: string[] | null;
+  placeholder: string | null;
+  sort_order: number;
+}
+
+export interface SignupResponse {
+  id: string;
+  form_id: string;
+  person_id: string | null;
+  submitted_by: string | null;
+  respondent_name: string;
+  respondent_email: string | null;
+  respondent_phone: string | null;
+  status: SignupStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SignupResponseValue {
+  id: string;
+  response_id: string;
+  field_id: string;
+  value: string | null;
+}
+
+export interface SignupFormSummary {
+  form_id: string;
+  form_title: string;
+  form_description: string | null;
+  event_id: string;
+  event_title: string;
+  event_start: string;
+  event_end: string;
+  event_location: string | null;
+  max_signups: number | null;
+  deadline: string | null;
+  confirmed_count: number;
+  is_active: boolean;
+}
+
+export interface MySignupForm {
+  form_id: string;
+  form_title: string;
+  form_description: string | null;
+  event_id: string;
+  event_title: string;
+  event_start: string;
+  event_end: string;
+  event_location: string | null;
+  max_signups: number | null;
+  deadline: string | null;
+  confirmed_count: number;
+  my_signup_status: 'confirmed' | 'waitlisted' | null;
+}
+
+export interface SignupResponseDetail {
+  id: string;
+  form_id: string;
+  person_id: string | null;
+  submitted_by: string | null;
+  respondent_name: string;
+  respondent_email: string | null;
+  respondent_phone: string | null;
+  status: SignupStatus;
+  created_at: string;
+  updated_at: string;
+  custom_fields: Record<string, string> | null;
+  person_photo_url: string | null;
+  submitter_name: string | null;
+}
+
 export interface Database {
   public: {
     Tables: {

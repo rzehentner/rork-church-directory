@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Users, Home, Shield, Settings, Bell, Calendar, LayoutDashboard, Heart } from "lucide-react-native";
+import { Users, Home, Shield, Settings, Bell, Calendar, LayoutDashboard, Heart, ClipboardList } from "lucide-react-native";
 import React from "react";
 import { useUser } from "@/hooks/user-context";
 
@@ -70,6 +70,13 @@ export default function TabLayout() {
         options={{
           title: "Prayers",
           tabBarIcon: ({ color }) => <Heart size={24} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="forms"
+        options={{
+          title: "Forms",
+          tabBarIcon: ({ color }) => <ClipboardList size={24} color={color} />,
         }}
       />
       <Tabs.Screen

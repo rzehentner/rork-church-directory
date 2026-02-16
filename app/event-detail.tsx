@@ -34,6 +34,8 @@ import { useMe } from '@/hooks/me-context'
 import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
 import TagPill from '@/components/TagPill'
+import { getEventSignupForm } from '@/services/signup-forms'
+import type { SignupForm } from '@/types/supabase'
 
 type EventDetail = {
   id: string
@@ -58,6 +60,7 @@ export default function EventDetailScreen() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [rsvpLoading, setRSVPLoading] = useState(false)
+  const [signupForm, setSignupForm] = useState<SignupForm | null>(null)
   
   const { profile, myRole, isLoading: meLoading } = useMe()
   const { showToast } = useToast()
@@ -96,12 +99,24 @@ export default function EventDetailScreen() {
     }
   }, [id, showToast])
 
+  const loadSignupForm = useCallback(async () => {
+    if (!id) return
+    try {
+      const form = await getEventSignupForm(id)
+      setSignupForm(form)
+      console.log('Signup form for event:', form?.id ?? 'none')
+    } catch (error) {
+      console.error('Failed to load signup form:', error)
+    }
+  }, [id])
+
   useEffect(() => {
     if (id) {
       loadEventCallback()
       loadTags()
+      loadSignupForm()
     }
-  }, [id, loadEventCallback])
+  }, [id, loadEventCallback, loadSignupForm])
 
   // Load RSVPs separately when role is loaded and user is staff
   useEffect(() => {
@@ -431,8 +446,31 @@ export default function EventDetailScreen() {
             </View>
           )}
 
-          {/* RSVP Buttons */}
-          <RSVPButtons />
+          {/* Signup Form or RSVP Buttons */}
+          {signupForm?.is_active ? (
+            <View style={styles.signupFormSection}>
+              <Text style={styles.sectionTitle}>Registration</Text>
+              <TouchableOpacity
+                style={styles.signupFormBtn}
+                onPress={() => router.push(`/signup-form?formId=${signupForm.id}` as any)}
+                testID="signup-form-btn"
+              >
+                <Users size={20} color="#fff" />
+                <Text style={styles.signupFormBtnText}>Open Signup Form</Text>
+              </TouchableOpacity>
+              {isStaff && (
+                <TouchableOpacity
+                  style={styles.viewResponsesBtn}
+                  onPress={() => router.push(`/signup-responses?formId=${signupForm.id}&formTitle=${encodeURIComponent(signupForm.title)}` as any)}
+                  testID="view-responses-btn"
+                >
+                  <Text style={styles.viewResponsesBtnText}>View Responses</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <RSVPButtons />
+          )}
           
           {/* Add to Calendar Button */}
           <TouchableOpacity
@@ -443,8 +481,19 @@ export default function EventDetailScreen() {
             <Text style={styles.calendarButtonText}>Add to Calendar</Text>
           </TouchableOpacity>
 
-          {/* RSVP List for Staff */}
-          <RSVPList />
+          {/* Create Signup Form (Staff, no form yet) */}
+          {isStaff && !signupForm && (
+            <TouchableOpacity
+              style={styles.createFormBtn}
+              onPress={() => router.push(`/create-signup-form?eventId=${event.id}&eventTitle=${encodeURIComponent(event.title)}` as any)}
+              testID="create-signup-form-btn"
+            >
+              <Text style={styles.createFormBtnText}>+ Add Signup Form</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* RSVP List for Staff (only when no signup form) */}
+          {!signupForm?.is_active && <RSVPList />}
         </View>
       </ScrollView>
     </View>
@@ -706,5 +755,50 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
   },
-
+  signupFormSection: {
+    marginBottom: 20,
+  },
+  signupFormBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    backgroundColor: '#4338CA',
+    borderRadius: 12,
+    paddingVertical: 14,
+  },
+  signupFormBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  viewResponsesBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#C7D2FE',
+    backgroundColor: '#EEF2FF',
+  },
+  viewResponsesBtnText: {
+    color: '#4338CA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  createFormBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#C7D2FE',
+    borderStyle: 'dashed',
+    backgroundColor: '#FAFAFF',
+    marginBottom: 24,
+  },
+  createFormBtnText: {
+    color: '#4338CA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
 })
