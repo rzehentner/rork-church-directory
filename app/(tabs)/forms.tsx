@@ -10,7 +10,7 @@ import {
 } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, MapPin, Users, Clock, ChevronRight } from 'lucide-react-native'
+import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed } from 'lucide-react-native'
 import { getMySignupForms } from '@/services/signup-forms'
 import type { MySignupForm } from '@/types/supabase'
 
@@ -59,7 +59,102 @@ function SpotsIndicator({ confirmed, max }: { confirmed: number; max: number | n
   )
 }
 
+function PotluckFormCard({ form }: { form: MySignupForm }) {
+  const isPast = new Date(form.event_end) < new Date()
+  const deadlinePassed = form.deadline ? new Date(form.deadline) < new Date() : false
+  const totalItems = form.total_items ?? 0
+  const claimed = form.fully_claimed_items ?? 0
+  const pct = totalItems > 0 ? Math.min(claimed / totalItems, 1) : 0
+  const myItems = form.my_claimed_items ?? []
+
+  return (
+    <TouchableOpacity
+      style={[styles.card, styles.potluckCard, (isPast || deadlinePassed) && styles.cardDisabled]}
+      onPress={() => {
+        if (!isPast && !deadlinePassed) {
+          router.push(`/potluck-sheet?formId=${form.form_id}` as any)
+        }
+      }}
+      activeOpacity={0.7}
+      testID={`form-card-${form.form_id}`}
+    >
+      <View style={styles.cardTop}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.cardTitle} numberOfLines={2}>{form.form_title}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: '#FEF3C7' }]}>
+            <UtensilsCrossed size={12} color="#D97706" />
+            <Text style={[styles.statusText, { color: '#D97706', marginLeft: 4 }]}>Potluck</Text>
+          </View>
+        </View>
+        {form.event_title !== form.form_title && (
+          <Text style={styles.eventName} numberOfLines={1}>{form.event_title}</Text>
+        )}
+      </View>
+
+      <View style={styles.cardMeta}>
+        <View style={styles.metaRow}>
+          <Calendar size={15} color="#6B7280" />
+          <Text style={styles.metaText}>
+            {formatDate(form.event_start)} at {formatTime(form.event_start)}
+          </Text>
+        </View>
+        {form.event_location && (
+          <View style={styles.metaRow}>
+            <MapPin size={15} color="#6B7280" />
+            <Text style={styles.metaText} numberOfLines={1}>{form.event_location}</Text>
+          </View>
+        )}
+        {form.deadline && (
+          <View style={styles.metaRow}>
+            <Clock size={15} color={deadlinePassed ? '#EF4444' : '#6B7280'} />
+            <Text style={[styles.metaText, deadlinePassed && styles.metaTextDanger]}>
+              {deadlinePassed ? 'Deadline passed' : `Deadline: ${formatDate(form.deadline)}`}
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {totalItems > 0 && (
+        <View style={styles.spotsContainer}>
+          <View style={styles.spotsBarBg}>
+            <View
+              style={[
+                styles.spotsBarFill,
+                {
+                  width: `${pct * 100}%` as any,
+                  backgroundColor: pct >= 1 ? '#10B981' : '#D97706',
+                },
+              ]}
+            />
+          </View>
+          <Text style={styles.spotsText}>
+            {claimed} of {totalItems} items fully claimed
+          </Text>
+        </View>
+      )}
+
+      {myItems.length > 0 && (
+        <View style={styles.myItemsBanner}>
+          <Text style={styles.myItemsText}>You're bringing: {myItems.join(', ')}</Text>
+        </View>
+      )}
+
+      <View style={styles.cardFooter}>
+        <View style={styles.metaRow}>
+          <UtensilsCrossed size={14} color="#D97706" />
+          <Text style={[styles.footerText, { color: '#D97706' }]}>View Items</Text>
+        </View>
+        <ChevronRight size={18} color="#D97706" />
+      </View>
+    </TouchableOpacity>
+  )
+}
+
 function FormCard({ form }: { form: MySignupForm }) {
+  if (form.form_type === 'potluck') {
+    return <PotluckFormCard form={form} />
+  }
+
   const badge = getStatusBadge(form.my_signup_status)
   const isPast = new Date(form.event_end) < new Date()
   const deadlinePassed = form.deadline ? new Date(form.deadline) < new Date() : false
@@ -360,5 +455,21 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  potluckCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#D97706',
+  },
+  myItemsBanner: {
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    marginBottom: 12,
+  },
+  myItemsText: {
+    fontSize: 12,
+    color: '#92400E',
+    fontWeight: '500' as const,
   },
 })

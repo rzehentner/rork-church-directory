@@ -447,7 +447,19 @@ export default function EventDetailScreen() {
           )}
 
           {/* Signup Form or RSVP Buttons */}
-          {signupForm?.is_active ? (
+          {signupForm?.is_active && signupForm.form_type === 'potluck' ? (
+            <View style={styles.signupFormSection}>
+              <Text style={styles.sectionTitle}>Potluck Sign-Up</Text>
+              <TouchableOpacity
+                style={[styles.signupFormBtn, { backgroundColor: '#D97706' }]}
+                onPress={() => router.push(`/potluck-sheet?formId=${signupForm.id}` as any)}
+                testID="potluck-form-btn"
+              >
+                <Users size={20} color="#fff" />
+                <Text style={styles.signupFormBtnText}>View Potluck Items</Text>
+              </TouchableOpacity>
+            </View>
+          ) : signupForm?.is_active ? (
             <View style={styles.signupFormSection}>
               <Text style={styles.sectionTitle}>Registration</Text>
               <TouchableOpacity
@@ -483,13 +495,22 @@ export default function EventDetailScreen() {
 
           {/* Create Signup Form (Staff, no form yet) */}
           {isStaff && !signupForm && (
-            <TouchableOpacity
-              style={styles.createFormBtn}
-              onPress={() => router.push(`/create-signup-form?eventId=${event.id}&eventTitle=${encodeURIComponent(event.title)}` as any)}
-              testID="create-signup-form-btn"
-            >
-              <Text style={styles.createFormBtnText}>+ Add Signup Form</Text>
-            </TouchableOpacity>
+            <View style={styles.createFormOptions}>
+              <TouchableOpacity
+                style={styles.createFormBtn}
+                onPress={() => router.push(`/create-signup-form?eventId=${event.id}&eventTitle=${encodeURIComponent(event.title)}` as any)}
+                testID="create-signup-form-btn"
+              >
+                <Text style={styles.createFormBtnText}>+ Add Signup Form</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.createFormBtn, styles.createPotluckBtn]}
+                onPress={() => router.push(`/create-potluck-form?eventId=${event.id}&eventTitle=${encodeURIComponent(event.title)}` as any)}
+                testID="create-potluck-form-btn"
+              >
+                <Text style={styles.createPotluckBtnText}>+ Add Potluck Form</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* RSVP List for Staff (only when no signup form) */}
@@ -798,6 +819,20 @@ const styles = StyleSheet.create({
   },
   createFormBtnText: {
     color: '#4338CA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  createFormOptions: {
+    gap: 8,
+    marginBottom: 24,
+  },
+  createPotluckBtn: {
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+    marginBottom: 0,
+  },
+  createPotluckBtnText: {
+    color: '#D97706',
     fontSize: 14,
     fontWeight: '600',
   },

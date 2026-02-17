@@ -1,4 +1,4 @@
-export type SignupFormType = 'event' | 'general';
+export type SignupFormType = 'event' | 'general' | 'potluck';
 export type SignupFieldType = 'text' | 'email' | 'phone' | 'boolean' | 'select' | 'textarea' | 'date' | 'number';
 export type SignupStatus = 'confirmed' | 'waitlisted' | 'cancelled';
 
@@ -54,6 +54,7 @@ export interface SignupFormSummary {
   form_id: string;
   form_title: string;
   form_description: string | null;
+  form_type: SignupFormType;
   event_id: string;
   event_title: string;
   event_start: string;
@@ -63,12 +64,69 @@ export interface SignupFormSummary {
   deadline: string | null;
   confirmed_count: number;
   is_active: boolean;
+  total_items: number | null;
+  fully_claimed_items: number | null;
+  total_claims: number | null;
+}
+
+export interface SignupItemGroup {
+  id: string;
+  form_id: string;
+  title: string;
+  sort_order: number;
+}
+
+export interface SignupItem {
+  id: string;
+  group_id: string;
+  form_id: string;
+  name: string;
+  description: string | null;
+  quantity_needed: number;
+  sort_order: number;
+}
+
+export interface SignupItemClaim {
+  id: string;
+  item_id: string;
+  form_id: string;
+  person_id: string | null;
+  claimed_by: string;
+  claimant_name: string;
+  note: string | null;
+  created_at: string;
+}
+
+export interface PotluckFormDetailRow {
+  item_id: string;
+  form_id: string;
+  item_name: string;
+  item_description: string | null;
+  quantity_needed: number;
+  item_sort: number;
+  group_id: string;
+  group_title: string;
+  group_sort: number;
+  event_id: string;
+  form_title: string;
+  is_active: boolean;
+  deadline: string | null;
+  claim_count: number;
+  claims: {
+    claim_id: string;
+    person_id: string | null;
+    claimant_name: string;
+    claimed_by: string;
+    note: string | null;
+    created_at: string;
+  }[] | null;
 }
 
 export interface MySignupForm {
   form_id: string;
   form_title: string;
   form_description: string | null;
+  form_type: SignupFormType;
   event_id: string;
   event_title: string;
   event_start: string;
@@ -78,6 +136,10 @@ export interface MySignupForm {
   deadline: string | null;
   confirmed_count: number;
   my_signup_status: 'confirmed' | 'waitlisted' | null;
+  total_items: number | null;
+  fully_claimed_items: number | null;
+  total_claims: number | null;
+  my_claimed_items: string[] | null;
 }
 
 export interface SignupResponseDetail {
