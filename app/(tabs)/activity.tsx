@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/me-context';
 import { useToast } from '@/hooks/toast-context';
-import { listAnnouncementsForMe, markAnnouncementRead, getAnnouncementTags } from '@/lib/announcements';
+import { listAnnouncementsForMe, markAnnouncementRead } from '@/lib/announcements';
 import { listEventsForDateRange } from '@/services/events';
 import { eventImageUrl } from '@/services/event-images';
 import { router } from 'expo-router';
@@ -58,59 +58,26 @@ export default function ActivityScreen() {
     isLoading: announcementsLoading,
     refetch: refetchAnnouncements,
   } = useQuery({
-    queryKey: ['announcements-for-me', myRole, profile?.id],
+    queryKey: ['announcements-for-me', profile?.id],
     queryFn: async () => {
-      console.log('📢 Activity: Fetching announcements, myRole:', myRole, 'profileId:', profile?.id);
-      let data: any[] = [];
+      console.log('📢 Activity: Fetching announcements, profileId:', profile?.id);
       try {
-        data = await listAnnouncementsForMe();
-        console.log('📢 Activity: Got announcements from view:', data?.length);
+        const data = await listAnnouncementsForMe();
+        console.log('📢 Activity: Got announcements:', data?.length);
+        return (data || []).map((a: any) => ({
+          ...a,
+          author_name: a.author_name || undefined,
+          tags: [],
+        }));
       } catch (err) {
-        console.error('📢 Activity: Error fetching announcements from view:', err);
+        console.error('📢 Activity: Error fetching announcements:', err);
+        return [];
       }
-      if (!data || data.length === 0) {
-        console.log('📢 Activity: No announcements from view, trying direct table...');
-        const { supabase } = await import('@/lib/supabase');
-        const { data: fallback, error } = await supabase
-          .from('announcements')
-          .select('*')
-          .eq('is_published', true)
-          .order('published_at', { ascending: false })
-          .limit(20);
-        console.log('📢 Activity: Fallback announcements:', fallback?.length, 'error:', error?.message);
-        if (fallback && fallback.length > 0) {
-          data = fallback.map((a: any) => ({
-            ...a,
-            is_read: false,
-            author_name: null,
-          }));
-        }
-      }
-      console.log('📢 Activity: Final announcements count:', data?.length);
-      const withTags = await Promise.all(
-        (data || []).map(async (a) => {
-          try {
-            const tags = await getAnnouncementTags(a.id);
-            return { ...a, tags };
-          } catch {
-            return { ...a, tags: [] };
-          }
-        })
-      );
-      return withTags.map((a) => ({
-        ...a,
-        author_name: a.author_name || undefined,
-        tags: Array.isArray(a.tags)
-          ? a.tags.map((tag: any) => ({
-              id: String(tag?.id || ''),
-              name: String(tag?.name || ''),
-              color: String(tag?.color || '#2563EB'),
-            }))
-          : [],
-      }));
     },
-    enabled: !!profile,
-    staleTime: 30 * 1000,
+    enabled: !!profile?.id,
+    staleTime: 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const {
@@ -121,30 +88,24 @@ export default function ActivityScreen() {
     queryKey: ['activity-events', profile?.id],
     queryFn: async () => {
       console.log('📅 Activity: Fetching events');
-      const startDate = new Date();
-      startDate.setFullYear(startDate.getFullYear() - 1);
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 6);
-      console.log('📅 Activity: Date range:', startDate.toISOString(), 'to', endDate.toISOString());
-      const data = await listEventsForDateRange(startDate, endDate);
-      console.log('📅 Activity: Got events:', data?.length);
-      if (!data || data.length === 0) {
-        console.log('📅 Activity: No events from view, trying direct table...');
-        const { supabase } = await import('@/lib/supabase');
-        const { data: fallback, error } = await supabase
-          .from('events')
-          .select('*')
-          .gte('start_at', startDate.toISOString())
-          .lte('start_at', endDate.toISOString())
-          .order('start_at', { ascending: false })
-          .limit(50);
-        console.log('📅 Activity: Fallback events:', fallback?.length, 'error:', error?.message);
-        return fallback || [];
+      try {
+        const startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 1);
+        const endDate = new Date();
+        endDate.setMonth(endDate.getMonth() + 6);
+        console.log('📅 Activity: Date range:', startDate.toISOString(), 'to', endDate.toISOString());
+        const data = await listEventsForDateRange(startDate, endDate);
+        console.log('📅 Activity: Got events:', data?.length);
+        return data || [];
+      } catch (err) {
+        console.error('📅 Activity: Error fetching events:', err);
+        return [];
       }
-      return data;
     },
-    enabled: !!profile,
-    staleTime: 30 * 1000,
+    enabled: !!profile?.id,
+    staleTime: 60 * 1000,
+    retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   const markReadMutation = useMutation({
