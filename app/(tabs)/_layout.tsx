@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Users, Home, Shield, Settings, Bell, Calendar, LayoutDashboard, Heart, ClipboardList } from "lucide-react-native";
+import { Users, Home, Settings, Zap, Shield } from "lucide-react-native";
 import React from "react";
 import { useUser } from "@/hooks/user-context";
 
@@ -11,89 +11,75 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#7C3AED',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: '#2563EB',
+        tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: '#E2E8F0',
           paddingBottom: 4,
           paddingTop: 4,
           height: 56,
         },
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '600',
+        },
       }}
     >
       <Tabs.Screen
-        name="index"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
-          tabBarIcon: ({ color }) => <LayoutDashboard size={24} color={color} />,
+          title: "Home",
+          tabBarIcon: ({ color, size }) => <Home size={size} color={color} />,
         }}
       />
       <Tabs.Screen
-        name="family"
+        name="activity"
         options={{
-          title: "My Family",
-          href: null,
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
+          title: "Activity",
+          tabBarIcon: ({ color, size }) => <Zap size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="directory"
         options={{
           title: "Directory",
-          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="announcements"
-        options={{
-          title: "Announcements",
-          tabBarIcon: ({ color }) => <Bell size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="events"
-        options={{
-          title: "Events",
-          tabBarIcon: ({ color }) => <Calendar size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="prayers"
-        options={{
-          title: "Prayers",
-          tabBarIcon: ({ color }) => <Heart size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="forms"
-        options={{
-          title: "Forms",
-          tabBarIcon: ({ color }) => <ClipboardList size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="admin"
-        options={{
-          title: "Admin",
-          tabBarIcon: ({ color }) => <Shield size={24} color={color} />,
-          href: isAdmin ? '/admin' as any : null,
+          tabBarIcon: ({ color, size }) => <Users size={size} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: "Settings",
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
+          tabBarIcon: ({ color, size }) => <Settings size={size} color={color} />,
         }}
+      />
+      {/* Hidden tabs - accessible via hub navigation */}
+      <Tabs.Screen
+        name="family"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="announcements"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="events"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="prayers"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="forms"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{ href: null }}
       />
     </Tabs>
   );

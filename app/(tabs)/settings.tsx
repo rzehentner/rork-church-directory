@@ -14,14 +14,17 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
-import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint } from 'lucide-react-native';
+import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight } from 'lucide-react-native';
+import { useMe } from '@/hooks/me-context';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
 import { NotificationPreferences } from '@/lib/notification-preferences';
 import { useRouter } from 'expo-router';
 
 export default function SettingsScreen() {
   const { profile } = useUser();
+  const { myRole } = useMe();
   const { user, isBiometricAvailable, isBiometricEnabled, enableBiometric, disableBiometric } = useAuth();
+  const isAdmin = myRole === 'admin' || myRole === 'leader';
   const { unreadCount } = useNotifications();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -268,6 +271,30 @@ export default function SettingsScreen() {
           )}
         </View>
 
+        {/* Admin Section */}
+        {isAdmin && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Administration</Text>
+            <TouchableOpacity
+              style={styles.card}
+              onPress={() => router.push('/(tabs)/admin' as any)}
+            >
+              <View style={styles.adminRow}>
+                <View style={styles.adminRowLeft}>
+                  <View style={styles.adminIcon}>
+                    <Shield size={20} color="#E11D48" />
+                  </View>
+                  <View>
+                    <Text style={styles.adminLabel}>Admin Panel</Text>
+                    <Text style={styles.adminDescription}>Manage users, settings, and content</Text>
+                  </View>
+                </View>
+                <ChevronRight size={20} color="#94A3B8" />
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {/* Actions Section */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
@@ -496,5 +523,34 @@ const styles = StyleSheet.create({
   },
   preferencesContainer: {
     marginTop: 16,
+  },
+  adminRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  adminRowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  adminIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#FFF1F2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  adminLabel: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#111827',
+  },
+  adminDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
   },
 });
