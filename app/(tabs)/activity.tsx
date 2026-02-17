@@ -58,10 +58,11 @@ export default function ActivityScreen() {
     isLoading: announcementsLoading,
     refetch: refetchAnnouncements,
   } = useQuery({
-    queryKey: ['announcements-for-me', myRole, profile],
+    queryKey: ['announcements-for-me', myRole, profile?.id],
     queryFn: async () => {
-      console.log('📢 Activity: Fetching announcements');
+      console.log('📢 Activity: Fetching announcements, myRole:', myRole);
       const data = await listAnnouncementsForMe();
+      console.log('📢 Activity: Got announcements:', data?.length);
       const withTags = await Promise.all(
         (data || []).map(async (a) => {
           try {
@@ -84,7 +85,7 @@ export default function ActivityScreen() {
           : [],
       }));
     },
-    enabled: !!myRole,
+    enabled: !!profile,
     staleTime: 30 * 1000,
   });
 
@@ -93,16 +94,19 @@ export default function ActivityScreen() {
     isLoading: eventsLoading,
     refetch: refetchEvents,
   } = useQuery({
-    queryKey: ['activity-events'],
+    queryKey: ['activity-events', profile?.id],
     queryFn: async () => {
       console.log('📅 Activity: Fetching events');
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 1);
       const endDate = new Date();
       endDate.setMonth(endDate.getMonth() + 3);
+      console.log('📅 Activity: Date range:', startDate.toISOString(), 'to', endDate.toISOString());
       const data = await listEventsForDateRange(startDate, endDate);
+      console.log('📅 Activity: Got events:', data?.length);
       return data || [];
     },
+    enabled: !!profile,
     staleTime: 30 * 1000,
   });
 
