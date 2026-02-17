@@ -41,6 +41,7 @@ export default function TabLayout() {
         name="family"
         options={{
           title: "My Family",
+          href: null,
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />

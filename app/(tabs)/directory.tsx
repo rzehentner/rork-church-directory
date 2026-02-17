@@ -15,7 +15,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Search, Users, User, Mail, Phone, MapPin, AlertCircle, Edit3, X, Save, Home, Trash2, UserPlus, List, Tags, Filter, BookOpen } from 'lucide-react-native';
+import { Search, Users, User, Mail, Phone, MapPin, AlertCircle, Edit3, X, Save, Home, Trash2, UserPlus, List, Tags, Filter, BookOpen, ChevronRight } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { useUser } from '@/hooks/user-context';
 import { getSignedUrl, uploadFamilyPhoto, uploadPersonAvatar } from '@/lib/storage';
 import ImageUploader from '@/components/ImageUploader';
@@ -1275,9 +1276,21 @@ export default function DirectoryScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <BookOpen size={28} color="#7C3AED" />
-          <Text style={styles.title}>Church Directory</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <BookOpen size={28} color="#7C3AED" />
+            <Text style={styles.title}>Church Directory</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.myFamilyButton}
+            onPress={() => router.push('/(tabs)/family' as any)}
+            activeOpacity={0.7}
+            testID="my-family-button"
+          >
+            <Home size={16} color="#7C3AED" />
+            <Text style={styles.myFamilyButtonText}>My Family</Text>
+            <ChevronRight size={14} color="#7C3AED" />
+          </TouchableOpacity>
         </View>
         <View style={styles.searchContainer}>
           <Search size={20} color="#9CA3AF" />
@@ -3210,5 +3223,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     marginBottom: 24,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  myFamilyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E8FF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 6,
+  },
+  myFamilyButtonText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: '#7C3AED',
   },
 });
