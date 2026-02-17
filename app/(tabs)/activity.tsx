@@ -60,9 +60,33 @@ export default function ActivityScreen() {
   } = useQuery({
     queryKey: ['announcements-for-me', myRole, profile?.id],
     queryFn: async () => {
-      console.log('📢 Activity: Fetching announcements, myRole:', myRole);
-      const data = await listAnnouncementsForMe();
-      console.log('📢 Activity: Got announcements:', data?.length);
+      console.log('📢 Activity: Fetching announcements, myRole:', myRole, 'profileId:', profile?.id);
+      let data: any[] = [];
+      try {
+        data = await listAnnouncementsForMe();
+        console.log('📢 Activity: Got announcements from view:', data?.length);
+      } catch (err) {
+        console.error('📢 Activity: Error fetching announcements from view:', err);
+      }
+      if (!data || data.length === 0) {
+        console.log('📢 Activity: No announcements from view, trying direct table...');
+        const { supabase } = await import('@/lib/supabase');
+        const { data: fallback, error } = await supabase
+          .from('announcements')
+          .select('*')
+          .eq('is_published', true)
+          .order('published_at', { ascending: false })
+          .limit(20);
+        console.log('📢 Activity: Fallback announcements:', fallback?.length, 'error:', error?.message);
+        if (fallback && fallback.length > 0) {
+          data = fallback.map((a: any) => ({
+            ...a,
+            is_read: false,
+            author_name: null,
+          }));
+        }
+      }
+      console.log('📢 Activity: Final announcements count:', data?.length);
       const withTags = await Promise.all(
         (data || []).map(async (a) => {
           try {
@@ -98,13 +122,26 @@ export default function ActivityScreen() {
     queryFn: async () => {
       console.log('📅 Activity: Fetching events');
       const startDate = new Date();
-      startDate.setMonth(startDate.getMonth() - 1);
+      startDate.setFullYear(startDate.getFullYear() - 1);
       const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 3);
+      endDate.setMonth(endDate.getMonth() + 6);
       console.log('📅 Activity: Date range:', startDate.toISOString(), 'to', endDate.toISOString());
       const data = await listEventsForDateRange(startDate, endDate);
       console.log('📅 Activity: Got events:', data?.length);
-      return data || [];
+      if (!data || data.length === 0) {
+        console.log('📅 Activity: No events from view, trying direct table...');
+        const { supabase } = await import('@/lib/supabase');
+        const { data: fallback, error } = await supabase
+          .from('events')
+          .select('*')
+          .gte('start_at', startDate.toISOString())
+          .lte('start_at', endDate.toISOString())
+          .order('start_at', { ascending: false })
+          .limit(50);
+        console.log('📅 Activity: Fallback events:', fallback?.length, 'error:', error?.message);
+        return fallback || [];
+      }
+      return data;
     },
     enabled: !!profile,
     staleTime: 30 * 1000,
