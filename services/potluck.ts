@@ -45,9 +45,14 @@ export async function createPotluckForm(params: {
 
   const { data: { user } } = await supabase.auth.getUser()
   console.log('Current auth user id:', user?.id)
+  let detectedRole: string | null = null
   if (user) {
-    const { data: profile } = await supabase.from('profiles').select('id, role').eq('id', user.id).single()
-    console.log('Current user profile role:', profile?.role, 'profile id:', profile?.id)
+    const { data: profile, error: profileError } = await supabase.from('profiles').select('id, role').eq('id', user.id).single()
+    detectedRole = profile?.role ?? null
+    console.log('Current user profile:', JSON.stringify(profile), 'profileError:', JSON.stringify(profileError))
+    console.log('Detected role:', detectedRole, 'type:', typeof detectedRole)
+  } else {
+    console.log('No authenticated user found!')
   }
 
   const { data, error } = await supabase.rpc('create_potluck_form', {
@@ -66,7 +71,9 @@ export async function createPotluckForm(params: {
   const result = data as { success: boolean; form_id?: string; error?: string }
   if (!result?.success) {
     console.error('createPotluckForm RPC returned failure:', result)
-    throw new Error(result?.error || 'Failed to create potluck form')
+    const rpcError = result?.error || 'Failed to create potluck form'
+    const roleInfo = detectedRole ? ` (Your profile role: "${detectedRole}")` : ' (No profile found)'
+    throw new Error(`${rpcError}${roleInfo}`)
   }
   return result as { success: boolean; form_id: string }
 }
