@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useIsFocused } from '@react-navigation/native'
 import {
   View,
   Text,
@@ -104,19 +105,21 @@ export default function EventDetailScreen() {
     try {
       const form = await getEventSignupForm(id)
       setSignupForm(form)
-      console.log('Signup form for event:', form?.id ?? 'none')
+      console.log('Signup form for event:', form?.id ?? 'none', 'type:', form?.form_type ?? 'none')
     } catch (error) {
       console.error('Failed to load signup form:', error)
     }
   }, [id])
 
+  const isFocused = useIsFocused()
+
   useEffect(() => {
-    if (id) {
+    if (id && isFocused) {
       loadEventCallback()
       loadTags()
       loadSignupForm()
     }
-  }, [id, loadEventCallback, loadSignupForm])
+  }, [id, isFocused, loadEventCallback, loadSignupForm])
 
   // Load RSVPs separately when role is loaded and user is staff
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import {
   View,
   Text,
@@ -11,8 +11,8 @@ import {
 import { Stack, router } from 'expo-router'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed } from 'lucide-react-native'
-import { getMySignupForms } from '@/services/signup-forms'
-import type { MySignupForm } from '@/types/supabase'
+import { getMySignupForms, getFormSummaries } from '@/services/signup-forms'
+import type { MySignupForm, SignupFormSummary } from '@/types/supabase'
 
 function getStatusBadge(status: MySignupForm['my_signup_status']) {
   if (status === 'confirmed') {
@@ -218,13 +218,58 @@ function FormCard({ form }: { form: MySignupForm }) {
   )
 }
 
+function summaryToMyForm(s: SignupFormSummary): MySignupForm {
+  return {
+    form_id: s.form_id,
+    form_title: s.form_title,
+    form_description: s.form_description,
+    form_type: s.form_type,
+    event_id: s.event_id,
+    event_title: s.event_title,
+    event_start: s.event_start,
+    event_end: s.event_end,
+    event_location: s.event_location,
+    max_signups: s.max_signups,
+    deadline: s.deadline,
+    confirmed_count: s.confirmed_count,
+    my_signup_status: null,
+    total_items: s.total_items,
+    fully_claimed_items: s.fully_claimed_items,
+    total_claims: s.total_claims,
+    my_claimed_items: null,
+  }
+}
+
 export default function FormsScreen() {
   const [refreshing, setRefreshing] = useState(false)
 
-  const { data: forms, isLoading, error, refetch } = useQuery({
+  const { data: myForms, isLoading: myLoading, error: myError, refetch: refetchMy } = useQuery({
     queryKey: ['my-signup-forms'],
     queryFn: getMySignupForms,
   })
+
+  const { data: allSummaries, isLoading: summaryLoading, refetch: refetchSummaries } = useQuery({
+    queryKey: ['signup-form-summary'],
+    queryFn: getFormSummaries,
+  })
+
+  const forms = useMemo(() => {
+    const myFormIds = new Set((myForms ?? []).map(f => f.form_id))
+    const extraForms = (allSummaries ?? [])
+      .filter(s => !myFormIds.has(s.form_id))
+      .map(summaryToMyForm)
+    const merged = [...(myForms ?? []), ...extraForms]
+    merged.sort((a, b) => new Date(a.event_start).getTime() - new Date(b.event_start).getTime())
+    console.log('Forms tab: myForms=', myForms?.length, 'summaries=', allSummaries?.length, 'merged=', merged.length)
+    return merged
+  }, [myForms, allSummaries])
+
+  const isLoading = myLoading && summaryLoading
+  const error = myError
+
+  const refetch = useCallback(async () => {
+    await Promise.all([refetchMy(), refetchSummaries()])
+  }, [refetchMy, refetchSummaries])
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true)
