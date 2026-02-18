@@ -221,9 +221,17 @@ export default function ImageUploader({
       const centerX = imageSize.width / 2 - (currentPan.x / currentScale) * scaleFactorX;
       const centerY = imageSize.height / 2 - (currentPan.y / currentScale) * scaleFactorY;
       
+      // Clamp visible dimensions to image bounds
+      const clampedVisibleWidth = Math.min(visibleWidth, imageSize.width);
+      const clampedVisibleHeight = Math.min(visibleHeight, imageSize.height);
+      
       // Calculate crop origin
-      const originX = Math.max(0, Math.min(imageSize.width - visibleWidth, centerX - visibleWidth / 2));
-      const originY = Math.max(0, Math.min(imageSize.height - visibleHeight, centerY - visibleHeight / 2));
+      const originX = Math.max(0, Math.min(imageSize.width - clampedVisibleWidth, centerX - clampedVisibleWidth / 2));
+      const originY = Math.max(0, Math.min(imageSize.height - clampedVisibleHeight, centerY - clampedVisibleHeight / 2));
+      
+      // Ensure crop width/height don't exceed remaining image from origin
+      const cropWidth = Math.max(1, Math.min(Math.round(clampedVisibleWidth), imageSize.width - Math.round(originX)));
+      const cropHeight = Math.max(1, Math.min(Math.round(clampedVisibleHeight), imageSize.height - Math.round(originY)));
       
       const actions: any[] = [];
       
@@ -237,8 +245,8 @@ export default function ImageUploader({
         crop: {
           originX: Math.round(originX),
           originY: Math.round(originY),
-          width: Math.round(visibleWidth),
-          height: Math.round(visibleHeight),
+          width: cropWidth,
+          height: cropHeight,
         },
       });
       
@@ -246,16 +254,17 @@ export default function ImageUploader({
       const finalWidth = 1024;
       const finalHeight = aspectRatio 
         ? Math.round(finalWidth * (aspectRatio.height / aspectRatio.width))
-        : Math.round(finalWidth * (visibleHeight / visibleWidth));
+        : Math.round(finalWidth * (cropHeight / cropWidth));
       
       actions.push({
         resize: {
           width: finalWidth,
-          height: finalHeight,
+          height: Math.max(1, finalHeight),
         },
       });
       
-      console.log('[ImageUploader] Manipulation actions:', actions);
+      console.log('[ImageUploader] Manipulation actions:', JSON.stringify(actions));
+      console.log('[ImageUploader] Image size:', imageSize, 'Crop:', { originX: Math.round(originX), originY: Math.round(originY), cropWidth, cropHeight });
       
       const manipResult = await ImageManipulator.manipulateAsync(
         editingImage,
@@ -277,9 +286,9 @@ export default function ImageUploader({
       const urlWithTimestamp = `${uploadedUrl}${uploadedUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
       setImageUrl(urlWithTimestamp);
       setEditingImage(null);
-    } catch (error) {
-      console.error('[ImageUploader] Save error:', error);
-      Alert.alert('Save Failed', 'Failed to save photo. Please try again.');
+    } catch (error: any) {
+      console.error('[ImageUploader] Save error:', error, error?.message, error?.stack);
+      Alert.alert('Save Failed', `Failed to save photo. ${error?.message || 'Please try again.'}`);
     } finally {
       setIsUploading(false);
     }
