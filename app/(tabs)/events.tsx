@@ -12,13 +12,15 @@ import {
 } from 'react-native'
 import { Stack, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search } from 'lucide-react-native'
+import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search, ClipboardList, UtensilsCrossed } from 'lucide-react-native'
 import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
 import { eventImageUrl } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
 import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
+import { getFormSummaries } from '@/services/signup-forms'
+import type { SignupFormSummary } from '@/types/supabase'
 import Calendar from '@/components/Calendar'
 import TagPill from '@/components/TagPill'
 
@@ -53,6 +55,7 @@ export default function EventsScreen() {
     rsvpStatus: 'all',
     tagNames: []
   })
+  const [formsByEvent, setFormsByEvent] = useState<Record<string, SignupFormSummary>>({})
   
   const { profile } = useUser()
   const { showToast } = useToast()
@@ -93,10 +96,25 @@ export default function EventsScreen() {
     }
   }, [])
 
+  const loadFormSummaries = useCallback(async () => {
+    try {
+      const summaries = await getFormSummaries()
+      const map: Record<string, SignupFormSummary> = {}
+      for (const s of summaries) {
+        if (s.event_id) map[s.event_id] = s
+      }
+      setFormsByEvent(map)
+      console.log('Loaded form summaries for events:', Object.keys(map).length)
+    } catch (error) {
+      console.error('Failed to load form summaries:', error)
+    }
+  }, [])
+
   useEffect(() => {
     loadAllEvents()
     loadTags()
-  }, [loadAllEvents, loadTags])
+    loadFormSummaries()
+  }, [loadAllEvents, loadTags, loadFormSummaries])
   
   // Add a simple interval to refresh events periodically
   useEffect(() => {
@@ -381,6 +399,37 @@ export default function EventsScreen() {
               )
             })}
           </View>
+        )}
+
+        {formsByEvent[event.id] && (
+          <TouchableOpacity
+            style={[
+              styles.formBadge,
+              formsByEvent[event.id].form_type === 'potluck' ? styles.formBadgePotluck : styles.formBadgeSignup,
+            ]}
+            onPress={(e) => {
+              e.stopPropagation()
+              const form = formsByEvent[event.id]
+              if (form.form_type === 'potluck') {
+                router.push(`/potluck-sheet?formId=${form.form_id}` as any)
+              } else {
+                router.push(`/signup-form?formId=${form.form_id}` as any)
+              }
+            }}
+            testID={`event-form-badge-${event.id}`}
+          >
+            {formsByEvent[event.id].form_type === 'potluck' ? (
+              <UtensilsCrossed size={14} color="#92400E" />
+            ) : (
+              <ClipboardList size={14} color="#312E81" />
+            )}
+            <Text style={[
+              styles.formBadgeText,
+              formsByEvent[event.id].form_type === 'potluck' ? styles.formBadgeTextPotluck : styles.formBadgeTextSignup,
+            ]}>
+              {formsByEvent[event.id].form_type === 'potluck' ? 'Potluck Sign-Up' : 'Sign Up'}
+            </Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.eventActions}>
@@ -929,6 +978,36 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 6,
     marginBottom: 12,
+  },
+  formBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  formBadgePotluck: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  formBadgeSignup: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+  },
+  formBadgeText: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
+  formBadgeTextPotluck: {
+    color: '#92400E',
+  },
+  formBadgeTextSignup: {
+    color: '#312E81',
   },
   headerButtons: {
     flexDirection: 'row',
