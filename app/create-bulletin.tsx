@@ -344,16 +344,18 @@ export default function CreateBulletinScreen() {
       font-size: 10pt;
       line-height: 1.35;
       background: #fff;
-      width: 5.5in;
-      margin: 0 auto;
+      width: 100%;
+      margin: 0;
+      padding: 0;
     }
     .page {
-      width: 5.5in;
-      height: 8.5in;
+      width: 100%;
+      min-height: 100vh;
       padding: 0.4in 0.45in;
       overflow: hidden;
       position: relative;
       page-break-after: always;
+      box-sizing: border-box;
     }
     .bulletin-header {
       text-align: center;
@@ -516,7 +518,16 @@ export default function CreateBulletinScreen() {
     @media print {
       body {
         -webkit-print-color-adjust: exact;
-        width: 5.5in;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      .page {
+        width: 100%;
+        height: 100vh;
+        page-break-after: always;
+        padding: 0.4in 0.45in;
+        box-sizing: border-box;
       }
     }
   </style>
@@ -538,7 +549,7 @@ export default function CreateBulletinScreen() {
       }
     } else {
       try {
-        await Print.printAsync({ html });
+        await Print.printAsync({ html, width: 396, height: 612 });
       } catch (e) {
         console.log('Print preview cancelled or failed:', e);
       }
@@ -559,7 +570,7 @@ export default function CreateBulletinScreen() {
         }
         showSuccess('Print dialog opened — save as PDF');
       } else {
-        const { uri } = await Print.printToFileAsync({ html });
+        const { uri } = await Print.printToFileAsync({ html, width: 396, height: 612 });
         console.log('PDF saved to:', uri);
         await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
         showSuccess('Bulletin PDF created');
