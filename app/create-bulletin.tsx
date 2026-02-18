@@ -225,17 +225,13 @@ export default function CreateBulletinScreen() {
     if (includeEvents && filteredEvents.length > 0) {
       const eventItems = filteredEvents.map((e: any) => {
         const startDate = new Date(e.start_at);
-        const dateFormatted = format(startDate, 'EEEE, MMMM d');
+        const dateFormatted = format(startDate, 'EEE, MMM d');
         const timeFormatted = e.is_all_day ? 'All Day' : format(startDate, 'h:mm a');
         return `
           <div class="event-item">
-            <div class="event-date">${dateFormatted}</div>
-            <div class="event-details">
-              <strong>${e.title}</strong>
-              <span class="event-time">${timeFormatted}</span>
-              ${e.location ? `<span class="event-location">${e.location}</span>` : ''}
-              ${e.description ? `<p class="event-desc">${e.description}</p>` : ''}
-            </div>
+            <strong>${e.title}</strong>
+            <span class="event-meta">${dateFormatted} · ${timeFormatted}${e.location ? ` · ${e.location}` : ''}</span>
+            ${e.description ? `<p class="event-desc">${e.description}</p>` : ''}
           </div>`;
       }).join('\n');
       eventsHTML = `
@@ -303,6 +299,23 @@ export default function CreateBulletinScreen() {
         </div>`).join('\n');
     }
 
+    const bulletinBody = `
+      <div class="bulletin-header">
+        <h1>${name}</h1>
+        <div class="date">${dateStr}</div>
+      </div>
+      <div class="bulletin-body">
+        <div class="column column-left">
+          ${scheduleHTML}
+          ${announcementsHTML}
+          ${customHTML}
+        </div>
+        <div class="column column-right">
+          ${eventsHTML}
+          ${prayerListHTML}
+        </div>
+      </div>`;
+
     return `<!DOCTYPE html>
 <html>
 <head>
@@ -310,61 +323,86 @@ export default function CreateBulletinScreen() {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     @page {
-      size: letter;
-      margin: 0.5in;
+      size: letter portrait;
+      margin: 0;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: Georgia, 'Times New Roman', serif;
       color: #1a1a1a;
-      font-size: 11pt;
-      line-height: 1.4;
+      font-size: 9pt;
+      line-height: 1.3;
       background: #fff;
+      width: 8.5in;
+      margin: 0 auto;
     }
-    .bulletin-container {
+    .page-sheet {
+      width: 8.5in;
+      height: 11in;
       display: flex;
-      flex-direction: row;
-      flex-wrap: wrap;
-      gap: 0;
-      min-height: 100vh;
+      flex-direction: column;
+      overflow: hidden;
     }
-    .column {
-      flex: 1;
-      min-width: 48%;
-      padding: 0.3in;
+    .bulletin-half {
+      width: 8.5in;
+      height: 5.5in;
+      padding: 0.3in 0.4in;
+      overflow: hidden;
+      position: relative;
     }
-    .column-left {
-      border-right: 1px solid #c8c8c8;
+    .cut-line {
+      width: 100%;
+      border: none;
+      border-top: 1px dashed #bbb;
+      margin: 0;
+      padding: 0;
     }
     .bulletin-header {
       text-align: center;
-      padding-bottom: 16px;
-      margin-bottom: 16px;
+      padding-bottom: 6px;
+      margin-bottom: 8px;
       border-bottom: 2px solid #2c2c2c;
     }
     .bulletin-header h1 {
-      font-size: 22pt;
+      font-size: 16pt;
       font-weight: 700;
       letter-spacing: 1px;
-      margin-bottom: 4px;
+      margin-bottom: 2px;
       color: #1a1a1a;
     }
     .bulletin-header .date {
-      font-size: 12pt;
+      font-size: 9.5pt;
       color: #555;
       font-style: italic;
     }
+    .bulletin-body {
+      display: flex;
+      flex-direction: row;
+      gap: 0;
+      flex: 1;
+    }
+    .column {
+      flex: 1;
+      padding: 0 8px;
+    }
+    .column-left {
+      border-right: 1px solid #d0d0d0;
+      padding-left: 0;
+    }
+    .column-right {
+      padding-right: 0;
+    }
     .section {
-      margin-bottom: 18px;
+      margin-bottom: 10px;
     }
     .section h2 {
-      font-size: 13pt;
+      font-size: 9.5pt;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
       border-bottom: 1px solid #999;
-      padding-bottom: 4px;
-      margin-bottom: 8px;
+      padding-bottom: 2px;
+      margin-bottom: 5px;
       color: #2c2c2c;
     }
     .prayer-list {
@@ -372,10 +410,11 @@ export default function CreateBulletinScreen() {
       padding: 0;
     }
     .prayer-list li {
-      padding: 3px 0;
-      padding-left: 14px;
+      padding: 1.5px 0;
+      padding-left: 10px;
       position: relative;
-      font-size: 10.5pt;
+      font-size: 8.5pt;
+      line-height: 1.3;
     }
     .prayer-list li::before {
       content: "\\2022";
@@ -386,101 +425,91 @@ export default function CreateBulletinScreen() {
     .prayer-detail {
       color: #555;
       font-style: italic;
-      font-size: 9.5pt;
+      font-size: 7.5pt;
     }
     .event-item {
-      margin-bottom: 10px;
-      padding-left: 8px;
+      margin-bottom: 6px;
+      padding-left: 6px;
       border-left: 2px solid #999;
     }
-    .event-date {
-      font-size: 9pt;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #555;
-      letter-spacing: 0.5px;
-    }
-    .event-details strong {
-      font-size: 11pt;
+    .event-item strong {
+      font-size: 8.5pt;
       display: block;
     }
-    .event-time {
-      font-size: 9.5pt;
+    .event-meta {
+      font-size: 7.5pt;
       color: #666;
-      margin-left: 4px;
-    }
-    .event-location {
-      font-size: 9pt;
-      color: #777;
       display: block;
-      font-style: italic;
     }
     .event-desc {
-      font-size: 9.5pt;
+      font-size: 7.5pt;
       color: #555;
-      margin-top: 2px;
+      margin-top: 1px;
     }
     .announcement-item {
-      margin-bottom: 10px;
+      margin-bottom: 6px;
     }
     .announcement-item h3 {
-      font-size: 11pt;
+      font-size: 8.5pt;
       font-weight: 700;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .announcement-item p {
-      font-size: 10pt;
+      font-size: 8pt;
       color: #444;
+      line-height: 1.3;
     }
     .schedule-table {
       width: 100%;
       border-collapse: collapse;
     }
     .schedule-day-row td {
-      padding-top: 8px;
+      padding-top: 4px;
     }
     .schedule-day {
       font-weight: 700;
-      font-size: 11pt;
+      font-size: 8.5pt;
       color: #2c2c2c;
       border-bottom: 1px dotted #aaa;
-      padding-bottom: 2px;
+      padding-bottom: 1px;
     }
     .schedule-time {
-      width: 80px;
-      font-size: 10pt;
+      width: 65px;
+      font-size: 8pt;
       color: #555;
-      padding: 2px 8px 2px 12px;
+      padding: 1px 6px 1px 8px;
       vertical-align: top;
     }
     .schedule-activity {
-      font-size: 10.5pt;
-      padding: 2px 0;
+      font-size: 8.5pt;
+      padding: 1px 0;
     }
     .custom-content {
-      font-size: 10.5pt;
-      line-height: 1.5;
+      font-size: 8.5pt;
+      line-height: 1.4;
     }
     @media print {
-      body { -webkit-print-color-adjust: exact; }
-      .bulletin-container { page-break-inside: avoid; }
+      body {
+        -webkit-print-color-adjust: exact;
+        width: 8.5in;
+      }
+      .page-sheet {
+        page-break-after: always;
+      }
+      .bulletin-half {
+        page-break-inside: avoid;
+      }
     }
   </style>
 </head>
 <body>
-  <div class="bulletin-header">
-    <h1>${name}</h1>
-    <div class="date">${dateStr}</div>
-  </div>
-  <div class="bulletin-container">
-    <div class="column column-left">
-      ${prayerListHTML}
-      ${customHTML}
+  <div class="page-sheet">
+    <div class="bulletin-half">
+      ${bulletinBody}
     </div>
-    <div class="column column-right">
-      ${scheduleHTML}
-      ${eventsHTML}
-      ${announcementsHTML}
+    <hr class="cut-line" />
+    <div class="bulletin-half">
+      ${bulletinBody}
     </div>
   </div>
 </body>
