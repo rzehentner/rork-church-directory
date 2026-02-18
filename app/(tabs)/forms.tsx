@@ -9,8 +9,9 @@ import {
   RefreshControl,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed } from 'lucide-react-native'
+import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed, ClipboardList } from 'lucide-react-native'
 import { getMySignupForms, getFormSummaries } from '@/services/signup-forms'
 import type { MySignupForm, SignupFormSummary } from '@/types/supabase'
 
@@ -242,6 +243,7 @@ function summaryToMyForm(s: SignupFormSummary): MySignupForm {
 
 export default function FormsScreen() {
   const [refreshing, setRefreshing] = useState(false)
+  const insets = useSafeAreaInsets()
 
   const { data: myForms, isLoading: myLoading, error: myError, refetch: refetchMy } = useQuery({
     queryKey: ['my-signup-forms'],
@@ -291,30 +293,59 @@ export default function FormsScreen() {
 
   if (isLoading && !forms) {
     return (
-      <View style={styles.loadingContainer}>
-        <Stack.Screen options={{ title: 'Signup Forms' }} />
-        <ActivityIndicator size="large" color="#4338CA" />
-        <Text style={styles.loadingText}>Loading forms...</Text>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <ClipboardList size={28} color="#4338CA" />
+            <Text style={styles.headerTitle}>Signups</Text>
+          </View>
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#4338CA" />
+          <Text style={styles.loadingText}>Loading forms...</Text>
+        </View>
       </View>
     )
   }
 
   if (error) {
     return (
-      <View style={styles.errorContainer}>
-        <Stack.Screen options={{ title: 'Signup Forms' }} />
-        <Text style={styles.errorTitle}>Could not load forms</Text>
-        <Text style={styles.errorSubtitle}>{error instanceof Error ? error.message : 'Unknown error'}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-          <Text style={styles.retryText}>Try Again</Text>
-        </TouchableOpacity>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Stack.Screen options={{ headerShown: false }} />
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <ClipboardList size={28} color="#4338CA" />
+            <Text style={styles.headerTitle}>Signups</Text>
+          </View>
+        </View>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorTitle}>Could not load forms</Text>
+          <Text style={styles.errorSubtitle}>{error instanceof Error ? error.message : 'Unknown error'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+            <Text style={styles.retryText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     )
   }
 
+  const formCount = forms?.length ?? 0
+
   return (
-    <View style={styles.container}>
-      <Stack.Screen options={{ title: 'Signup Forms' }} />
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <ClipboardList size={28} color="#4338CA" />
+          <Text style={styles.headerTitle}>Signups</Text>
+        </View>
+        {formCount > 0 && (
+          <View style={styles.headerCountBadge}>
+            <Text style={styles.headerCountText}>{formCount}</Text>
+          </View>
+        )}
+      </View>
       <FlatList
         data={forms ?? []}
         keyExtractor={(item) => item.form_id}
@@ -335,11 +366,41 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F3F4F6',
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: 'bold' as const,
+    color: '#1F2937',
+  },
+  headerCountBadge: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  headerCountText: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: '#4338CA',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F3F4F6',
   },
   loadingText: {
     fontSize: 15,
