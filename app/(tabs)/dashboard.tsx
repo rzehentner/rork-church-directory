@@ -195,13 +195,14 @@ export default function DashboardScreen() {
 
   const loadDashboardData = useCallback(async () => {
     try {
-      const [eventsResult, announcementsResult, directoryResult, prayersResult] = await Promise.all([
+      const [eventsResult, announcementsResult, directoryResult, prayersResult, formsResult] = await Promise.all([
         supabase.from('events').select('id, title, start_at, location')
           .gte('start_at', new Date().toISOString()).order('start_at', { ascending: true }).limit(3),
         supabase.from('announcements').select('id, title, created_at, created_by')
           .order('created_at', { ascending: false }).limit(3),
         supabase.from('persons').select('id', { count: 'exact', head: true }),
         supabase.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'open'),
+        supabase.from('signup_form_summary').select('id', { count: 'exact', head: true }).eq('is_active', true),
       ]);
 
       setStats({
@@ -210,7 +211,7 @@ export default function DashboardScreen() {
         unreadAnnouncementsCount: announcementsResult.data?.length || 0,
         totalDirectoryMembers: directoryResult.count || 0,
         activePrayersCount: prayersResult.count || 0,
-        openFormsCount: 0,
+        openFormsCount: formsResult.count || 0,
       });
 
       if (eventsResult.data) setUpcomingEvents(eventsResult.data);
@@ -261,7 +262,7 @@ export default function DashboardScreen() {
     { id: 'events', label: 'Events', icon: <Calendar size={22} color="#059669" />, route: '/(tabs)/events', color: '#059669', bgColor: '#ECFDF5', count: stats.upcomingEventsCount },
     { id: 'announcements', label: 'News', icon: <Bell size={22} color="#D97706" />, route: '/(tabs)/announcements', color: '#D97706', bgColor: '#FFFBEB', count: stats.unreadAnnouncementsCount },
     { id: 'prayers', label: 'Prayers', icon: <Heart size={22} color="#DC2626" />, route: '/(tabs)/prayers', color: '#DC2626', bgColor: '#FEF2F2', count: stats.activePrayersCount },
-    { id: 'forms', label: 'Sign Ups', icon: <ClipboardList size={22} color="#7C3AED" />, route: '/(tabs)/forms', color: '#7C3AED', bgColor: '#F5F3FF' },
+    { id: 'forms', label: 'Sign Ups', icon: <ClipboardList size={22} color="#7C3AED" />, route: '/(tabs)/forms', color: '#7C3AED', bgColor: '#F5F3FF', count: stats.openFormsCount },
     { id: 'family', label: 'My Family', icon: <Home size={22} color="#2563EB" />, route: '/(tabs)/family', color: '#2563EB', bgColor: '#EFF6FF', count: stats.familyMembersCount },
     { id: 'directory', label: 'Directory', icon: <Users size={22} color="#0891B2" />, route: '/(tabs)/directory', color: '#0891B2', bgColor: '#ECFEFF', count: stats.totalDirectoryMembers },
   ];
