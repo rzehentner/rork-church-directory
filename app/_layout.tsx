@@ -119,7 +119,7 @@ const errorStyles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
   button: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#2563EB',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
@@ -136,7 +136,7 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      staleTime: 30000, // 30 seconds
+      staleTime: 300000,
       refetchOnWindowFocus: false,
     },
   },

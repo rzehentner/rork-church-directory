@@ -1,62 +1,51 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
-import { View, ActivityIndicator, StyleSheet, Text, Platform, ScrollView } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Home } from 'lucide-react-native';
 
 export default function IndexScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, person, isLoading: userLoading } = useUser();
-  const [isNavigating, setIsNavigating] = useState(false);
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
-
-  const addDebugInfo = (info: string) => {
-    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`]);
-  };
+  const isNavigatingRef = useRef(false);
 
   useEffect(() => {
-    addDebugInfo('App started');
-    addDebugInfo(`Platform: ${Platform.OS}`);
-    
-    // Shorter timeout for web to prevent hydration issues
     const timeout = Platform.OS === 'web' ? 2000 : 5000;
-    
+
     const forceTimer = setTimeout(() => {
-      addDebugInfo('Force timeout triggered');
-      if (!isNavigating) {
-        setIsNavigating(true);
+      console.log('[IndexScreen] Force timeout triggered');
+      if (!isNavigatingRef.current) {
+        isNavigatingRef.current = true;
         router.replace('/(auth)/login' as any);
       }
     }, timeout);
 
     return () => clearTimeout(forceTimer);
-  }, [isNavigating]);
+  }, []);
 
   useEffect(() => {
-    addDebugInfo(`Auth loading: ${authLoading}, User loading: ${userLoading}, Is navigating: ${isNavigating}`);
-    addDebugInfo(`User: ${user ? 'exists' : 'null'}, Profile: ${profile ? profile.role : 'null'}`);
-    
-    if (!authLoading && !userLoading && !isNavigating) {
-      addDebugInfo('Ready to navigate');
-      setIsNavigating(true);
-      
+    console.log(`[IndexScreen] Auth loading: ${authLoading}, User loading: ${userLoading}`);
+    console.log(`[IndexScreen] User: ${user ? 'exists' : 'null'}, Profile: ${profile ? profile.role : 'null'}`);
+
+    if (!authLoading && !userLoading && !isNavigatingRef.current) {
+      isNavigatingRef.current = true;
+
       if (user) {
-        // Check if user is a visitor or pending without a complete profile
         if ((profile?.role === 'pending' || profile?.role === 'visitor') && (!person || !person.first_name || !person.last_name)) {
-          addDebugInfo('Navigating to visitor profile');
+          console.log('[IndexScreen] Navigating to visitor profile');
           router.replace('/visitor-profile' as any);
         } else {
-          addDebugInfo('Navigating to dashboard');
+          console.log('[IndexScreen] Navigating to dashboard');
           router.replace('/(tabs)/dashboard' as any);
         }
       } else {
-        addDebugInfo('Navigating to login');
+        console.log('[IndexScreen] Navigating to login');
         router.replace('/(auth)/login' as any);
       }
     }
-  }, [user, profile, person, authLoading, userLoading, isNavigating]);
+  }, [user, profile, person, authLoading, userLoading]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -68,22 +57,12 @@ export default function IndexScreen() {
           <Text style={styles.appName}>EBC Connect</Text>
           <Text style={styles.tagline}>Edna Baptist Church Community</Text>
         </View>
-        
+
         <View style={styles.loadingSection}>
-          <ActivityIndicator size="large" color="#7C3AED" />
+          <ActivityIndicator size="large" color="#2563EB" />
           <Text style={styles.loadingText}>
             {authLoading ? 'Loading your church family...' : 'Welcome back!'}
           </Text>
-        </View>
-        
-        {/* Debug Console */}
-        <View style={styles.debugContainer}>
-          <Text style={styles.debugTitle}>Debug Console:</Text>
-          <ScrollView style={styles.debugScroll} showsVerticalScrollIndicator={false}>
-            {debugInfo.map((info, index) => (
-              <Text key={index} style={styles.debugText}>{info}</Text>
-            ))}
-          </ScrollView>
         </View>
       </View>
     </SafeAreaView>
@@ -109,11 +88,11 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: 48,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#2563EB',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 24,
-    shadowColor: '#7C3AED',
+    shadowColor: '#2563EB',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.3,
     shadowRadius: 16,
@@ -140,28 +119,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     textAlign: 'center',
-  },
-  debugContainer: {
-    marginTop: 32,
-    backgroundColor: '#1F2937',
-    borderRadius: 8,
-    padding: 16,
-    width: '100%',
-    maxHeight: 200,
-  },
-  debugTitle: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold' as const,
-    marginBottom: 8,
-  },
-  debugScroll: {
-    maxHeight: 150,
-  },
-  debugText: {
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginBottom: 4,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
   },
 });
