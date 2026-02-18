@@ -27,6 +27,14 @@ export async function createSignupForm(params: {
   fields: CreateFormFieldInput[]
 }) {
   console.log('createSignupForm called:', params)
+
+  const { data: { user } } = await supabase.auth.getUser()
+  console.log('Current auth user id:', user?.id)
+  if (user) {
+    const { data: profile } = await supabase.from('profiles').select('id, role').eq('id', user.id).single()
+    console.log('Current user profile role:', profile?.role, 'profile id:', profile?.id)
+  }
+
   const { data, error } = await supabase.rpc('create_signup_form', {
     p_event_id: params.eventId,
     p_title: params.title || null,
