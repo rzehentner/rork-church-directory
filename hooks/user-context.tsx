@@ -43,7 +43,6 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     setIsLoading(true);
 
     try {
-      // Fetch profile and person in parallel
       const [profileResponse, personResponse] = await Promise.all([
         supabase
           .from('profiles')
@@ -56,16 +55,11 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
           .eq('user_id', user.id)
           .maybeSingle()
       ]);
-      
 
-      
       setProfile(profileResponse.data);
       setPerson(personResponse.data);
 
-      // Fetch family and members if person has family_id
       if (personResponse.data?.family_id) {
-        
-        // Fetch family and members in parallel
         const [familyResponse, membersResponse] = await Promise.all([
           supabase
             .from('families')
@@ -79,9 +73,7 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
             .order('family_role', { ascending: true })
             .order('date_of_birth', { ascending: true })
         ]);
-        
 
-        
         setFamily(familyResponse.data);
         setFamilyMembers(membersResponse.data || []);
       } else {
@@ -90,7 +82,6 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
       }
     } catch (error) {
       console.error('Error fetching user data:', error);
-      // Set defaults on error to prevent infinite loading
       setProfile(null);
       setPerson(null);
       setFamily(null);
@@ -135,15 +126,15 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
   };
 
   const createFamily = async (familyData: any) => {
-    console.log('🏗️ Creating family with data:', familyData);
+    console.log('Creating family with data:', familyData);
     const response = await supabase.rpc('create_family_for_self', familyData);
-    console.log('🏗️ Create family response:', response);
+    console.log('Create family response:', response);
     
     if (!response.error && response.data) {
-      console.log('✅ Family created successfully, refetching user data...');
+      console.log('Family created successfully, refetching user data...');
       await fetchUserData();
     } else {
-      console.log('❌ Family creation failed:', response.error);
+      console.log('Family creation failed:', response.error);
     }
 
     return { familyId: response.data, error: response.error };
@@ -163,18 +154,16 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     if (!user) return { error: new Error('User not authenticated') };
 
     try {
-      // First, delete the person to be replaced
       const { error: deleteError } = await supabase
         .from('persons')
         .delete()
         .eq('id', personIdToReplace)
-        .is('user_id', null); // Only delete if no user is associated
+        .is('user_id', null);
 
       if (deleteError) {
         return { error: deleteError };
       }
 
-      // Then update the current user's person record to join the family
       if (person) {
         const { error: updateError } = await supabase
           .from('persons')
@@ -185,12 +174,9 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
           return { error: updateError };
         }
       } else {
-        // If no person record exists, we need to create one
-        // This shouldn't happen in normal flow, but handle it just in case
         return { error: new Error('No person record found for current user') };
       }
 
-      // Refresh user data
       await fetchUserData();
       return { error: null };
     } catch (error) {
