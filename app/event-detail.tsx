@@ -12,6 +12,7 @@ import {
 } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useLocalSearchParams, router } from 'expo-router'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { 
   MapPin, 
   Clock, 
@@ -61,16 +62,25 @@ export default function EventDetailScreen() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [rsvpLoading, setRSVPLoading] = useState(false)
-  const [signupForm, setSignupForm] = useState<SignupForm | null>(null)
   
   const { profile, myRole, isLoading: meLoading } = useMe()
   const { showToast } = useToast()
   const insets = useSafeAreaInsets()
+  const queryClient = useQueryClient()
   const isStaff = myRole === 'admin' || myRole === 'leader'
   const canViewRSVPs = isStaff
   const canEdit = isStaff && event?.created_by === profile?.id
 
-
+  const { data: signupForm, refetch: refetchSignupForm } = useQuery({
+    queryKey: ['event-signup-form', id],
+    queryFn: async () => {
+      console.log('Fetching signup form for event:', id)
+      const form = await getEventSignupForm(id)
+      console.log('Signup form result:', form?.id ?? 'none', 'type:', form?.form_type ?? 'none', 'active:', form?.is_active ?? 'N/A')
+      return form
+    },
+    enabled: !!id,
+  })
 
   const loadTags = async () => {
     try {
@@ -100,26 +110,15 @@ export default function EventDetailScreen() {
     }
   }, [id, showToast])
 
-  const loadSignupForm = useCallback(async () => {
-    if (!id) return
-    try {
-      const form = await getEventSignupForm(id)
-      setSignupForm(form)
-      console.log('Signup form for event:', form?.id ?? 'none', 'type:', form?.form_type ?? 'none')
-    } catch (error) {
-      console.error('Failed to load signup form:', error)
-    }
-  }, [id])
-
   const isFocused = useIsFocused()
 
   useEffect(() => {
     if (id && isFocused) {
       loadEventCallback()
       loadTags()
-      loadSignupForm()
+      refetchSignupForm()
     }
-  }, [id, isFocused, loadEventCallback, loadSignupForm])
+  }, [id, isFocused, loadEventCallback, refetchSignupForm])
 
   // Load RSVPs separately when role is loaded and user is staff
   useEffect(() => {

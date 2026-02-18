@@ -68,16 +68,18 @@ export default function CreatePotluckFormScreen() {
   const createMutation = useMutation({
     mutationFn: createPotluckForm,
     onSuccess: (data) => {
-      console.log('Potluck form created:', data)
+      console.log('Potluck form created successfully:', JSON.stringify(data))
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
       queryClient.invalidateQueries({ queryKey: ['signup-form-summary'] })
       queryClient.invalidateQueries({ queryKey: ['event-signup-form', eventId] })
+      queryClient.invalidateQueries({ queryKey: ['potluck-detail'] })
       showToast('success', 'Potluck form created!')
       router.back()
     },
     onError: (error: any) => {
-      console.error('Create potluck form error:', error)
-      showToast('error', error?.message || 'Failed to create potluck form')
+      console.error('Create potluck form error:', JSON.stringify(error))
+      const msg = error?.message || error?.details || 'Failed to create potluck form'
+      showToast('error', msg)
     },
   })
 
