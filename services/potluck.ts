@@ -55,7 +55,12 @@ export async function createPotluckForm(params: {
     console.error('createPotluckForm error:', error)
     throw error
   }
-  return data as { success: boolean; form_id: string }
+  const result = data as { success: boolean; form_id?: string; error?: string }
+  if (!result?.success) {
+    console.error('createPotluckForm RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to create potluck form')
+  }
+  return result as { success: boolean; form_id: string }
 }
 
 export async function addPotluckItems(params: {
@@ -77,7 +82,12 @@ export async function addPotluckItems(params: {
     console.error('addPotluckItems error:', error)
     throw error
   }
-  return data
+  const result = data as { success: boolean; error?: string } | null
+  if (result && !result.success) {
+    console.error('addPotluckItems RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to add potluck items')
+  }
+  return result
 }
 
 export async function claimPotluckItem(params: {
@@ -99,7 +109,12 @@ export async function claimPotluckItem(params: {
     console.error('claimPotluckItem error:', error)
     throw error
   }
-  return data as { success: boolean; item_name: string; claimant_name: string }
+  const result = data as { success: boolean; item_name?: string; claimant_name?: string; error?: string }
+  if (!result?.success) {
+    console.error('claimPotluckItem RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to claim potluck item')
+  }
+  return result as { success: boolean; item_name: string; claimant_name: string }
 }
 
 export async function unclaimPotluckItem(claimId: string) {
@@ -113,7 +128,12 @@ export async function unclaimPotluckItem(claimId: string) {
     console.error('unclaimPotluckItem error:', error)
     throw error
   }
-  return data as { success: boolean }
+  const result = data as { success: boolean; error?: string }
+  if (!result?.success) {
+    console.error('unclaimPotluckItem RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to unclaim potluck item')
+  }
+  return result
 }
 
 export async function getPotluckFormDetail(formId: string): Promise<PotluckGroupParsed[]> {

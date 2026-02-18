@@ -41,7 +41,12 @@ export async function createSignupForm(params: {
     console.error('createSignupForm error:', error)
     throw error
   }
-  return data as { success: boolean; form_id: string }
+  const result = data as { success: boolean; form_id?: string; error?: string }
+  if (!result?.success) {
+    console.error('createSignupForm RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to create signup form')
+  }
+  return result as { success: boolean; form_id: string }
 }
 
 export async function submitSignup(params: {
@@ -67,7 +72,12 @@ export async function submitSignup(params: {
     console.error('submitSignup error:', error)
     throw error
   }
-  return data as { success: boolean; response_id: string; status: string; respondent_name: string }
+  const result = data as { success: boolean; response_id?: string; status?: string; respondent_name?: string; error?: string }
+  if (!result?.success) {
+    console.error('submitSignup RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to submit signup')
+  }
+  return result as { success: boolean; response_id: string; status: string; respondent_name: string }
 }
 
 export async function cancelSignup(responseId: string) {
@@ -81,7 +91,12 @@ export async function cancelSignup(responseId: string) {
     console.error('cancelSignup error:', error)
     throw error
   }
-  return data as { success: boolean }
+  const result = data as { success: boolean; error?: string }
+  if (!result?.success) {
+    console.error('cancelSignup RPC returned failure:', result)
+    throw new Error(result?.error || 'Failed to cancel signup')
+  }
+  return result
 }
 
 export async function getMySignupForms(): Promise<MySignupForm[]> {
