@@ -58,13 +58,18 @@ export default function CreateBulletinScreen() {
   const { showSuccess, showError } = useToast();
   const { settings: churchSettings } = useChurchSettings();
   const [isGenerating, setIsGenerating] = useState(false);
-  const [churchName, setChurchName] = useState('');
   const [bulletinDate, setBulletinDate] = useState(format(new Date(), 'MMMM d, yyyy'));
   const [includePrayers, setIncludePrayers] = useState(true);
   const [includeEvents, setIncludeEvents] = useState(true);
   const [includeAnnouncements, setIncludeAnnouncements] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['schedule', 'custom']));
   const [initialized, setInitialized] = useState(false);
+
+  const churchName = churchSettings?.churchName || 'Our Church';
+  const churchAddress = churchSettings ? [churchSettings.address, churchSettings.city, churchSettings.state, churchSettings.zip].filter(Boolean).join(', ') : '';
+  const churchPhone = churchSettings?.phone || '';
+  const churchWebsite = churchSettings?.website || '';
+  const pastorName = churchSettings?.pastorName || '';
 
   const [selectedTagIds, setSelectedTagIds] = useState<Set<string>>(new Set());
   const [excludedTagIds, setExcludedTagIds] = useState<Set<string>>(new Set());
@@ -74,9 +79,6 @@ export default function CreateBulletinScreen() {
 
   useEffect(() => {
     if (!initialized && churchSettings) {
-      if (churchSettings.churchName) {
-        setChurchName(churchSettings.churchName);
-      }
       if (churchSettings.serviceTimes && churchSettings.serviceTimes.length > 0) {
         setScheduleItems(churchSettings.serviceTimes.map(st => ({
           day: st.day,
@@ -206,7 +208,7 @@ export default function CreateBulletinScreen() {
   }, []);
 
   const generateHTML = useCallback(() => {
-    const name = churchName || 'Our Church';
+    const name = churchName;
     const dateStr = bulletinDate || format(new Date(), 'MMMM d, yyyy');
 
     let prayerListHTML = '';
@@ -303,6 +305,9 @@ export default function CreateBulletinScreen() {
       <div class="page front-page">
         <div class="bulletin-header">
           <h1>${name}</h1>
+          ${pastorName ? `<div class="pastor">Pastor ${pastorName}</div>` : ''}
+          ${churchAddress ? `<div class="address">${churchAddress}</div>` : ''}
+          ${churchPhone || churchWebsite ? `<div class="contact">${[churchPhone, churchWebsite].filter(Boolean).join(' · ')}</div>` : ''}
           <div class="date">${dateStr}</div>
         </div>
         <div class="front-content">
@@ -363,10 +368,26 @@ export default function CreateBulletinScreen() {
       margin-bottom: 3px;
       color: #1a1a1a;
     }
+    .bulletin-header .pastor {
+      font-size: 9.5pt;
+      color: #444;
+      margin-bottom: 1px;
+    }
+    .bulletin-header .address {
+      font-size: 8.5pt;
+      color: #666;
+      margin-bottom: 1px;
+    }
+    .bulletin-header .contact {
+      font-size: 8.5pt;
+      color: #666;
+      margin-bottom: 3px;
+    }
     .bulletin-header .date {
       font-size: 10.5pt;
       color: #555;
       font-style: italic;
+      margin-top: 4px;
     }
     .back-header {
       text-align: center;
@@ -505,7 +526,7 @@ export default function CreateBulletinScreen() {
   ${includePrayers && prayers.length > 0 ? backPage : ''}
 </body>
 </html>`;
-  }, [churchName, bulletinDate, includePrayers, prayers, includeEvents, filteredEvents, includeAnnouncements, announcements, scheduleItems, customSections]);
+  }, [churchName, pastorName, churchAddress, churchPhone, churchWebsite, bulletinDate, includePrayers, prayers, includeEvents, filteredEvents, includeAnnouncements, announcements, scheduleItems, customSections]);
 
   const handlePreview = useCallback(async () => {
     const html = generateHTML();
@@ -590,14 +611,12 @@ export default function CreateBulletinScreen() {
             </View>
 
             <View style={styles.card}>
-              <Text style={styles.cardLabel}>Church Name</Text>
-              <TextInput
-                style={styles.input}
-                value={churchName}
-                onChangeText={setChurchName}
-                placeholder="Enter church name"
-                placeholderTextColor="#9CA3AF"
-              />
+              <View style={styles.churchInfoRow}>
+                <Text style={styles.churchInfoName}>{churchName}</Text>
+                {churchAddress ? <Text style={styles.churchInfoDetail}>{churchAddress}</Text> : null}
+                {churchPhone ? <Text style={styles.churchInfoDetail}>{churchPhone}</Text> : null}
+                <Text style={styles.churchInfoHint}>Edit in Admin → Church Settings</Text>
+              </View>
               <Text style={styles.cardLabel}>Bulletin Date</Text>
               <TextInput
                 style={styles.input}
@@ -881,6 +900,29 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.04,
     shadowRadius: 6,
     elevation: 1,
+  },
+  churchInfoRow: {
+    marginBottom: 14,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+  },
+  churchInfoName: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  churchInfoDetail: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  churchInfoHint: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   cardLabel: {
     fontSize: 13,
