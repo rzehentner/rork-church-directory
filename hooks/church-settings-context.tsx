@@ -1,9 +1,7 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useState, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const CHURCH_SETTINGS_KEY = 'church_settings';
+import { supabase } from '@/lib/supabase';
 
 export interface ServiceTime {
   day: string;
@@ -24,6 +22,27 @@ export interface ChurchSettings {
   serviceTimes: ServiceTime[];
 }
 
+interface DbServiceTime {
+  day: string;
+  time: string;
+  label: string;
+}
+
+interface DbChurchSettings {
+  id: string;
+  name: string | null;
+  pastor: string | null;
+  address_street: string | null;
+  address_city: string | null;
+  address_state: string | null;
+  address_zip: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  service_times: DbServiceTime[] | null;
+  updated_at: string | null;
+}
+
 const DEFAULT_SETTINGS: ChurchSettings = {
   churchName: '',
   pastorName: '',
@@ -34,46 +53,115 @@ const DEFAULT_SETTINGS: ChurchSettings = {
   phone: '',
   email: '',
   website: '',
-  serviceTimes: [
-    { day: 'Sunday', time: '10:00 AM', activity: 'Sunday School' },
-    { day: 'Sunday', time: '11:00 AM', activity: 'Worship Service' },
-    { day: 'Wednesday', time: '6:00 PM', activity: 'Mid-Week Bible Study' },
-  ],
+  serviceTimes: [],
 };
+
+function mapDbToSettings(row: DbChurchSettings): ChurchSettings & { _id: string } {
+  const serviceTimes: ServiceTime[] = Array.isArray(row.service_times)
+    ? row.service_times.map((st: DbServiceTime) => ({
+        day: st.day || '',
+        time: st.time || '',
+        activity: st.label || '',
+      }))
+    : [];
+
+  return {
+    _id: row.id,
+    churchName: row.name || '',
+    pastorName: row.pastor || '',
+    address: row.address_street || '',
+    city: row.address_city || '',
+    state: row.address_state || '',
+    zip: row.address_zip || '',
+    phone: row.phone || '',
+    email: row.email || '',
+    website: row.website || '',
+    serviceTimes,
+  };
+}
+
+function mapSettingsToDb(settings: ChurchSettings): Record<string, unknown> {
+  return {
+    name: settings.churchName || null,
+    pastor: settings.pastorName || null,
+    address_street: settings.address || null,
+    address_city: settings.city || null,
+    address_state: settings.state || null,
+    address_zip: settings.zip || null,
+    phone: settings.phone || null,
+    email: settings.email || null,
+    website: settings.website || null,
+    service_times: settings.serviceTimes.map((st) => ({
+      day: st.day,
+      time: st.time,
+      label: st.activity,
+    })),
+  };
+}
 
 export const [ChurchSettingsProvider, useChurchSettings] = createContextHook(() => {
   const queryClient = useQueryClient();
   const [settings, setSettings] = useState<ChurchSettings>(DEFAULT_SETTINGS);
+  const [settingsId, setSettingsId] = useState<string | null>(null);
 
   const settingsQuery = useQuery({
     queryKey: ['church-settings'],
     queryFn: async () => {
-      console.log('📍 Loading church settings from AsyncStorage');
-      const stored = await AsyncStorage.getItem(CHURCH_SETTINGS_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as ChurchSettings;
-        console.log('📍 Church settings loaded:', parsed.churchName || '(no name set)');
-        return parsed;
+      console.log('📍 Loading church settings from Supabase');
+      const { data, error } = await supabase
+        .from('church_settings')
+        .select('*')
+        .single();
+
+      if (error) {
+        console.error('❌ Error loading church settings:', error.message);
+        return null;
       }
-      return DEFAULT_SETTINGS;
+
+      console.log('📍 Church settings loaded:', data?.name || '(no name set)');
+      return data as DbChurchSettings;
     },
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
   });
 
   useEffect(() => {
     if (settingsQuery.data) {
-      setSettings(settingsQuery.data);
+      const mapped = mapDbToSettings(settingsQuery.data);
+      setSettingsId(mapped._id);
+      const { _id, ...rest } = mapped;
+      setSettings(rest);
     }
   }, [settingsQuery.data]);
 
   const saveMutation = useMutation({
     mutationFn: async (newSettings: ChurchSettings) => {
-      console.log('💾 Saving church settings:', newSettings.churchName);
-      await AsyncStorage.setItem(CHURCH_SETTINGS_KEY, JSON.stringify(newSettings));
-      return newSettings;
+      if (!settingsId) {
+        console.error('❌ No church_settings row ID found, cannot update');
+        throw new Error('Church settings not loaded yet');
+      }
+
+      console.log('💾 Saving church settings to Supabase:', newSettings.churchName);
+      const dbPayload = mapSettingsToDb(newSettings);
+
+      const { data, error } = await supabase
+        .from('church_settings')
+        .update(dbPayload)
+        .eq('id', settingsId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Error saving church settings:', error.message);
+        throw error;
+      }
+
+      console.log('✅ Church settings saved successfully');
+      return data as DbChurchSettings;
     },
     onSuccess: (data) => {
-      setSettings(data);
+      const mapped = mapDbToSettings(data);
+      const { _id, ...rest } = mapped;
+      setSettings(rest);
       queryClient.setQueryData(['church-settings'], data);
     },
   });
