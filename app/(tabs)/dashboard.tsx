@@ -260,7 +260,7 @@ export default function DashboardScreen() {
 
   const quickActions: QuickAction[] = [
     { id: 'events', label: 'Events', icon: <Calendar size={22} color="#059669" />, route: '/(tabs)/events', color: '#059669', bgColor: '#ECFDF5', count: stats.upcomingEventsCount },
-    { id: 'announcements', label: 'News', icon: <Bell size={22} color="#D97706" />, route: '/(tabs)/announcements', color: '#D97706', bgColor: '#FFFBEB', count: stats.unreadAnnouncementsCount },
+    { id: 'announcements', label: 'Announcements', icon: <Bell size={22} color="#D97706" />, route: '/(tabs)/announcements', color: '#D97706', bgColor: '#FFFBEB', count: stats.unreadAnnouncementsCount },
     { id: 'prayers', label: 'Prayers', icon: <Heart size={22} color="#DC2626" />, route: '/(tabs)/prayers', color: '#DC2626', bgColor: '#FEF2F2', count: stats.activePrayersCount },
     { id: 'forms', label: 'Sign Ups', icon: <ClipboardList size={22} color="#7C3AED" />, route: '/(tabs)/forms', color: '#7C3AED', bgColor: '#F5F3FF', count: stats.openFormsCount },
     { id: 'family', label: 'My Family', icon: <Home size={22} color="#2563EB" />, route: '/(tabs)/family', color: '#2563EB', bgColor: '#EFF6FF', count: stats.familyMembersCount },
