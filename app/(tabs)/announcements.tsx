@@ -9,12 +9,14 @@ import {
   TextInput,
   PanResponder,
   Animated,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/me-context';
 import { useToast } from '@/hooks/toast-context';
 import { listAnnouncementsForMe, markAnnouncementRead, getAnnouncementTags } from '@/lib/announcements';
+import { announcementImageUrl } from '@/services/event-images';
 import { listTags, getPersonWithTags } from '@/services/tags';
 import TagPill from '@/components/TagPill';
 import { 
@@ -34,6 +36,7 @@ interface Announcement {
   id: string;
   title: string;
   body: string;
+  image_path: string | null;
   published_at: string;
   expires_at: string | null;
   created_by: string;
@@ -385,6 +388,13 @@ export default function AnnouncementsScreen() {
         <View style={[styles.colorStrip, { backgroundColor: primaryColor }]} />
         
         <View style={styles.cardContent}>
+          {announcement.image_path && (
+            <Image
+              source={{ uri: announcementImageUrl(announcement.image_path)! }}
+              style={styles.announcementImage}
+              resizeMode="cover"
+            />
+          )}
           <View style={styles.announcementHeader}>
             <View style={styles.announcementMeta}>
               <Text style={styles.announcementTitle}>
@@ -917,6 +927,11 @@ const styles = StyleSheet.create({
   cardContent: {
     flex: 1,
     padding: 16,
+  },
+  announcementImage: {
+    width: '100%',
+    height: 160,
+    borderTopRightRadius: 12,
   },
   unreadCard: {
     shadowOpacity: 0.1,

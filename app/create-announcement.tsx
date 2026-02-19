@@ -30,6 +30,8 @@ import {
   Globe
 } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import ImageUploader from '@/components/ImageUploader';
+import { uploadAnnouncementImage } from '@/services/event-images';
 
 interface AnnouncementFormData {
   title: string;
@@ -65,6 +67,7 @@ export default function CreateAnnouncementScreen() {
   });
   
   const [isFormInitialized, setIsFormInitialized] = useState(!isEditMode);
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
   const [showExpiryDatePicker, setShowExpiryDatePicker] = useState<DatePickerMode>(null);
   const [showPublishDatePicker, setShowPublishDatePicker] = useState<DatePickerMode>(null);
@@ -125,7 +128,6 @@ export default function CreateAnnouncementScreen() {
       if (isEditMode && announcementId) {
         console.log('📝 Updating announcement:', announcementId, data);
         
-        // Update the announcement
         const announcement = await updateAnnouncement(announcementId, {
           title: data.title.trim(),
           body: data.body.trim() || null,
@@ -136,20 +138,28 @@ export default function CreateAnnouncementScreen() {
           is_published: data.publishNow || existingAnnouncement?.is_published || false,
         });
         
-        // Update tags (for both public and private announcements)
         const tagIds = availableTags
           .filter(tag => data.tagChips.includes(tag.name))
           .map(tag => tag.id);
         
         console.log('🏷️ Updating announcement tags:', tagIds);
         await setAnnouncementTags(announcement.id, tagIds);
+
+        if (imageUri) {
+          try {
+            console.log('📸 Uploading announcement image...');
+            await uploadAnnouncementImage(imageUri, announcement.id);
+            console.log('✅ Announcement image uploaded');
+          } catch (imgErr) {
+            console.error('⚠️ Announcement image upload failed:', imgErr);
+          }
+        }
         
         console.log('✅ Announcement updated successfully');
         return announcement;
       } else {
         console.log('📢 Creating announcement:', data);
 
-        // Create and optionally publish announcement in one step
         const announcement = await createAnnouncement({
           title: data.title.trim(),
           body: data.body.trim() || null,
@@ -160,9 +170,7 @@ export default function CreateAnnouncementScreen() {
           publish_immediately: data.publishNow,
         });
 
-        // Set tags (for both public and private announcements)
         if (data.tagChips.length > 0) {
-          // Get tag IDs from tag names
           const tagIds = availableTags
             .filter(tag => data.tagChips.includes(tag.name))
             .map(tag => tag.id);
@@ -170,6 +178,16 @@ export default function CreateAnnouncementScreen() {
           if (tagIds.length > 0) {
             console.log('🏷️ Setting announcement tags:', tagIds);
             await setAnnouncementTags(announcement.id, tagIds);
+          }
+        }
+
+        if (imageUri) {
+          try {
+            console.log('📸 Uploading announcement image...');
+            await uploadAnnouncementImage(imageUri, announcement.id);
+            console.log('✅ Announcement image uploaded');
+          } catch (imgErr) {
+            console.error('⚠️ Announcement image upload failed:', imgErr);
           }
         }
 
@@ -550,6 +568,26 @@ export default function CreateAnnouncementScreen() {
                   )}
                 </TouchableOpacity>
               ))}
+            </View>
+          </View>
+
+          {/* Image */}
+          <View style={styles.formGroup}>
+            <Text style={styles.formLabel}>Image (Optional)</Text>
+            <View style={styles.imageUploaderContainer}>
+              <ImageUploader
+                currentImageUrl={imageUri}
+                onUpload={async (file) => {
+                  console.log('[CreateAnnouncement] Image selected:', file.uri);
+                  setImageUri(file.uri);
+                  return file.uri;
+                }}
+                placeholder="Add Image"
+                size={200}
+                isCircular={false}
+                aspectRatio={{ width: 16, height: 9 }}
+                disabled={saveMutation.isPending}
+              />
             </View>
           </View>
 
@@ -953,6 +991,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#7C3AED',
     fontWeight: '600' as const,
+  },
+  imageUploaderContainer: {
+    alignItems: 'center',
+    marginBottom: 8,
   },
   loadingContainer: {
     flex: 1,
