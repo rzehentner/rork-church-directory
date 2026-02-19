@@ -484,14 +484,14 @@ export default function CreateAnnouncementScreen() {
                   {formatDateForDisplay(formData.expiresAt)}
                 </Text>
               </TouchableOpacity>
-              {formData.expiresAt && (
+              {formData.expiresAt ? (
                 <TouchableOpacity
                   style={styles.clearButton}
                   onPress={clearExpiryDate}
                 >
                   <X size={16} color="#EF4444" />
                 </TouchableOpacity>
-              )}
+              ) : null}
             </View>
           </View>
 
