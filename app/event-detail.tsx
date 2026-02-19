@@ -473,13 +473,23 @@ export default function EventDetailScreen() {
                 <Text style={styles.signupFormBtnText}>Open Signup Form</Text>
               </TouchableOpacity>
               {isStaff && (
-                <TouchableOpacity
-                  style={styles.viewResponsesBtn}
-                  onPress={() => router.push(`/signup-responses?formId=${signupForm.id}&formTitle=${encodeURIComponent(signupForm.title)}` as any)}
-                  testID="view-responses-btn"
-                >
-                  <Text style={styles.viewResponsesBtnText}>View Responses</Text>
-                </TouchableOpacity>
+                <View style={styles.staffFormActions}>
+                  <TouchableOpacity
+                    style={styles.viewResponsesBtn}
+                    onPress={() => router.push(`/signup-responses?formId=${signupForm.id}&formTitle=${encodeURIComponent(signupForm.title)}` as any)}
+                    testID="view-responses-btn"
+                  >
+                    <Text style={styles.viewResponsesBtnText}>View Responses</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.editFormBtn}
+                    onPress={() => router.push(`/edit-signup-form?formId=${signupForm.id}` as any)}
+                    testID="edit-signup-form-btn"
+                  >
+                    <Edit3 size={15} color="#4338CA" />
+                    <Text style={styles.editFormBtnText}>Edit Form</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           ) : (
@@ -795,16 +805,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
+  staffFormActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+  },
   viewResponsesBtn: {
+    flex: 1,
     alignItems: 'center',
     paddingVertical: 10,
-    marginTop: 8,
     borderRadius: 10,
     borderWidth: 1.5,
     borderColor: '#C7D2FE',
     backgroundColor: '#EEF2FF',
   },
   viewResponsesBtnText: {
+    color: '#4338CA',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editFormBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#C7D2FE',
+    backgroundColor: '#EEF2FF',
+  },
+  editFormBtnText: {
     color: '#4338CA',
     fontSize: 14,
     fontWeight: '600',

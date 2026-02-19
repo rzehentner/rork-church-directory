@@ -200,6 +200,73 @@ export async function getFormSummaries(): Promise<SignupFormSummary[]> {
   return (data as SignupFormSummary[]) ?? []
 }
 
+export async function updateSignupForm(params: {
+  formId: string
+  title?: string
+  description?: string | null
+  maxSignups?: number | null
+  deadline?: string | null
+  isActive?: boolean
+  fields: CreateFormFieldInput[]
+}) {
+  console.log('updateSignupForm called:', params)
+
+  const { formId, fields, ...formUpdates } = params
+
+  const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
+  if (formUpdates.title !== undefined) updatePayload.title = formUpdates.title
+  if (formUpdates.description !== undefined) updatePayload.description = formUpdates.description
+  if (formUpdates.maxSignups !== undefined) updatePayload.max_signups = formUpdates.maxSignups
+  if (formUpdates.deadline !== undefined) updatePayload.deadline = formUpdates.deadline
+  if (formUpdates.isActive !== undefined) updatePayload.is_active = formUpdates.isActive
+
+  const { error: formError } = await supabase
+    .from('signup_forms')
+    .update(updatePayload)
+    .eq('id', formId)
+
+  if (formError) {
+    console.error('updateSignupForm form update error:', formError)
+    throw formError
+  }
+
+  const { error: deleteError } = await supabase
+    .from('signup_form_fields')
+    .delete()
+    .eq('form_id', formId)
+
+  if (deleteError) {
+    console.error('updateSignupForm fields delete error:', deleteError)
+    throw deleteError
+  }
+
+  if (fields.length > 0) {
+    const fieldRows = fields.map((f, idx) => ({
+      form_id: formId,
+      field_key: f.field_key,
+      field_label: f.field_label,
+      field_type: f.field_type,
+      is_required: f.is_required,
+      is_standard: f.is_standard,
+      options: f.options ?? null,
+      placeholder: f.placeholder ?? null,
+      sort_order: idx,
+    }))
+
+    const { error: insertError } = await supabase
+      .from('signup_form_fields')
+      .insert(fieldRows)
+
+    if (insertError) {
+      console.error('updateSignupForm fields insert error:', insertError)
+      throw insertError
+    }
+  }
+
+  console.log('updateSignupForm success')
+  return { success: true, form_id: formId }
+}
+
 export async function getSignupForm(formId: string): Promise<SignupForm | null> {
   console.log('getSignupForm called:', formId)
   const { data, error } = await supabase

@@ -159,6 +159,7 @@ function RootLayoutNav() {
       <Stack.Screen name="signup-form" options={{ title: "Sign Up" }} />
       <Stack.Screen name="create-signup-form" options={{ title: "Create Signup Form" }} />
       <Stack.Screen name="signup-responses" options={{ title: "Responses" }} />
+      <Stack.Screen name="edit-signup-form" options={{ title: "Edit Signup Form" }} />
       <Stack.Screen name="create-potluck-form" options={{ title: "Create Potluck Form" }} />
       <Stack.Screen name="potluck-sheet" options={{ title: "Potluck Sign-Up" }} />
     </Stack>
