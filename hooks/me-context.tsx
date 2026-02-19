@@ -1,77 +1,47 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/auth-context';
-import { getMyProfile, getMyPerson } from '@/services/tags';
-import type { Database } from '@/types/supabase';
-import { useMemo, useCallback } from 'react';
-
-type Profile = Database['public']['Tables']['profiles']['Row'];
-type Person = Database['public']['Tables']['persons']['Row'];
+import { useUser } from '@/hooks/user-context';
 
 interface MeState {
-  myRole: Profile['role'] | null;
-  myPersonId: string | null;
-  profile: Profile | null;
-  person: Person | null;
-  isLoading: boolean;
-  error: Error | null;
-  refetch: () => void;
+  isAuthenticated: boolean;
+  isAdmin: boolean;
+  isLeader: boolean;
+  isAdminOrLeader: boolean;
+  userId: string | null;
+  displayName: string;
+  initials: string;
 }
 
 export const [MeProvider, useMe] = createContextHook<MeState>(() => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
+  const { profile, person } = useUser();
 
-  const {
-    data: profileData,
-    isLoading: profileLoading,
-    error: profileError,
-    refetch: refetchProfile
-  } = useQuery({
-    queryKey: ['my-profile', user?.id],
-    queryFn: getMyProfile,
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1,
-    refetchOnWindowFocus: false,
-  });
+  const isAuthenticated = !!session && !!user;
+  const isAdmin = profile?.role === 'admin';
+  const isLeader = profile?.role === 'leader';
+  const isAdminOrLeader = isAdmin || isLeader;
 
-  const {
-    data: personData,
-    isLoading: personLoading,
-    error: personError,
-    refetch: refetchPerson
-  } = useQuery({
-    queryKey: ['my-person', user?.id],
-    queryFn: async () => {
-      try {
-        return await getMyPerson();
-      } catch {
-        // For visitors/pending users, it's normal to not have a person record yet
-        console.log('No person record found - this is normal for visitors');
-        return null;
-      }
-    },
-    enabled: !!user,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: 1,
-    refetchOnWindowFocus: false,
-  });
+  const displayName = person
+    ? `${person.first_name || ''} ${person.last_name || ''}`.trim()
+    : user?.email || 'User';
 
-  const isLoading = profileLoading || personLoading;
-  const error = profileError || personError;
+  const getInitials = () => {
+    if (person?.first_name && person?.last_name) {
+      return `${person.first_name[0]}${person.last_name[0]}`.toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return 'U';
+  };
 
-  const refetch = useCallback(() => {
-    refetchProfile();
-    refetchPerson();
-  }, [refetchProfile, refetchPerson]);
-
-  return useMemo(() => ({
-    myRole: profileData?.role || null,
-    myPersonId: personData?.id || null,
-    profile: profileData || null,
-    person: personData || null,
-    isLoading,
-    error: error as Error | null,
-    refetch,
-  }), [profileData, personData, isLoading, error, refetch]);
+  return {
+    isAuthenticated,
+    isAdmin,
+    isLeader,
+    isAdminOrLeader,
+    userId: user?.id || null,
+    displayName,
+    initials: getInitials(),
+  };
 });

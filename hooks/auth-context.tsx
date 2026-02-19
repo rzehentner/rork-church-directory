@@ -33,7 +33,6 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     
     const initAuth = async () => {
       try {
-        // Get session first
         const { data: { session } } = await supabase.auth.getSession();
         
         if (!mounted) return;
@@ -42,7 +41,6 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         setUser(session?.user ?? null);
         setIsLoading(false);
         
-        // Initialize biometrics asynchronously on native only - don't block app startup
         if (Platform.OS !== 'web') {
           setTimeout(() => {
             initBiometrics().catch(error => {
@@ -52,7 +50,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
                 setIsBiometricEnabled(false);
               }
             });
-          }, 2000); // Delay biometric init by 2 seconds
+          }, 2000);
         }
       } catch (error) {
         console.error('Auth initialization failed:', error);
@@ -66,7 +64,6 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       if (!mounted) return;
       
       try {
-        // Check if LocalAuthentication is available
         if (!LocalAuthentication || typeof LocalAuthentication.hasHardwareAsync !== 'function') {
           console.log('LocalAuthentication not available');
           if (mounted) {
@@ -105,7 +102,6 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       setSession(session);
       setUser(session?.user ?? null);
       
-      // Handle session storage safely in background
       if (session) {
         AsyncStorage.setItem('session', JSON.stringify(session)).catch(console.warn);
       } else {
