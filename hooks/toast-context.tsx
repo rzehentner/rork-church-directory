@@ -152,21 +152,20 @@ export { ToastProvider, useToast };
 // Toast renderer component to be used in the root layout
 export function ToastRenderer() {
   const { toasts, hideToast } = useToast();
-  
+
+  if (toasts.length === 0) return null;
+
+  const latest = toasts[toasts.length - 1];
+
   return (
-    <>
-      {/* Render toasts - only show the most recent one */}
-      {toasts.length > 0 && (
-        <Toast
-          type={toasts[toasts.length - 1].type}
-          message={toasts[toasts.length - 1].message}
-          visible={true}
-          onHide={() => hideToast(toasts[toasts.length - 1].id)}
-          duration={toasts[toasts.length - 1].duration}
-          actionText={toasts[toasts.length - 1].actionText}
-          onAction={toasts[toasts.length - 1].onAction}
-        />
-      )}
-    </>
+    <Toast
+      type={latest.type}
+      message={latest.message}
+      visible={true}
+      onHide={() => hideToast(latest.id)}
+      duration={latest.duration}
+      actionText={latest.actionText}
+      onAction={latest.onAction}
+    />
   );
 }
