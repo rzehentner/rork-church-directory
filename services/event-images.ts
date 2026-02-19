@@ -2,14 +2,16 @@
 import { supabase } from '@/lib/supabase'
 
 export const STORAGE_BUCKET = 'event-images' as const
+const BUCKET_ALIASES = ['event-images', 'event_images', 'events', 'images'] as const
 
 export function eventImageUrl(path?: string | null) {
   if (!path) return null
   const baseUrl =
     process.env.EXPO_PUBLIC_SUPABASE_URL ||
     'https://rwbppxcusppltwkcjmdu.supabase.co'
+  const bucket = _resolvedBucket ?? STORAGE_BUCKET
   const safe = path.split('/').map(encodeURIComponent).join('/')
-  return `${baseUrl}/storage/v1/object/public/${STORAGE_BUCKET}/${safe}`
+  return `${baseUrl}/storage/v1/object/public/${bucket}/${safe}`
 }
 
 // --- helpers ---------------------------------------------------------------
@@ -43,6 +45,50 @@ async function fetchBlob(uri: string): Promise<Blob> {
   return blob
 }
 
+// --- bucket resolution -----------------------------------------------------
+
+let _resolvedBucket: string | null = null
+
+async function resolveStorageBucket(): Promise<string> {
+  if (_resolvedBucket) return _resolvedBucket
+
+  console.log('🪣 Resolving storage bucket...')
+  const { data: buckets, error } = await supabase.storage.listBuckets()
+  
+  if (error) {
+    console.error('❌ Failed to list buckets:', error.message)
+    console.log('⚠️  Falling back to default bucket name:', STORAGE_BUCKET)
+    return STORAGE_BUCKET
+  }
+
+  const bucketNames = buckets?.map(b => b.name) ?? []
+  console.log('🪣 Available buckets:', bucketNames)
+
+  for (const alias of BUCKET_ALIASES) {
+    if (bucketNames.includes(alias)) {
+      console.log('✅ Matched bucket:', alias)
+      _resolvedBucket = alias
+      return alias
+    }
+  }
+
+  // If no alias matches, check if there's any bucket with "event" or "image" in the name
+  const fuzzy = bucketNames.find(
+    n => n.toLowerCase().includes('event') || n.toLowerCase().includes('image')
+  )
+  if (fuzzy) {
+    console.log('✅ Fuzzy matched bucket:', fuzzy)
+    _resolvedBucket = fuzzy
+    return fuzzy
+  }
+
+  console.warn(
+    `⚠️  No matching bucket found. Available: [${bucketNames.join(', ')}]. ` +
+    `Please create a bucket named "${STORAGE_BUCKET}" in your Supabase dashboard.`
+  )
+  return STORAGE_BUCKET
+}
+
 // --- main API --------------------------------------------------------------
 
 /**
@@ -73,11 +119,15 @@ export async function uploadEventImage(
   const path = `events/${id}/${filename}`
   console.log('📁 Upload path:', path, '| Content-Type:', contentType)
 
-  // Upload strategies
+  // Resolve the actual bucket name
+  const bucket = await resolveStorageBucket()
+  console.log('🪣 Using storage bucket:', bucket)
+
+  // Upload with resolved bucket
   const directUpload = async () => {
     console.log('⬆️  Attempting direct upload...')
     const { error } = await supabase.storage
-      .from(STORAGE_BUCKET)
+      .from(bucket)
       .upload(path, blob, { contentType, upsert: false, cacheControl: '3600' })
     if (error) {
       console.error('❌ Direct upload error:', error)
@@ -89,7 +139,7 @@ export async function uploadEventImage(
   const signedUpload = async () => {
     console.log('🔏 Attempting signed upload...')
     const { data: signed, error: signErr } =
-      await supabase.storage.from(STORAGE_BUCKET).createSignedUploadUrl(path)
+      await supabase.storage.from(bucket).createSignedUploadUrl(path)
     if (signErr) {
       console.error('❌ Signed URL creation error:', signErr)
       throw signErr
@@ -97,7 +147,7 @@ export async function uploadEventImage(
     console.log('✅ Signed URL created')
     
     const { error: putErr } =
-      await supabase.storage.from(STORAGE_BUCKET).uploadToSignedUrl(
+      await supabase.storage.from(bucket).uploadToSignedUrl(
         signed.path,
         signed.token,
         blob,
@@ -115,7 +165,6 @@ export async function uploadEventImage(
     await directUpload()
   } catch {
     console.warn('⚠️  First upload attempt failed, retrying...')
-    // retry once (helps with flaky network/content:// races)
     try {
       await directUpload()
     } catch (errSecond: any) {
@@ -136,13 +185,13 @@ export async function uploadEventImage(
   if (updErr) {
     console.error('❌ Events table update error:', updErr)
     // optional: cleanup the uploaded object if DB update fails
-    await supabase.storage.from(STORAGE_BUCKET).remove([path]).catch(() => {})
+    await supabase.storage.from(bucket).remove([path]).catch(() => {})
     throw new Error(`Event update blocked by RLS: ${updErr.message}`)
   }
   console.log('✅ Events table updated successfully')
 
   // Public URL (bucket is public)
-  const { data: pub } = supabase.storage.from(STORAGE_BUCKET).getPublicUrl(path)
+  const { data: pub } = supabase.storage.from(bucket).getPublicUrl(path)
   const publicUrl = pub?.publicUrl
   if (!publicUrl) throw new Error('Failed to get public URL')
 
