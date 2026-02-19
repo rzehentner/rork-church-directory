@@ -178,7 +178,7 @@ export async function listAnnouncementsForMe(limit = 20, from = 0) {
     // Use the announcements_for_me view to get proper is_read status
     const { data, error } = await supabase
       .from('announcements_for_me')
-      .select('id, title, body, image_path, published_at, expires_at, author_name, is_read, is_public, created_by')
+      .select('id, title, body, published_at, expires_at, author_name, is_read, is_public, created_by')
       .order('published_at', { ascending: false })
       .range(from, from + limit - 1)
     
