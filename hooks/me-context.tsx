@@ -1,6 +1,10 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
+import type { Database } from '@/types/supabase';
+
+type Profile = Database['public']['Tables']['profiles']['Row'];
+type Person = Database['public']['Tables']['persons']['Row'];
 
 interface MeState {
   isAuthenticated: boolean;
@@ -10,11 +14,17 @@ interface MeState {
   userId: string | null;
   displayName: string;
   initials: string;
+  myRole: string | null;
+  myPersonId: string | null;
+  profile: Profile | null;
+  person: Person | null;
+  isLoading: boolean;
+  error: string | null;
 }
 
 export const [MeProvider, useMe] = createContextHook<MeState>(() => {
   const { user, session } = useAuth();
-  const { profile, person } = useUser();
+  const { profile, person, isLoading } = useUser();
 
   const isAuthenticated = !!session && !!user;
   const isAdmin = profile?.role === 'admin';
@@ -43,5 +53,11 @@ export const [MeProvider, useMe] = createContextHook<MeState>(() => {
     userId: user?.id || null,
     displayName,
     initials: getInitials(),
+    myRole: profile?.role ?? null,
+    myPersonId: person?.id ?? null,
+    profile,
+    person,
+    isLoading,
+    error: null,
   };
 });

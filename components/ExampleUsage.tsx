@@ -39,7 +39,7 @@ export default function ExampleUsage() {
   if (meError) {
     return (
       <View style={styles.container}>
-        <Text style={styles.errorText}>Error: {meError.message}</Text>
+        <Text style={styles.errorText}>Error: {meError}</Text>
       </View>
     );
   }
