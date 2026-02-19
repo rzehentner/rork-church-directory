@@ -608,14 +608,14 @@ export default function CreateAnnouncementScreen() {
                     Public - visible to all signed-in users
                   </Text>
                 </View>
-              ) : (formData.roleChips.length > 0 || formData.tagChips.length > 0) && (
+              ) : (formData.roleChips.length > 0 || formData.tagChips.length > 0) ? (
                 <View style={styles.previewTags}>
                   <TagIcon size={12} color="#6B7280" />
                   <Text style={styles.previewTagsText}>
                     {[...formData.roleChips, ...formData.tagChips].join(', ')}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </View>
         </View>
