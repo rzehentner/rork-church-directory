@@ -102,6 +102,7 @@ export default function AnnouncementsScreen() {
         console.log('✅ Announcements with tags fetched:', announcementsWithTags?.length || 0);
         return announcementsWithTags.map(announcement => ({
           ...announcement,
+          image_path: announcement.image_path ?? null,
           author_name: announcement.author_name || undefined,
           tags: Array.isArray(announcement.tags) ? announcement.tags.map((tag: any) => ({
             id: String(tag?.id || ''),
