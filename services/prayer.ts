@@ -85,6 +85,22 @@ export async function deletePrayer(id: string) {
   if (error) throw error;
 }
 
+export async function bulkUpdatePrayerStatus(ids: string[], status: PrayerStatus) {
+  const { error } = await supabase
+    .from('prayer_requests')
+    .update({ status })
+    .in('id', ids);
+  if (error) throw error;
+}
+
+export async function bulkDeletePrayers(ids: string[]) {
+  const { error } = await supabase
+    .from('prayer_requests')
+    .delete()
+    .in('id', ids);
+  if (error) throw error;
+}
+
 export async function markPrayed(id: string) {
   const { data, error } = await supabase.rpc('mark_prayed', { p_prayer_id: id });
   if (error) throw error;
