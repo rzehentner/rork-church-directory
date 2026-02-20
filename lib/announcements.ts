@@ -27,6 +27,7 @@ export async function createAnnouncement(input: {
   published_at?: string | null
   expires_at?: string | null
   publish_immediately?: boolean
+  created_by: string
 }) {
   console.log('🔄 Creating announcement with input:', input);
   
@@ -40,6 +41,7 @@ export async function createAnnouncement(input: {
       is_published: !!input.publish_immediately,
       published_at: input.publish_immediately ? new Date().toISOString() : input.published_at,
       expires_at: input.expires_at ?? null,
+      created_by: input.created_by,
     }])
     .select('*')
     .single()

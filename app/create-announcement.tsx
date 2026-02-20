@@ -47,7 +47,7 @@ interface AnnouncementFormData {
 type DatePickerMode = 'date' | 'time' | null;
 
 export default function CreateAnnouncementScreen() {
-  const { myRole, profile } = useMe();
+  const { myRole, profile, userId } = useMe();
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const { edit } = useLocalSearchParams<{ edit?: string }>();
@@ -168,6 +168,7 @@ export default function CreateAnnouncementScreen() {
           published_at: data.publishNow ? null : data.publishAt,
           expires_at: data.expiresAt || null,
           publish_immediately: data.publishNow,
+          created_by: userId!,
         });
 
         if (data.tagChips.length > 0) {
