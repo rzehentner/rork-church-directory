@@ -7,20 +7,19 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Image,
-  Modal,
   Alert,
   Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
-import { Search, Users, User, Mail, Phone, MapPin, AlertCircle, Edit3, X, Save, Home, Trash2, UserPlus, List, Tags, Filter, BookOpen, ChevronRight } from 'lucide-react-native';
+import { Search, Users, User, Mail, Phone, MapPin, AlertCircle, Edit3, X, Home, List, Tags, Filter, BookOpen, ChevronRight } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { useUser } from '@/hooks/user-context';
 import { getSignedUrl, uploadFamilyPhoto, uploadPersonAvatar } from '@/lib/storage';
 import ImageUploader from '@/components/ImageUploader';
-import PersonTagPicker from '@/components/PersonTagPicker';
 import TagPill from '@/components/TagPill';
+import { EditFamilyModal, EditPersonModal, TagManageModal, TagFilterModal } from '@/components/DirectoryModals';
 import { useMe } from '@/hooks/me-context';
 import { listTags, findPeopleByTags, getPersonWithTags, type Tag } from '@/services/tags';
 import { adminListUsers, type AdminUserListItem } from '@/lib/admin-users';
@@ -1651,709 +1650,58 @@ export default function DirectoryScreen() {
         )}
       </ScrollView>
 
-      {/* Edit Family Modal */}
-      <Modal
+      <EditFamilyModal
         visible={isEditModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsEditModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setIsEditModalVisible(false)}
-            >
-              <X size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Edit Family</Text>
-            <TouchableOpacity
-              style={[styles.modalSaveButton, isSaving && styles.modalSaveButtonDisabled]}
-              onPress={handleSaveFamily}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Save size={20} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-          </View>
+        onClose={() => setIsEditModalVisible(false)}
+        editingFamily={editingFamily}
+        setEditingFamily={setEditingFamily}
+        editingMembers={editingMembers}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        isSaving={isSaving}
+        familyImages={familyImages}
+        onSave={handleSaveFamily}
+        onDelete={handleDeleteFamily}
+        onUploadFamilyPhoto={handleUploadFamilyPhoto}
+        onAddMember={handleAddMember}
+        onRemoveMember={handleRemoveMember}
+        onUpdateMember={handleUpdateMember}
+        onUploadMemberAvatar={handleUploadMemberAvatar}
+      />
 
-          {/* Tab Navigation */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'family' && styles.activeTab]}
-              onPress={() => setActiveTab('family')}
-            >
-              <Home size={16} color={activeTab === 'family' ? '#7C3AED' : '#6B7280'} />
-              <Text style={[styles.tabText, activeTab === 'family' && styles.activeTabText]}>Family Info</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.tab, activeTab === 'members' && styles.activeTab]}
-              onPress={() => setActiveTab('members')}
-            >
-              <Users size={16} color={activeTab === 'members' ? '#7C3AED' : '#6B7280'} />
-              <Text style={[styles.tabText, activeTab === 'members' && styles.activeTabText]}>Members ({editingMembers.length})</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {editingFamily && activeTab === 'family' && (
-              <>
-                {/* Family Photo */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Family Photo</Text>
-                  <View style={styles.familyPhotoContainer}>
-                    <ImageUploader
-                      currentImageUrl={familyImages.familyPhotos[editingFamily.id]}
-                      onUpload={handleUploadFamilyPhoto}
-                      placeholder="Add Family Photo"
-                      size={120}
-                      isCircular={false}
-                    />
-                  </View>
-                </View>
-
-                {/* Family Name */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalLabel}>Family Name</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editingFamily.name}
-                    onChangeText={(text) => setEditingFamily(prev => prev ? { ...prev, name: text } : null)}
-                    placeholder="Enter family name"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                </View>
-
-                {/* Address */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Address</Text>
-                  
-                  <Text style={styles.modalLabel}>Street Address</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editingFamily.address_street}
-                    onChangeText={(text) => setEditingFamily(prev => prev ? { ...prev, address_street: text } : null)}
-                    placeholder="Enter street address"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  
-                  <View style={styles.modalRow}>
-                    <View style={styles.modalRowItem}>
-                      <Text style={styles.modalLabel}>City</Text>
-                      <TextInput
-                        style={styles.modalInput}
-                        value={editingFamily.address_city}
-                        onChangeText={(text) => setEditingFamily(prev => prev ? { ...prev, address_city: text } : null)}
-                        placeholder="City"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                    
-                    <View style={styles.modalRowItem}>
-                      <Text style={styles.modalLabel}>State</Text>
-                      <TextInput
-                        style={styles.modalInput}
-                        value={editingFamily.address_state}
-                        onChangeText={(text) => setEditingFamily(prev => prev ? { ...prev, address_state: text } : null)}
-                        placeholder="State"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                    
-                    <View style={styles.modalRowItem}>
-                      <Text style={styles.modalLabel}>ZIP</Text>
-                      <TextInput
-                        style={styles.modalInput}
-                        value={editingFamily.address_zip}
-                        onChangeText={(text) => setEditingFamily(prev => prev ? { ...prev, address_zip: text } : null)}
-                        placeholder="ZIP"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                  </View>
-                </View>
-
-                {/* Home Phone */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalLabel}>Home Phone</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editingFamily.home_phone}
-                    onChangeText={(text) => setEditingFamily(prev => prev ? { ...prev, home_phone: text } : null)}
-                    placeholder="Enter home phone number"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="phone-pad"
-                  />
-                </View>
-              </>
-            )}
-
-            {/* Members Tab */}
-            {activeTab === 'members' && (
-              <>
-                <View style={styles.modalSection}>
-                  <View style={styles.membersHeader}>
-                    <Text style={styles.modalSectionTitle}>Family Members</Text>
-                    <TouchableOpacity
-                      style={styles.addMemberButton}
-                      onPress={handleAddMember}
-                    >
-                      <UserPlus size={16} color="#7C3AED" />
-                      <Text style={styles.addMemberButtonText}>Add Member</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {editingMembers.map((member, index) => (
-                    <View key={member.id || `new-${index}`} style={styles.memberEditCard}>
-                      <View style={styles.memberEditHeader}>
-                        <View style={styles.memberEditAvatarContainer}>
-                          <ImageUploader
-                            currentImageUrl={member.id ? familyImages.memberAvatars[member.id] : null}
-                            onUpload={(file) => handleUploadMemberAvatar(index, file)}
-                            placeholder="Avatar"
-                            size={60}
-                            isCircular={true}
-                          />
-                        </View>
-                        <View style={styles.memberEditInfo}>
-                          <View style={styles.memberEditRow}>
-                            <View style={styles.memberEditRowItem}>
-                              <Text style={styles.modalLabel}>First Name</Text>
-                              <TextInput
-                                style={styles.modalInput}
-                                value={member.first_name}
-                                onChangeText={(text) => handleUpdateMember(index, { first_name: text })}
-                                placeholder="First name"
-                                placeholderTextColor="#9CA3AF"
-                              />
-                            </View>
-                            <View style={styles.memberEditRowItem}>
-                              <Text style={styles.modalLabel}>Last Name</Text>
-                              <TextInput
-                                style={styles.modalInput}
-                                value={member.last_name}
-                                onChangeText={(text) => handleUpdateMember(index, { last_name: text })}
-                                placeholder="Last name"
-                                placeholderTextColor="#9CA3AF"
-                              />
-                            </View>
-                          </View>
-                        </View>
-                        <TouchableOpacity
-                          style={styles.removeMemberButton}
-                          onPress={() => handleRemoveMember(index)}
-                        >
-                          <Trash2 size={16} color="#EF4444" />
-                        </TouchableOpacity>
-                      </View>
-
-                      <View style={styles.memberEditRow}>
-                        <View style={styles.memberEditRowItem}>
-                          <Text style={styles.modalLabel}>Email</Text>
-                          <TextInput
-                            style={styles.modalInput}
-                            value={member.email}
-                            onChangeText={(text) => handleUpdateMember(index, { email: text })}
-                            placeholder="Email address"
-                            placeholderTextColor="#9CA3AF"
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                          />
-                        </View>
-                        <View style={styles.memberEditRowItem}>
-                          <Text style={styles.modalLabel}>Phone</Text>
-                          <TextInput
-                            style={styles.modalInput}
-                            value={member.phone}
-                            onChangeText={(text) => handleUpdateMember(index, { phone: text })}
-                            placeholder="Phone number"
-                            placeholderTextColor="#9CA3AF"
-                            keyboardType="phone-pad"
-                          />
-                        </View>
-                      </View>
-
-                      <View style={styles.memberEditRow}>
-                        <View style={styles.memberEditRowItem}>
-                          <Text style={styles.modalLabel}>Date of Birth</Text>
-                          <TextInput
-                            style={styles.modalInput}
-                            value={member.date_of_birth}
-                            onChangeText={(text) => handleUpdateMember(index, { date_of_birth: text })}
-                            placeholder="YYYY-MM-DD"
-                            placeholderTextColor="#9CA3AF"
-                          />
-                        </View>
-                        <View style={styles.memberEditRowItem}>
-                          <Text style={styles.modalLabel}>Family Role</Text>
-                          <View style={styles.roleContainer}>
-                            {(['head', 'spouse', 'child', 'other'] as const).map((role) => (
-                              <TouchableOpacity
-                                key={role}
-                                style={[styles.roleButton, member.family_role === role && styles.roleButtonActive]}
-                                onPress={() => handleUpdateMember(index, { 
-                                  family_role: role,
-                                  is_head_of_family: role === 'head',
-                                  is_spouse: role === 'spouse',
-                                })}
-                              >
-                                <Text style={[styles.roleButtonText, member.family_role === role && styles.roleButtonTextActive]}>
-                                  {role.charAt(0).toUpperCase() + role.slice(1)}
-                                </Text>
-                              </TouchableOpacity>
-                            ))}
-                          </View>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-
-                  {editingMembers.length === 0 && (
-                    <View style={styles.emptyMembersContainer}>
-                      <Users size={48} color="#9CA3AF" />
-                      <Text style={styles.emptyMembersText}>No family members yet</Text>
-                      <Text style={styles.emptyMembersSubtext}>Add members to get started</Text>
-                    </View>
-                  )}
-                </View>
-              </>
-            )}
-
-            {/* Delete Family Button */}
-            <View style={styles.modalSection}>
-              <TouchableOpacity
-                style={styles.deleteFamilyButton}
-                onPress={handleDeleteFamily}
-                disabled={isSaving}
-                testID="delete-family-button"
-              >
-                <Trash2 size={20} color="#EF4444" />
-                <Text style={styles.deleteFamilyButtonText}>Delete Family</Text>
-              </TouchableOpacity>
-              <Text style={styles.deleteFamilyWarning}>
-                Members with user accounts will be unassigned. Members without accounts will be permanently deleted.
-              </Text>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Edit Person Modal */}
-      <Modal
+      <EditPersonModal
         visible={isEditPersonModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsEditPersonModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setIsEditPersonModalVisible(false)}
-            >
-              <X size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Edit Person</Text>
-            <TouchableOpacity
-              style={[styles.modalSaveButton, isSaving && styles.modalSaveButtonDisabled]}
-              onPress={handleSavePerson}
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <ActivityIndicator size="small" color="#FFFFFF" />
-              ) : (
-                <Save size={20} color="#FFFFFF" />
-              )}
-            </TouchableOpacity>
-          </View>
+        onClose={() => setIsEditPersonModalVisible(false)}
+        editingPerson={editingPerson}
+        setEditingPerson={setEditingPerson}
+        isSaving={isSaving}
+        familyImages={familyImages}
+        isAdmin={isAdmin}
+        onSave={handleSavePerson}
+        onDelete={handleDeletePerson}
+        onUploadAvatar={handleUploadPersonAvatar}
+      />
 
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {editingPerson && (
-              <>
-                {/* Person Avatar */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Profile Photo</Text>
-                  <View style={styles.personAvatarContainer}>
-                    <ImageUploader
-                      currentImageUrl={familyImages.memberAvatars[editingPerson.id]}
-                      onUpload={handleUploadPersonAvatar}
-                      placeholder="Add Photo"
-                      size={100}
-                      isCircular={true}
-                    />
-                  </View>
-                </View>
-
-                {/* Name */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Personal Information</Text>
-                  
-                  <View style={styles.modalRow}>
-                    <View style={styles.modalRowItem}>
-                      <Text style={styles.modalLabel}>First Name</Text>
-                      <TextInput
-                        style={styles.modalInput}
-                        value={editingPerson.first_name}
-                        onChangeText={(text) => setEditingPerson(prev => prev ? { ...prev, first_name: text } : null)}
-                        placeholder="First name"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                    <View style={styles.modalRowItem}>
-                      <Text style={styles.modalLabel}>Last Name</Text>
-                      <TextInput
-                        style={styles.modalInput}
-                        value={editingPerson.last_name}
-                        onChangeText={(text) => setEditingPerson(prev => prev ? { ...prev, last_name: text } : null)}
-                        placeholder="Last name"
-                        placeholderTextColor="#9CA3AF"
-                      />
-                    </View>
-                  </View>
-                </View>
-
-                {/* Contact Information */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Contact Information</Text>
-                  
-                  <Text style={styles.modalLabel}>Email</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editingPerson.email}
-                    onChangeText={(text) => setEditingPerson(prev => prev ? { ...prev, email: text } : null)}
-                    placeholder="Email address"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                  />
-                  
-                  <Text style={styles.modalLabel}>Phone</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editingPerson.phone}
-                    onChangeText={(text) => setEditingPerson(prev => prev ? { ...prev, phone: text } : null)}
-                    placeholder="Phone number"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="phone-pad"
-                  />
-                </View>
-
-                {/* Additional Information */}
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Additional Information</Text>
-                  
-                  <Text style={styles.modalLabel}>Date of Birth</Text>
-                  <TextInput
-                    style={styles.modalInput}
-                    value={editingPerson.date_of_birth}
-                    onChangeText={(text) => setEditingPerson(prev => prev ? { ...prev, date_of_birth: text } : null)}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#9CA3AF"
-                  />
-                  
-                  <Text style={styles.modalLabel}>Family Role</Text>
-                  <View style={styles.roleContainer}>
-                    {(['head', 'spouse', 'child', 'other'] as const).map((role) => (
-                      <TouchableOpacity
-                        key={role}
-                        style={[styles.roleButton, editingPerson.family_role === role && styles.roleButtonActive]}
-                        onPress={() => setEditingPerson(prev => prev ? { 
-                          ...prev, 
-                          family_role: role,
-                          is_head_of_family: role === 'head',
-                          is_spouse: role === 'spouse',
-                        } : null)}
-                      >
-                        <Text style={[styles.roleButtonText, editingPerson.family_role === role && styles.roleButtonTextActive]}>
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </View>
-
-                {/* User Role - Only show if person has a user account */}
-                {editingPerson.user_id && (
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Account Role</Text>
-                    <Text style={styles.modalSectionDescription}>
-                      This person has a user account. You can change their role here.
-                    </Text>
-                    
-                    <Text style={styles.modalLabel}>User Role</Text>
-                    <Text style={styles.currentRoleDebug}>
-                      Current role: {JSON.stringify(editingPerson.user_role)} (type: {typeof editingPerson.user_role})
-                    </Text>
-                    <Text style={styles.currentRoleDebug}>
-                      Debug: Role value = {JSON.stringify(editingPerson.user_role)}
-                    </Text>
-                    <View style={styles.userRoleContainer}>
-                      {(['pending', 'visitor', 'member', 'leader', 'admin'] as const).map((role) => {
-                        // Direct comparison without normalization to preserve exact matching
-                        const isActive = editingPerson.user_role === role;
-                        
-                        console.log('🎯 Role button render:', {
-                          role,
-                          currentUserRole: editingPerson.user_role,
-                          isActive,
-                          userRoleType: typeof editingPerson.user_role,
-                          exactMatch: editingPerson.user_role === role
-                        });
-                        
-                        return (
-                          <TouchableOpacity
-                            key={role}
-                            style={[
-                              styles.userRoleButton,
-                              isActive && styles.userRoleButtonActive
-                            ]}
-                            onPress={() => {
-                              console.log('🔄 Role button pressed:', role);
-                              setEditingPerson(prev => prev ? { 
-                                ...prev, 
-                                user_role: role
-                              } : null);
-                            }}
-                          >
-                            <Text style={[
-                              styles.userRoleButtonText,
-                              isActive && styles.userRoleButtonTextActive
-                            ]}>
-                              {role.charAt(0).toUpperCase() + role.slice(1)}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-                    
-                    <View style={styles.roleDescriptions}>
-                      <Text style={styles.roleDescriptionTitle}>Role Permissions:</Text>
-                      <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Pending:</Text> Awaiting approval, limited access</Text>
-                      <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Visitor:</Text> New user, not yet linked to a person</Text>
-                      <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Member:</Text> Can view directory and manage own profile</Text>
-                      <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Leader:</Text> Can manage tags and view member details</Text>
-                      <Text style={styles.roleDescription}>• <Text style={styles.roleDescriptionBold}>Admin:</Text> Full access to all features</Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Delete Person Button */}
-                <View style={styles.modalSection}>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={handleDeletePerson}
-                  >
-                    <Trash2 size={20} color="#EF4444" />
-                    <Text style={styles.deleteButtonText}>Delete Person</Text>
-                  </TouchableOpacity>
-                </View>
-              </>
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Tags Modal */}
-      <Modal
+      <TagManageModal
         visible={isTagModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={handleCloseTagModal}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={handleCloseTagModal}
-            >
-              <X size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Manage Tags</Text>
-            <View style={styles.modalPlaceholder} />
-          </View>
+        onClose={handleCloseTagModal}
+        selectedPersonForTags={selectedPersonForTags}
+      />
 
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {selectedPersonForTags && (
-              <PersonTagPicker
-                personId={selectedPersonForTags}
-                testId="directory-tag-picker"
-              />
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
-      {/* Tag Filter Modal */}
-      <Modal
+      <TagFilterModal
         visible={isFilterModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsFilterModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              style={styles.modalCloseButton}
-              onPress={() => setIsFilterModalVisible(false)}
-            >
-              <X size={24} color="#6B7280" />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Filter by Tags</Text>
-            <TouchableOpacity
-              style={styles.clearFiltersButton}
-              onPress={handleClearFilters}
-              testID="clear-all-filters"
-            >
-              <Text style={styles.clearFiltersText}>Clear All</Text>
-            </TouchableOpacity>
-          </View>
-
-          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {/* Match Mode Toggle */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Match Mode</Text>
-              <Text style={styles.modalSectionDescription}>
-                Choose how to match the selected tags
-              </Text>
-              
-              <View style={styles.matchModeContainer}>
-                <TouchableOpacity
-                  style={[styles.matchModeButton, !matchAllTags && styles.matchModeButtonActive]}
-                  onPress={() => setMatchAllTags(false)}
-                  testID="match-any"
-                >
-                  <Text style={[styles.matchModeButtonText, !matchAllTags && styles.matchModeButtonTextActive]}>
-                    ANY
-                  </Text>
-                  <Text style={styles.matchModeDescription}>
-                    Show people with at least one selected tag
-                  </Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.matchModeButton, matchAllTags && styles.matchModeButtonActive]}
-                  onPress={() => setMatchAllTags(true)}
-                  testID="match-all"
-                >
-                  <Text style={[styles.matchModeButtonText, matchAllTags && styles.matchModeButtonTextActive]}>
-                    ALL
-                  </Text>
-                  <Text style={styles.matchModeDescription}>
-                    Show people with every selected tag
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* Tag Selection */}
-            <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Select Tags</Text>
-              <Text style={styles.modalSectionDescription}>
-                Choose which tags to filter by
-              </Text>
-              
-              {availableTags && availableTags.length > 0 ? (
-                <View style={styles.tagSelectionContainer}>
-                  {availableTags.map(tag => {
-                    const isSelected = selectedTagIds.includes(tag.id);
-                    return (
-                      <TouchableOpacity
-                        key={tag.id}
-                        style={[styles.tagSelectionItem, isSelected && styles.tagSelectionItemActive]}
-                        onPress={() => handleToggleTag(tag.id)}
-                        testID={`tag-filter-${tag.id}`}
-                      >
-                        <View style={styles.tagSelectionContent}>
-                          <View style={[styles.tagColorIndicator, { backgroundColor: tag.color || '#6B7280' }]} />
-                          <Text style={[styles.tagSelectionText, isSelected && styles.tagSelectionTextActive]}>
-                            {tag.name}
-                          </Text>
-                          {tag.namespace && (
-                            <Text style={styles.tagNamespace}>({tag.namespace})</Text>
-                          )}
-                        </View>
-                        {isSelected && (
-                          <View style={styles.tagSelectionCheck}>
-                            <Text style={styles.tagSelectionCheckText}>✓</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              ) : (
-                <View style={styles.emptyTagsContainer}>
-                  <Tags size={48} color="#9CA3AF" />
-                  <Text style={styles.emptyTagsText}>No tags available</Text>
-                  <Text style={styles.emptyTagsSubtext}>Create tags in the Admin section to enable filtering</Text>
-                </View>
-              )}
-            </View>
-
-            {/* User Role Filter - Admin Only */}
-            {isAdmin && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Filter by User Role</Text>
-                <Text style={styles.modalSectionDescription}>
-                  Show only people with specific account roles
-                </Text>
-                
-                <View style={styles.userRoleFilterContainer}>
-                  <TouchableOpacity
-                    style={[styles.userRoleFilterButton, !selectedUserRole && styles.userRoleFilterButtonActive]}
-                    onPress={() => setSelectedUserRole(null)}
-                    testID="role-filter-all"
-                  >
-                    <Text style={[styles.userRoleFilterButtonText, !selectedUserRole && styles.userRoleFilterButtonTextActive]}>
-                      All Users
-                    </Text>
-                  </TouchableOpacity>
-                  
-                  {(['pending', 'member', 'leader', 'admin'] as const).map((role) => {
-                    const isActive = selectedUserRole === role;
-                    return (
-                      <TouchableOpacity
-                        key={role}
-                        style={[styles.userRoleFilterButton, isActive && styles.userRoleFilterButtonActive]}
-                        onPress={() => setSelectedUserRole(role)}
-                        testID={`role-filter-${role}`}
-                      >
-                        <Text style={[styles.userRoleFilterButtonText, isActive && styles.userRoleFilterButtonTextActive]}>
-                          {role.charAt(0).toUpperCase() + role.slice(1)}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              </View>
-            )}
-
-            {/* Results Preview */}
-            {(selectedTagIds.length > 0 || selectedUserRole) && (
-              <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Filter Results</Text>
-                <View style={styles.resultsPreview}>
-                  <Text style={styles.resultsText}>
-                    {filteredData.length} {filteredData.length === 1 ? 'person' : 'people'} found
-                  </Text>
-                  <Text style={styles.resultsSubtext}>
-                    {selectedTagIds.length > 0 && selectedUserRole ? (
-                      `Matching ${matchAllTags ? 'all' : 'any'} of ${selectedTagIds.length} selected tag${selectedTagIds.length !== 1 ? 's' : ''} with ${selectedUserRole} role`
-                    ) : selectedTagIds.length > 0 ? (
-                      `Matching ${matchAllTags ? 'all' : 'any'} of ${selectedTagIds.length} selected tag${selectedTagIds.length !== 1 ? 's' : ''}`
-                    ) : (
-                      `With ${selectedUserRole} role`
-                    )}
-                  </Text>
-                </View>
-              </View>
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+        onClose={() => setIsFilterModalVisible(false)}
+        selectedTagIds={selectedTagIds}
+        matchAllTags={matchAllTags}
+        setMatchAllTags={setMatchAllTags}
+        onToggleTag={handleToggleTag}
+        onClearFilters={handleClearFilters}
+        availableTags={availableTags}
+        selectedUserRole={selectedUserRole}
+        setSelectedUserRole={setSelectedUserRole}
+        isAdmin={isAdmin}
+        filteredDataCount={filteredData.length}
+      />
     </SafeAreaView>
   );
 }
