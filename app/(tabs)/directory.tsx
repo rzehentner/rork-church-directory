@@ -23,6 +23,7 @@ import { EditFamilyModal, EditPersonModal, TagManageModal, TagFilterModal } from
 import { useMe } from '@/hooks/me-context';
 import { listTags, findPeopleByTags, getPersonWithTags, type Tag } from '@/services/tags';
 import { adminListUsers, type AdminUserListItem } from '@/lib/admin-users';
+import { isValidUUID } from '@/utils/validation';
 import { styles } from '@/styles/directory.styles';
 
 type FamilyRole = 'head' | 'spouse' | 'child' | 'other';
@@ -133,465 +134,185 @@ export default function DirectoryScreen() {
     enabled: isStaff,
   });
 
-  // Load admin users list for role filtering
   const { data: adminUsersData } = useQuery({
     queryKey: ['admin-users', selectedUserRole, isAdmin],
     queryFn: async () => {
       if (!isAdmin) return [];
-      
-      console.log('🔍 Loading admin users with role filter:', selectedUserRole);
-      
       try {
         const roles = selectedUserRole ? [selectedUserRole] : null;
-        const users = await adminListUsers(roles);
-        
-        console.log('✅ Admin users loaded:', {
-          requestedRole: selectedUserRole,
-          totalUsers: users.length,
-          sampleUsers: users.slice(0, 3).map(u => ({
-            name: `${u.first_name} ${u.last_name}`,
-            role: u.role,
-            user_id: u.user_id
-          }))
-        });
-        
-        return users;
+        return await adminListUsers(roles);
       } catch (error) {
-        console.error('❌ Failed to load admin users:', error);
+        console.error('Failed to load admin users:', error);
         return [];
       }
     },
     enabled: isAdmin,
   });
 
-  // Update admin users list when data changes
   useEffect(() => {
-    if (adminUsersData) {
-      setAdminUsersList(adminUsersData);
-    }
+    if (adminUsersData) setAdminUsersList(adminUsersData);
   }, [adminUsersData]);
-
-
 
   const { data: directoryData, isLoading, error } = useQuery({
     queryKey: ['directory', isAdmin],
     queryFn: async () => {
-      console.log('🔍 Loading directory data...');
-      
       try {
-        // First, try to get data from the view if it exists
         let { data: viewData, error: viewError } = await supabase
           .from('family_directory_display')
           .select('*')
           .order('family_name_display', { ascending: true });
-        
+
         if (viewError) {
-          console.log('View not available, falling back to direct query:', viewError.message);
-          
-          // Fallback: Query persons table directly with family info and user roles (admin only)
-          const baseFields = `
-              id,
-              first_name,
-              last_name,
-              email,
-              phone,
-              photo_url,
-              is_head_of_family,
-              is_spouse,
-              family_id,
-              user_id,
-              families!inner(
-                id,
-                name,
-                photo_path,
-                address_street,
-                address_city,
-                address_state,
-                address_zip,
-                home_phone
-              )`;
-          
-          const profileFields = `,
-              profiles(
-                id,
-                role
-              )`;
-          
-          const selectFields = isAdmin ? baseFields + profileFields : baseFields;
-          
-          let query = supabase
+          const baseFields = 'id,first_name,last_name,email,phone,photo_url,is_head_of_family,is_spouse,family_id,user_id,families!inner(id,name,photo_path,address_street,address_city,address_state,address_zip,home_phone)';
+          const selectFields = isAdmin ? baseFields + ',profiles(id,role)' : baseFields;
+
+          const { data: personsData, error: personsError } = await supabase
             .from('persons')
             .select(selectFields)
             .order('families.name', { ascending: true });
-          
-          const { data: personsData, error: personsError } = await query;
-          
+
           if (personsError) throw personsError;
-          
-          // Transform to match expected format and filter out invalid records
-          viewData = personsData?.filter((person: any) => {
-            // Only include persons with valid IDs and valid family relationships
-            const hasValidId = person.id && 
-                              person.id !== 'null' && 
-                              person.id !== 'undefined' && 
-                              typeof person.id === 'string' &&
-                              person.id.trim() !== '' &&
-                              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.id);
-            
-            // Also validate family_id if it exists
-            const hasValidFamilyId = !person.family_id || (
-              person.family_id !== 'null' && 
-              person.family_id !== 'undefined' && 
-              typeof person.family_id === 'string' &&
-              person.family_id.trim() !== '' &&
-              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.family_id)
-            );
-            
-            // Validate families data if it exists
-            const hasValidFamilyData = !person.families || (
-              person.families.id && 
-              person.families.id !== 'null' && 
-              person.families.id !== 'undefined' && 
-              typeof person.families.id === 'string' &&
-              person.families.id.trim() !== '' &&
-              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.families.id)
-            );
-            
-            const isValid = hasValidId && hasValidFamilyId && hasValidFamilyData;
-            
-            if (!isValid) {
-              console.warn('⚠️ Filtering out person with invalid data:', {
-                id: person.id,
-                family_id: person.family_id,
-                families_id: person.families?.id,
-                first_name: person.first_name,
-                last_name: person.last_name,
-                hasValidId,
-                hasValidFamilyId,
-                hasValidFamilyData
-              });
-            }
-            
-            return isValid;
-          }).map((person: any) => ({
-            person_id: person.id,
-            first_name: person.first_name,
-            last_name: person.last_name,
-            email: person.email,
-            phone: person.phone,
-            photo_url: person.photo_url,
-            is_head_of_family: person.is_head_of_family,
-            is_spouse: person.is_spouse,
-            family_role: person.family_role || (person.is_head_of_family ? 'head' : person.is_spouse ? 'spouse' : 'other'),
-            family_id: person.family_id,
-            user_id: person.user_id,
-            user_role: isAdmin && person.profiles ? person.profiles.role : null,
-            family_name_display: person.families?.name,
-            address_street: person.families?.address_street,
-            address_city: person.families?.address_city,
-            address_state: person.families?.address_state,
-            address_zip: person.families?.address_zip,
-            home_phone: person.families?.home_phone,
-            family_photo_path: person.families?.photo_path,
+
+          viewData = personsData?.filter((p: any) =>
+            isValidUUID(p.id) &&
+            (!p.family_id || isValidUUID(p.family_id)) &&
+            (!p.families || isValidUUID(p.families?.id))
+          ).map((p: any) => ({
+            person_id: p.id,
+            first_name: p.first_name,
+            last_name: p.last_name,
+            email: p.email,
+            phone: p.phone,
+            photo_url: p.photo_url,
+            is_head_of_family: p.is_head_of_family,
+            is_spouse: p.is_spouse,
+            family_role: p.family_role || (p.is_head_of_family ? 'head' : p.is_spouse ? 'spouse' : 'other'),
+            family_id: p.family_id,
+            user_id: p.user_id,
+            user_role: isAdmin && p.profiles ? p.profiles.role : null,
+            family_name_display: p.families?.name,
+            address_street: p.families?.address_street,
+            address_city: p.families?.address_city,
+            address_state: p.families?.address_state,
+            address_zip: p.families?.address_zip,
+            home_phone: p.families?.home_phone,
+            family_photo_path: p.families?.photo_path,
           })) || [];
         } else {
-          // If view worked, get family photo paths and user roles separately
-          const familyIds = [...new Set(viewData?.map(entry => entry.family_id).filter(Boolean))];
-          
+          const familyIds = [...new Set(viewData?.map(e => e.family_id).filter(Boolean))];
           if (familyIds.length > 0) {
-            const { data: familyPhotos } = await supabase
-              .from('families')
-              .select('id, photo_path')
-              .in('id', familyIds);
-            
+            const { data: familyPhotos } = await supabase.from('families').select('id, photo_path').in('id', familyIds);
             const photoMap = new Map(familyPhotos?.map(f => [f.id, f.photo_path]) || []);
-            
-            viewData = viewData?.map((entry: any) => ({
-              ...entry,
-              family_photo_path: entry.family_id ? photoMap.get(entry.family_id) : null,
-            })) || [];
+            viewData = viewData?.map((e: any) => ({ ...e, family_photo_path: e.family_id ? photoMap.get(e.family_id) : null })) || [];
           }
-          
-          // Load user roles for admin users
           if (isAdmin && viewData) {
-            const personIds = viewData.map(entry => entry.person_id).filter(Boolean);
-            
+            const personIds = viewData.map(e => e.person_id).filter(Boolean);
             if (personIds.length > 0) {
-              const { data: userRoles } = await supabase
-                .from('persons')
-                .select(`
-                  id,
-                  user_id,
-                  profiles(
-                    id,
-                    role
-                  )
-                `)
-                .in('id', personIds)
-                .not('user_id', 'is', null);
-              
-              const roleMap = new Map(
-                userRoles?.map(ur => [ur.id, (ur.profiles as any)?.role]) || []
-              );
-              
-              viewData = viewData.map((entry: any) => ({
-                ...entry,
-                user_role: roleMap.get(entry.person_id) || null,
-              }));
+              const { data: userRoles } = await supabase.from('persons').select('id,user_id,profiles(id,role)').in('id', personIds).not('user_id', 'is', null);
+              const roleMap = new Map(userRoles?.map(ur => [ur.id, (ur.profiles as any)?.role]) || []);
+              viewData = viewData.map((e: any) => ({ ...e, user_role: roleMap.get(e.person_id) || null }));
             }
           }
         }
-        
-        console.log('📊 Directory data loaded:', {
-          totalEntries: viewData?.length || 0,
-          uniqueFamilies: [...new Set(viewData?.map(e => e.family_id).filter(Boolean))].length,
-          usersWithRoles: isAdmin ? viewData?.filter(e => e.user_role).length : 'N/A (not admin)'
-        });
-        
         return viewData as (DirectoryEntry & { user_role?: string | null })[];
       } catch (err) {
-        console.error('❌ Error loading directory:', err);
+        console.error('Error loading directory:', err);
         throw err;
       }
     },
     enabled: profile?.role !== 'pending',
   });
 
-  // Filter people by selected tags
   useEffect(() => {
-    const filterByTags = async () => {
-      if (selectedTagIds.length === 0) {
-        setFilteredPersonIds([]);
-        return;
-      }
-
-      try {
-        // Use the actual database function to find people by tags
-        const personIds = await findPeopleByTags(selectedTagIds, matchAllTags);
-        setFilteredPersonIds(personIds || []);
-      } catch (error) {
-        console.error('❌ Error filtering by tags:', error);
-        // Fallback to empty results on error
-        setFilteredPersonIds([]);
-      }
-    };
-
-    filterByTags();
+    if (selectedTagIds.length === 0) { setFilteredPersonIds([]); return; }
+    findPeopleByTags(selectedTagIds, matchAllTags)
+      .then(ids => setFilteredPersonIds(ids || []))
+      .catch(() => setFilteredPersonIds([]));
   }, [selectedTagIds, matchAllTags, availableTags]);
 
-  // Load family photos and member avatars
   useEffect(() => {
+    if (!directoryData) return;
     const loadImages = async () => {
-      if (!directoryData) {
-        console.log('📷 No directory data available for image loading');
-        return;
-      }
-
-      console.log('📷 Loading images for directory...');
-      console.log('Directory entries:', directoryData.length);
-
       try {
-        const familyPhotoPromises: Promise<{ familyId: string; url: string | null }>[] = [];
-        const memberAvatarPromises: Promise<{ personId: string; url: string | null }>[] = [];
-        
-        // Track unique families and members to avoid duplicates
         const uniqueFamilies = new Set<string>();
         const uniqueMembers = new Set<string>();
+        const familyProms: Promise<{ id: string; url: string | null }>[] = [];
+        const memberProms: Promise<{ id: string; url: string | null }>[] = [];
+        const ts = Date.now();
 
         directoryData.forEach((entry) => {
-          // Load family photos
           if (entry.family_id && !uniqueFamilies.has(entry.family_id) && entry.family_photo_path) {
-            console.log('📸 Queuing family photo:', entry.family_id, entry.family_photo_path);
             uniqueFamilies.add(entry.family_id);
-            familyPhotoPromises.push(
+            const fid = entry.family_id;
+            familyProms.push(
               getSignedUrl(entry.family_photo_path)
-                .then((url) => {
-                  console.log('✅ Family photo loaded:', entry.family_id, url ? 'success' : 'no file');
-                  const timestamp = Date.now();
-                  return {
-                    familyId: entry.family_id!,
-                    url: url ? `${url}&t=${timestamp}` : null,
-                  };
-                })
-                .catch((err) => {
-                  console.error('❌ Family photo failed:', entry.family_id, err);
-                  return { familyId: entry.family_id!, url: null };
-                })
+                .then(url => ({ id: fid, url: url ? `${url}&t=${ts}` : null }))
+                .catch(() => ({ id: fid, url: null }))
             );
           }
-
-          // Load member avatars
           if (entry.person_id && !uniqueMembers.has(entry.person_id) && entry.photo_url) {
-            console.log('👤 Queuing member avatar:', entry.person_id, entry.photo_url);
             uniqueMembers.add(entry.person_id);
-            memberAvatarPromises.push(
+            const pid = entry.person_id;
+            memberProms.push(
               getSignedUrl(entry.photo_url)
-                .then((url) => {
-                  console.log('✅ Member avatar loaded:', entry.person_id, url ? 'success' : 'no file');
-                  const timestamp = Date.now();
-                  return {
-                    personId: entry.person_id,
-                    url: url ? `${url}&t=${timestamp}` : null,
-                  };
-                })
-                .catch((err) => {
-                  console.error('❌ Member avatar failed:', entry.person_id, err);
-                  return { personId: entry.person_id, url: null };
-                })
+                .then(url => ({ id: pid, url: url ? `${url}&t=${ts}` : null }))
+                .catch(() => ({ id: pid, url: null }))
             );
           }
         });
 
-        console.log('📊 Image loading summary:', {
-          familyPhotos: familyPhotoPromises.length,
-          memberAvatars: memberAvatarPromises.length
-        });
-
-        // Load all images in parallel
-        const [familyPhotoResults, memberAvatarResults] = await Promise.all([
-          Promise.all(familyPhotoPromises),
-          Promise.all(memberAvatarPromises),
-        ]);
-
-        // Update state with loaded images
+        const [familyResults, memberResults] = await Promise.all([Promise.all(familyProms), Promise.all(memberProms)]);
         const newFamilyPhotos: Record<string, string | null> = {};
         const newMemberAvatars: Record<string, string | null> = {};
-
-        familyPhotoResults.forEach(({ familyId, url }) => {
-          newFamilyPhotos[familyId] = url;
-        });
-
-        memberAvatarResults.forEach(({ personId, url }) => {
-          newMemberAvatars[personId] = url;
-        });
-
-        console.log('🎯 Images loaded successfully:', {
-          familyPhotos: Object.keys(newFamilyPhotos).length,
-          memberAvatars: Object.keys(newMemberAvatars).length
-        });
-
-        setFamilyImages({
-          familyPhotos: newFamilyPhotos,
-          memberAvatars: newMemberAvatars,
-        });
+        familyResults.forEach(({ id, url }) => { newFamilyPhotos[id] = url; });
+        memberResults.forEach(({ id, url }) => { newMemberAvatars[id] = url; });
+        setFamilyImages({ familyPhotos: newFamilyPhotos, memberAvatars: newMemberAvatars });
       } catch (error) {
-        console.error('❌ Error loading directory images:', error);
+        console.error('Error loading directory images:', error);
       }
     };
-
     loadImages();
   }, [directoryData]);
 
-  // User roles are now loaded directly with directory data for admins
-
   const filteredData = useMemo(() => {
     if (!directoryData) return [];
-
-    let filtered = directoryData.filter((entry) => {
-      // Validate entry has required fields
-      if (!entry || !entry.person_id) {
-        console.warn('⚠️ Skipping invalid entry:', entry);
-        return false;
-      }
-
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = (
+    const searchLower = searchQuery.toLowerCase();
+    return directoryData.filter((entry) => {
+      if (!entry?.person_id) return false;
+      if (selectedTagIds.length > 0 && !filteredPersonIds.includes(entry.person_id)) return false;
+      if (selectedUserRole && isAdmin && !adminUsersList.some(u => u.person_id === entry.person_id)) return false;
+      return (
         (entry.first_name?.toLowerCase() || '').includes(searchLower) ||
         (entry.last_name?.toLowerCase() || '').includes(searchLower) ||
         (entry.email?.toLowerCase() || '').includes(searchLower) ||
         (entry.family_name_display?.toLowerCase() || '').includes(searchLower)
       );
-      
-      // Apply tag filter if tags are selected
-      if (selectedTagIds.length > 0) {
-        const matchesTags = filteredPersonIds.includes(entry.person_id);
-        if (!matchesTags) return false;
-      }
-      
-      // Apply user role filter if selected (admin only)
-      if (selectedUserRole && isAdmin) {
-        // Check if this person is in the admin users list (which is already filtered by role)
-        const isInAdminList = adminUsersList.some(adminUser => 
-          adminUser.person_id === entry.person_id
-        );
-        
-        if (!isInAdminList) {
-          return false;
-        }
-      }
-      
-      return matchesSearch;
     });
-
-    return filtered;
   }, [directoryData, searchQuery, selectedTagIds, filteredPersonIds, selectedUserRole, isAdmin, adminUsersList]);
 
-  // Load tags for all visible people
   useEffect(() => {
+    if (!filteredData || filteredData.length === 0) { setPersonTags({}); return; }
     const loadPersonTags = async () => {
-      if (!filteredData || filteredData.length === 0) {
-        setPersonTags({});
-        return;
-      }
-      
       try {
-        // Pre-filter people with valid IDs to avoid making invalid API calls
-        const validPeople = filteredData.filter(person => {
-          const isValid = person?.person_id && 
-                         person.person_id !== 'null' && 
-                         person.person_id !== 'undefined' && 
-                         typeof person.person_id === 'string' &&
-                         person.person_id.trim() !== '' &&
-                         person.person_id !== 'invalid' &&
-                         /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(person.person_id);
-          
-          return isValid;
-        });
-        
-        // If no valid people, clear tags and return
-        if (validPeople.length === 0) {
-          setPersonTags({});
-          return;
-        }
-        
-        // Limit concurrent requests to prevent overwhelming the server
+        const validPeople = filteredData.filter(p => isValidUUID(p?.person_id));
+        if (validPeople.length === 0) { setPersonTags({}); return; }
         const batchSize = 10;
-        const newPersonTags: Record<string, Tag[]> = {};
-        
+        const result: Record<string, Tag[]> = {};
         for (let i = 0; i < validPeople.length; i += batchSize) {
           const batch = validPeople.slice(i, i + batchSize);
-          
-          const batchPromises = batch.map(async (person) => {
-            try {
-              const personWithTags = await getPersonWithTags(person.person_id);
-              return {
-                personId: person.person_id,
-                tags: personWithTags.tags || []
-              };
-            } catch (error) {
-              return {
-                personId: person.person_id,
-                tags: []
-              };
-            }
-          });
-          
-          const batchResults = await Promise.all(batchPromises);
-          
-          batchResults.forEach(({ personId, tags }) => {
-            if (personId && personId !== 'null' && personId !== 'undefined') {
-              newPersonTags[personId] = tags;
-            }
-          });
+          const batchResults = await Promise.all(
+            batch.map(async (p) => {
+              try {
+                const d = await getPersonWithTags(p.person_id);
+                return { id: p.person_id, tags: d.tags || [] };
+              } catch { return { id: p.person_id, tags: [] as Tag[] }; }
+            })
+          );
+          batchResults.forEach(({ id, tags }) => { if (isValidUUID(id)) result[id] = tags; });
         }
-        
-        setPersonTags(newPersonTags);
-      } catch (error) {
-        console.error('❌ Error loading person tags:', error);
-        setPersonTags({});
-      }
+        setPersonTags(result);
+      } catch { setPersonTags({}); }
     };
-    
     loadPersonTags();
   }, [filteredData]);
 
@@ -702,44 +423,20 @@ export default function DirectoryScreen() {
           onPress: async () => {
             setIsSaving(true);
             try {
-              console.log('🗑️ Starting family deletion via RPC:', editingFamily.id);
-              
-              const { error: rpcError } = await supabase.rpc('admin_delete_family', {
-                p_family_id: editingFamily.id,
-              });
-              
-              if (rpcError) {
-                console.error('❌ admin_delete_family RPC error:', rpcError);
-                throw rpcError;
-              }
-              
-              const { data: checkFamily } = await supabase
-                .from('families')
-                .select('id')
-                .eq('id', editingFamily.id)
-                .maybeSingle();
-              
+              const { error: rpcError } = await supabase.rpc('admin_delete_family', { p_family_id: editingFamily.id });
+              if (rpcError) throw rpcError;
+              const { data: checkFamily } = await supabase.from('families').select('id').eq('id', editingFamily.id).maybeSingle();
               if (checkFamily) {
-                console.error('❌ Family still exists after RPC delete');
-                Alert.alert(
-                  'Delete Failed',
-                  'The family could not be deleted. Please check your database RPC function.'
-                );
+                Alert.alert('Delete Failed', 'The family could not be deleted.');
                 return;
               }
-              
-              console.log('✅ Family deleted successfully:', editingFamily.id);
-              
               queryClient.invalidateQueries({ queryKey: ['directory'] });
-              
               setIsEditModalVisible(false);
               setEditingFamily(null);
               setEditingMembers([]);
-              
               Alert.alert('Success', 'Family deleted successfully.');
             } catch (error) {
-              console.error('❌ Error deleting family:', error);
-              const message = error instanceof Error ? error.message : 'Failed to delete family. Please try again.';
+              const message = error instanceof Error ? error.message : 'Failed to delete family.';
               Alert.alert('Error', message);
             } finally {
               setIsSaving(false);
@@ -1020,14 +717,6 @@ export default function DirectoryScreen() {
         }
       }
       
-      console.log('🔍 Person data loaded:', {
-        id: personData?.id,
-        user_id: personData?.user_id,
-        userRole: userRole,
-        userRoleType: typeof userRole,
-        hasUserAccount: !!personData?.user_id
-      });
-      
       if (personData) {
         setEditingPerson({
           id: personData.id,
@@ -1043,14 +732,6 @@ export default function DirectoryScreen() {
           family_id: personData.family_id,
           user_id: personData.user_id,
           user_role: userRole,
-        });
-        
-        console.log('✅ EditingPerson set:', {
-          user_id: personData.user_id,
-          user_role: userRole,
-          shouldShowRoleSelector: !!personData.user_id,
-          actualRoleValue: userRole,
-          roleType: typeof userRole
         });
       }
     } catch (error) {
@@ -1182,39 +863,16 @@ export default function DirectoryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              console.log('🗑️ Starting person deletion via RPC:', editingPerson.id);
-              
-              const { error: rpcError } = await supabase.rpc('admin_delete_person', {
-                p_person_id: editingPerson.id,
-              });
-              
-              if (rpcError) {
-                console.error('❌ admin_delete_person RPC error:', rpcError);
-                throw rpcError;
-              }
-              
-              const { data: checkPerson } = await supabase
-                .from('persons')
-                .select('id')
-                .eq('id', editingPerson.id)
-                .maybeSingle();
-              
+              const { error: rpcError } = await supabase.rpc('admin_delete_person', { p_person_id: editingPerson.id });
+              if (rpcError) throw rpcError;
+              const { data: checkPerson } = await supabase.from('persons').select('id').eq('id', editingPerson.id).maybeSingle();
               if (checkPerson) {
-                console.error('❌ Person still exists after RPC delete');
-                Alert.alert(
-                  'Delete Failed',
-                  'The person could not be deleted. Please check your database RPC function.'
-                );
+                Alert.alert('Delete Failed', 'The person could not be deleted. Please check your database RPC function.');
                 return;
               }
-              
-              console.log('✅ Person deleted successfully:', editingPerson.id);
-              
               queryClient.invalidateQueries({ queryKey: ['directory'] });
-              
               setIsEditPersonModalVisible(false);
               setEditingPerson(null);
-              
               Alert.alert('Success', 'Person deleted successfully.');
             } catch (error) {
               console.error('❌ Error deleting person:', error);

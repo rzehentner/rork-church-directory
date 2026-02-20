@@ -101,86 +101,39 @@ export default function FamilyScreen() {
   const isPending = profile?.role === 'pending';
   const hasFamily = !!family;
 
-  console.log('FamilyScreen render:', { 
-    isLoading, 
-    hasFamily, 
-    profile: profile?.role, 
-    person: person?.first_name, 
-    family: family?.family_name,
-    familyMembers: familyMembers?.length 
-  });
-
-  // Load family photo and member avatars
   useEffect(() => {
     const loadImages = async () => {
       try {
-        console.log('Loading images, family photo_path:', family?.photo_path);
-        
+        const ts = Date.now();
         if (family?.photo_path) {
           const url = await getSignedUrl(family.photo_path);
-          console.log('Family photo URL:', url);
-          if (url) {
-            // Add cache buster to ensure fresh image
-            const urlWithCache = `${url}&t=${Date.now()}`;
-            setFamilyPhotoUrl(urlWithCache);
-          } else {
-            setFamilyPhotoUrl(null);
-          }
+          setFamilyPhotoUrl(url ? `${url}&t=${ts}` : null);
         } else {
           setFamilyPhotoUrl(null);
         }
 
         if (familyMembers && familyMembers.length > 0) {
-          console.log('Loading avatars and tags for', familyMembers.length, 'members');
-          
-          // Load avatars
-          const avatarPromises = familyMembers.map(async (member) => {
-            if (member.photo_url) {
-              console.log('Loading avatar for member:', member.id, 'key:', member.photo_url);
-              const url = await getSignedUrl(member.photo_url);
-              // Add cache buster to ensure fresh image
-              return { id: member.id, url: url ? `${url}&t=${Date.now()}` : null };
-            }
-            return { id: member.id, url: null };
-          });
+          const avatarResults = await Promise.all(
+            familyMembers.map(async (m) => ({
+              id: m.id,
+              url: m.photo_url ? await getSignedUrl(m.photo_url).then(u => u ? `${u}&t=${ts}` : null).catch(() => null) : null,
+            }))
+          );
+          setMemberAvatars(avatarResults.reduce((acc, { id, url }) => { acc[id] = url; return acc; }, {} as Record<string, string | null>));
 
-          const avatarResults = await Promise.all(avatarPromises);
-          const avatarMap = avatarResults.reduce((acc, { id, url }) => {
-            acc[id] = url;
-            return acc;
-          }, {} as Record<string, string | null>);
-          
-          console.log('Avatar map:', avatarMap);
-          setMemberAvatars(avatarMap);
-          
-          // Load tags for each member
-          const tagPromises = familyMembers.map(async (member) => {
-            try {
-              const personWithTags = await getPersonWithTags(member.id);
-              return { id: member.id, tags: personWithTags.tags };
-            } catch (error) {
-              console.error('Error loading tags for member:', member.id, error);
-              return { id: member.id, tags: [] };
-            }
-          });
-          
-          const tagResults = await Promise.all(tagPromises);
-          const tagMap = tagResults.reduce((acc, { id, tags }) => {
-            acc[id] = tags;
-            return acc;
-          }, {} as Record<string, any[]>);
-          
-          console.log('Tag map:', tagMap);
-          setMemberTags(tagMap);
+          const tagResults = await Promise.all(
+            familyMembers.map(async (m) => {
+              try { return { id: m.id, tags: (await getPersonWithTags(m.id)).tags }; }
+              catch { return { id: m.id, tags: [] as any[] }; }
+            })
+          );
+          setMemberTags(tagResults.reduce((acc, { id, tags }) => { acc[id] = tags; return acc; }, {} as Record<string, any[]>));
         }
       } catch (error) {
         console.error('Error loading images:', error);
       }
     };
-
-    if (family || familyMembers.length > 0) {
-      loadImages();
-    }
+    if (family || familyMembers.length > 0) loadImages();
   }, [family, familyMembers]);
 
   // Refresh member tags when PersonTagPicker changes
@@ -220,45 +173,31 @@ export default function FamilyScreen() {
 
   const handleUploadFamilyPhoto = async (file: any) => {
     if (!family) throw new Error('No family found');
-    
     try {
-      console.log('Starting family photo upload for family:', family.id);
-      console.log('Current photo_path:', family.photo_path);
-      
       const url = await uploadFamilyPhoto(family.id, file, family.photo_path);
-      console.log('Family photo uploaded successfully, URL:', url);
-      
-      // Immediately update the UI with the new URL
       setFamilyPhotoUrl(url);
-      
-      // Refresh the family data to get the updated photo_path
-      console.log('Refreshing family data...');
       await refetch();
-      
       return url;
     } catch (error) {
-      console.error('Error uploading family photo:', error);
-      if (error instanceof Error) {
-        Alert.alert('Upload Failed', error.message);
-      }
+      if (error instanceof Error) Alert.alert('Upload Failed', error.message);
       throw error;
     }
   };
 
   const handleUploadPersonAvatar = async (personId: string, file: any) => {
     try {
-      console.log('Starting avatar upload for person:', personId);
+
       const member = familyMembers.find(m => m.id === personId);
-      console.log('Current photo_url:', member?.photo_url);
+
       
       const url = await uploadPersonAvatar(personId, file);
-      console.log('Person avatar uploaded successfully, URL:', url);
+
       
       // Immediately update the UI with the new URL
       setMemberAvatars(prev => ({ ...prev, [personId]: url }));
       
       // Refresh the family data to get the updated photo_url
-      console.log('Refreshing family data...');
+
       await refetch();
       
       return url;
@@ -809,7 +748,7 @@ export default function FamilyScreen() {
                               key={role}
                               style={styles.checkbox}
                               onPress={() => {
-                                console.log('Setting family role:', role);
+
                                 setEditMemberForm(prev => ({ 
                                   ...prev, 
                                   family_role: role,
@@ -991,7 +930,7 @@ export default function FamilyScreen() {
                           key={role}
                           style={styles.checkbox}
                           onPress={() => {
-                            console.log('Setting new member family role:', role);
+
                             setNewMemberForm(prev => ({ 
                               ...prev, 
                               family_role: role,

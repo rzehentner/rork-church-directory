@@ -42,16 +42,13 @@ export default function ImageUploader({
   const resizeImage = async (uri: string): Promise<{ uri: string }> => {
     const MAX_WIDTH = 1200;
     try {
-      console.log('[ImageUploader] Resizing image...');
       const result = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: MAX_WIDTH } }],
         { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
       );
-      console.log('[ImageUploader] Resize success:', { width: result.width, height: result.height, uri: result.uri });
       return result;
     } catch (manipError: any) {
-      console.warn('[ImageUploader] ImageManipulator failed, using original:', manipError?.message);
       return { uri };
     }
   };
@@ -77,19 +74,10 @@ export default function ImageUploader({
         pickerOptions.aspect = [aspectRatio.width, aspectRatio.height];
       }
 
-      console.log('[ImageUploader] Launching picker with options:', pickerOptions);
       const result = await ImagePicker.launchImageLibraryAsync(pickerOptions);
-
-      console.log('[ImageUploader] Picker result:', { canceled: result.canceled, assetCount: result.assets?.length });
 
       if (!result.canceled && result.assets[0]) {
         const asset = result.assets[0];
-        console.log('[ImageUploader] Asset details:', {
-          uri: asset.uri,
-          width: asset.width,
-          height: asset.height,
-          mimeType: asset.mimeType,
-        });
 
         setIsUploading(true);
         try {
@@ -101,21 +89,17 @@ export default function ImageUploader({
             type: 'image/jpeg',
           };
 
-          console.log('[ImageUploader] Uploading file:', { name: file.name, type: file.type });
           const uploadedUrl = await onUpload(file);
-          console.log('[ImageUploader] Upload successful:', uploadedUrl);
 
           const urlWithTimestamp = `${uploadedUrl}${uploadedUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
           setImageUrl(urlWithTimestamp);
         } catch (error: any) {
-          console.error('[ImageUploader] Upload error:', error, error?.message, error?.stack);
           Alert.alert('Upload Failed', `Failed to save photo. ${error?.message || 'Please try again.'}`);
         } finally {
           setIsUploading(false);
         }
       }
     } catch (error) {
-      console.error('[ImageUploader] Image picker error:', error);
       Alert.alert('Error', 'Failed to open image picker.');
     }
   };

@@ -100,9 +100,6 @@ export default function CreateAnnouncementScreen() {
   // Initialize form with existing data when in edit mode
   React.useEffect(() => {
     if (isEditMode && existingAnnouncement && existingTags && availableTags.length > 0 && !isFormInitialized) {
-      console.log('🔄 Initializing form with existing data:', existingAnnouncement);
-      console.log('🏷️ Existing tags:', existingTags);
-      
       const tagNames = existingTags.map((tag: any) => tag.name);
       const roleChips = existingAnnouncement.roles_allowed || [];
       
@@ -118,7 +115,6 @@ export default function CreateAnnouncementScreen() {
       });
       
       setIsFormInitialized(true);
-      console.log('✅ Form initialized with existing data');
     }
   }, [isEditMode, existingAnnouncement, existingTags, availableTags, isFormInitialized]);
 
@@ -126,8 +122,6 @@ export default function CreateAnnouncementScreen() {
   const saveMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
       if (isEditMode && announcementId) {
-        console.log('📝 Updating announcement:', announcementId, data);
-        
         const announcement = await updateAnnouncement(announcementId, {
           title: data.title.trim(),
           body: data.body.trim() || null,
@@ -142,24 +136,18 @@ export default function CreateAnnouncementScreen() {
           .filter(tag => data.tagChips.includes(tag.name))
           .map(tag => tag.id);
         
-        console.log('🏷️ Updating announcement tags:', tagIds);
         await setAnnouncementTags(announcement.id, tagIds);
 
         if (imageUri) {
           try {
-            console.log('📸 Uploading announcement image...');
             await uploadAnnouncementImage(imageUri, announcement.id);
-            console.log('✅ Announcement image uploaded');
           } catch (imgErr) {
-            console.error('⚠️ Announcement image upload failed:', imgErr);
+            console.error('Image upload failed:', imgErr);
           }
         }
         
-        console.log('✅ Announcement updated successfully');
         return announcement;
       } else {
-        console.log('📢 Creating announcement:', data);
-
         const announcement = await createAnnouncement({
           title: data.title.trim(),
           body: data.body.trim() || null,
@@ -177,22 +165,18 @@ export default function CreateAnnouncementScreen() {
             .map(tag => tag.id);
           
           if (tagIds.length > 0) {
-            console.log('🏷️ Setting announcement tags:', tagIds);
             await setAnnouncementTags(announcement.id, tagIds);
           }
         }
 
         if (imageUri) {
           try {
-            console.log('📸 Uploading announcement image...');
             await uploadAnnouncementImage(imageUri, announcement.id);
-            console.log('✅ Announcement image uploaded');
           } catch (imgErr) {
-            console.error('⚠️ Announcement image upload failed:', imgErr);
+            console.error('Image upload failed:', imgErr);
           }
         }
 
-        console.log('✅ Announcement created successfully');
         return announcement;
       }
     },
@@ -205,7 +189,7 @@ export default function CreateAnnouncementScreen() {
       router.push('/(tabs)/admin' as any);
     },
     onError: (error) => {
-      console.error(isEditMode ? '❌ Failed to update announcement:' : '❌ Failed to create announcement:', error);
+      console.error('Failed to save announcement:', error);
       showError(isEditMode ? 'Failed to update announcement. Please try again.' : 'Failed to create announcement. Please try again.');
     },
   });

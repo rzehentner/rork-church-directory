@@ -150,71 +150,29 @@ export default function AdminScreen() {
   const { data: announcements, isLoading: announcementsLoading } = useQuery({
     queryKey: ['admin-announcements'],
     queryFn: async () => {
-      console.log('📢 Fetching admin announcements');
-      
       const { data, error } = await supabase
         .from('announcements')
-        .select(`
-          id,
-          title,
-          body,
-          published_at,
-          expires_at,
-          created_by,
-          is_published,
-          is_public,
-          roles_allowed,
-          created_at,
-          updated_at
-        `)
+        .select('id,title,body,published_at,expires_at,created_by,is_published,is_public,roles_allowed,created_at,updated_at')
         .order('created_at', { ascending: false });
-      
-      if (error) {
-        console.error('❌ Error fetching admin announcements:', error);
-        throw error;
-      }
-      
-      // Transform the data to safely handle roles_allowed parsing
-      const transformedData = data?.map(announcement => {
+
+      if (error) throw error;
+
+      return data?.map(announcement => {
         let rolesAllowed: string[] | null = null;
-        
-        // Safely parse roles_allowed field
         if (announcement.roles_allowed) {
           try {
             if (Array.isArray(announcement.roles_allowed)) {
               rolesAllowed = announcement.roles_allowed;
             } else if (typeof announcement.roles_allowed === 'string') {
-              // Clean the string before parsing
-              const cleanedString = announcement.roles_allowed.trim();
-              if (cleanedString.startsWith('[') && cleanedString.endsWith(']')) {
-                rolesAllowed = JSON.parse(cleanedString);
-              } else if (cleanedString.startsWith('{') && cleanedString.endsWith('}')) {
-                // Handle PostgreSQL array format like {admin,leader}
-                const arrayContent = cleanedString.slice(1, -1);
-                rolesAllowed = arrayContent ? arrayContent.split(',').map(s => s.trim()) : [];
-              } else {
-                // Single value or comma-separated values
-                rolesAllowed = cleanedString.split(',').map(s => s.trim()).filter(Boolean);
-              }
-            } else {
-              // Handle other data types
-              rolesAllowed = null;
+              const s = announcement.roles_allowed.trim();
+              if (s.startsWith('[') && s.endsWith(']')) rolesAllowed = JSON.parse(s);
+              else if (s.startsWith('{') && s.endsWith('}')) rolesAllowed = s.slice(1, -1).split(',').map(v => v.trim()).filter(Boolean);
+              else rolesAllowed = s.split(',').map(v => v.trim()).filter(Boolean);
             }
-          } catch (parseError) {
-            console.warn('⚠️ Failed to parse roles_allowed for admin announcement:', announcement.id, 'Raw value:', announcement.roles_allowed, 'Error:', parseError);
-            rolesAllowed = null;
-          }
+          } catch { rolesAllowed = null; }
         }
-        
-        return {
-          ...announcement,
-          roles_allowed: rolesAllowed
-        } as AdminAnnouncement;
+        return { ...announcement, roles_allowed: rolesAllowed } as AdminAnnouncement;
       }) || [];
-      
-      console.log('✅ Admin announcements fetched:', transformedData?.length || 0);
-      console.log('📋 Raw admin announcements data:', transformedData);
-      return transformedData;
     },
     enabled: profile?.role === 'admin' || profile?.role === 'leader',
     staleTime: 30000, // 30 seconds

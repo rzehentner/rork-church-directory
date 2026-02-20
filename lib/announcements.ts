@@ -17,8 +17,6 @@ export type Announcement = {
   updated_at: string
 }
 
-/* ---------------- Admin CRUD ---------------- */
-
 export async function createAnnouncement(input: {
   title: string
   body?: string | null
@@ -29,8 +27,6 @@ export async function createAnnouncement(input: {
   publish_immediately?: boolean
   created_by: string
 }) {
-  console.log('🔄 Creating announcement with input:', input);
-  
   const { data, error } = await supabase
     .from('announcements')
     .insert([{
@@ -45,31 +41,19 @@ export async function createAnnouncement(input: {
     }])
     .select('*')
     .single()
-  
-  if (error) {
-    console.error('❌ Error creating announcement:', error);
-    throw error;
-  }
-  
-  console.log('✅ Announcement created:', data);
+
+  if (error) throw error
   return data as Announcement
 }
 
 export async function getAnnouncement(id: string) {
-  console.log('🔍 Fetching announcement:', id);
-  
   const { data, error } = await supabase
     .from('announcements')
     .select('*')
     .eq('id', id)
     .single()
-  
-  if (error) {
-    console.error('❌ Error fetching announcement:', error);
-    throw error;
-  }
-  
-  console.log('✅ Announcement fetched:', data);
+
+  if (error) throw error
   return data as Announcement
 }
 
@@ -116,36 +100,17 @@ export async function unpublishAnnouncement(id: string) {
   return data as Announcement
 }
 
-/** Get tags for an announcement */
 export async function getAnnouncementTags(announcementId: string) {
-  console.log('🏷️ Fetching tags for announcement:', announcementId);
-  
   const { data, error } = await supabase
     .from('announcement_audience_tags')
-    .select(`
-      tag_id,
-      tags!inner(
-        id,
-        name,
-        color
-      )
-    `)
+    .select('tag_id, tags!inner(id, name, color)')
     .eq('announcement_id', announcementId)
-  
-  if (error) {
-    console.error('❌ Error fetching announcement tags:', error);
-    throw error;
-  }
-  
-  const tags = data?.map(item => item.tags).filter(Boolean) || [];
-  console.log('✅ Announcement tags fetched:', tags);
-  return tags;
+
+  if (error) throw error
+  return data?.map(item => item.tags).filter(Boolean) || [];
 }
 
-/** Replace audience tags for an announcement (works for both public and private) */
 export async function setAnnouncementTags(announcementId: string, tagIds: string[]) {
-  // Note: For public announcements, tags are used for filtering/organization only
-  // For private announcements, tags control visibility
   const { data: curr, error: e1 } = await supabase
     .from('announcement_audience_tags')
     .select('tag_id')
@@ -171,76 +136,27 @@ export async function setAnnouncementTags(announcementId: string, tagIds: string
   }
 }
 
-/* ---------------- Member/Visitor feed ---------------- */
-
 export async function listAnnouncementsForMe(limit = 20, from = 0) {
-  console.log('📜 Fetching announcements for me...');
-  
-  try {
-    // Use the announcements_for_me view to get proper is_read status
-    const { data, error } = await supabase
-      .from('announcements_for_me')
-      .select('id, title, body, published_at, expires_at, author_name, is_read, is_public, created_by')
-      .order('published_at', { ascending: false })
-      .range(from, from + limit - 1)
-    
-    if (error) {
-      console.error('❌ Supabase error fetching announcements:', {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code
-      });
-      throw new Error(`Database error: ${error.message}${error.details ? ` (${error.details})` : ''}`);
-    }
-    
-    if (!data) {
-      console.log('📭 No announcements data returned');
-      return [];
-    }
-    
-    console.log('📊 Raw announcements data:', data?.length || 0, 'items');
-    
-    // Transform the data to match expected format
-    const transformedData = data.map((announcement) => ({
-      ...announcement,
-      role_tags: [], // Not available in the view
-      person_tags: [] // Not available in the view
-    }));
-    
-    console.log('✅ Announcements transformed:', transformedData?.length || 0, 'items');
-    
-    return transformedData;
-  } catch (error) {
-    console.error('❌ Error in listAnnouncementsForMe:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    
-    // Create a more descriptive error message
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : typeof error === 'object' && error !== null 
-        ? JSON.stringify(error) 
-        : 'Unknown error occurred';
-    
-    throw new Error(`Failed to fetch announcements: ${errorMessage}`);
-  }
+  const { data, error } = await supabase
+    .from('announcements_for_me')
+    .select('id, title, body, published_at, expires_at, author_name, is_read, is_public, created_by')
+    .order('published_at', { ascending: false })
+    .range(from, from + limit - 1)
+
+  if (error) throw new Error(`Database error: ${error.message}${error.details ? ` (${error.details})` : ''}`)
+  if (!data) return []
+
+  return data.map((announcement) => ({
+    ...announcement,
+    role_tags: [] as string[],
+    person_tags: [] as string[]
+  }))
 }
 
 export async function markAnnouncementRead(announcementId: string) {
-  console.log('📖 Marking announcement as read:', announcementId);
-  
-  const { data, error } = await supabase.rpc('mark_announcement_read', { 
-    p_announcement_id: announcementId 
-  });
-  
-  if (error) {
-    console.error('❌ Error marking announcement as read:', error);
-    throw error;
-  }
-  
-  console.log('✅ Announcement marked as read:', data);
-  return data;
+  const { data, error } = await supabase.rpc('mark_announcement_read', {
+    p_announcement_id: announcementId
+  })
+  if (error) throw error
+  return data
 }

@@ -41,20 +41,6 @@ export async function createPotluckForm(params: {
   deadline?: string | null
   groups: PotluckGroupInput[]
 }) {
-  console.log('createPotluckForm called:', params)
-
-  const { data: { user } } = await supabase.auth.getUser()
-  console.log('Current auth user id:', user?.id)
-  let detectedRole: string | null = null
-  if (user) {
-    const { data: profile, error: profileError } = await supabase.from('profiles').select('id, role').eq('id', user.id).single()
-    detectedRole = profile?.role ?? null
-    console.log('Current user profile:', JSON.stringify(profile), 'profileError:', JSON.stringify(profileError))
-    console.log('Detected role:', detectedRole, 'type:', typeof detectedRole)
-  } else {
-    console.log('No authenticated user found!')
-  }
-
   const { data, error } = await supabase.rpc('create_potluck_form', {
     p_event_id: params.eventId,
     p_title: params.title || null,
@@ -63,18 +49,9 @@ export async function createPotluckForm(params: {
     p_groups: params.groups,
   })
 
-  console.log('createPotluckForm response:', { data, error })
-  if (error) {
-    console.error('createPotluckForm error:', error)
-    throw error
-  }
+  if (error) throw error
   const result = data as { success: boolean; form_id?: string; error?: string }
-  if (!result?.success) {
-    console.error('createPotluckForm RPC returned failure:', result)
-    const rpcError = result?.error || 'Failed to create potluck form'
-    const roleInfo = detectedRole ? ` (Your profile role: "${detectedRole}")` : ' (No profile found)'
-    throw new Error(`${rpcError}${roleInfo}`)
-  }
+  if (!result?.success) throw new Error(result?.error || 'Failed to create potluck form')
   return result as { success: boolean; form_id: string }
 }
 
@@ -84,7 +61,6 @@ export async function addPotluckItems(params: {
   groupTitle?: string
   items: { name: string; description?: string; quantity_needed?: number }[]
 }) {
-  console.log('addPotluckItems called:', params)
   const { data, error } = await supabase.rpc('add_potluck_items', {
     p_form_id: params.formId,
     p_group_id: params.groupId ?? null,
@@ -92,16 +68,9 @@ export async function addPotluckItems(params: {
     p_items: params.items,
   })
 
-  console.log('addPotluckItems response:', { data, error })
-  if (error) {
-    console.error('addPotluckItems error:', error)
-    throw error
-  }
+  if (error) throw error
   const result = data as { success: boolean; error?: string } | null
-  if (result && !result.success) {
-    console.error('addPotluckItems RPC returned failure:', result)
-    throw new Error(result?.error || 'Failed to add potluck items')
-  }
+  if (result && !result.success) throw new Error(result?.error || 'Failed to add potluck items')
   return result
 }
 
@@ -111,7 +80,6 @@ export async function claimPotluckItem(params: {
   manualName?: string | null
   note?: string | null
 }) {
-  console.log('claimPotluckItem called:', params)
   const { data, error } = await supabase.rpc('claim_potluck_item', {
     p_item_id: params.itemId,
     p_person_id: params.personId,
@@ -119,40 +87,24 @@ export async function claimPotluckItem(params: {
     p_note: params.note ?? null,
   })
 
-  console.log('claimPotluckItem response:', { data, error })
-  if (error) {
-    console.error('claimPotluckItem error:', error)
-    throw error
-  }
+  if (error) throw error
   const result = data as { success: boolean; item_name?: string; claimant_name?: string; error?: string }
-  if (!result?.success) {
-    console.error('claimPotluckItem RPC returned failure:', result)
-    throw new Error(result?.error || 'Failed to claim potluck item')
-  }
+  if (!result?.success) throw new Error(result?.error || 'Failed to claim potluck item')
   return result as { success: boolean; item_name: string; claimant_name: string }
 }
 
 export async function unclaimPotluckItem(claimId: string) {
-  console.log('unclaimPotluckItem called:', claimId)
   const { data, error } = await supabase.rpc('unclaim_potluck_item', {
     p_claim_id: claimId,
   })
 
-  console.log('unclaimPotluckItem response:', { data, error })
-  if (error) {
-    console.error('unclaimPotluckItem error:', error)
-    throw error
-  }
+  if (error) throw error
   const result = data as { success: boolean; error?: string }
-  if (!result?.success) {
-    console.error('unclaimPotluckItem RPC returned failure:', result)
-    throw new Error(result?.error || 'Failed to unclaim potluck item')
-  }
+  if (!result?.success) throw new Error(result?.error || 'Failed to unclaim potluck item')
   return result
 }
 
 export async function getPotluckFormDetail(formId: string): Promise<PotluckGroupParsed[]> {
-  console.log('getPotluckFormDetail called:', formId)
   const { data: rows, error } = await supabase
     .from('potluck_form_detail')
     .select('*')
@@ -160,11 +112,7 @@ export async function getPotluckFormDetail(formId: string): Promise<PotluckGroup
     .order('group_sort')
     .order('item_sort')
 
-  console.log('getPotluckFormDetail response:', { count: rows?.length, error })
-  if (error) {
-    console.error('getPotluckFormDetail error:', error)
-    throw error
-  }
+  if (error) throw error
 
   const typedRows = (rows ?? []) as PotluckFormDetailRow[]
   const groups = new Map<string, PotluckGroupParsed>()

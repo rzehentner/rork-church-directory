@@ -73,11 +73,7 @@ export default function EventsScreen() {
       endDate.setMonth(endDate.getMonth() + 6)
       endDate.setDate(0) // Last day of the month
       
-      console.log('Loading events for date range:', { startDate, endDate })
       const data = await listEventsForDateRange(startDate, endDate)
-      console.log('Loaded events:', data?.length, 'events')
-      console.log('Event IDs:', data?.map(e => e.id))
-      console.log('Event titles:', data?.map(e => e.title))
       setAllEvents(data as Event[])
     } catch (error) {
       console.error('Failed to load events:', error)
@@ -104,9 +100,7 @@ export default function EventsScreen() {
         if (s.event_id) map[s.event_id] = s
       }
       setFormsByEvent(map)
-      console.log('Loaded form summaries for events:', Object.keys(map).length)
     } catch (error) {
-      console.error('Failed to load form summaries:', error)
     }
   }, [])
 
@@ -119,7 +113,6 @@ export default function EventsScreen() {
   // Add a simple interval to refresh events periodically
   useEffect(() => {
     const interval = setInterval(() => {
-      console.log('Periodic refresh of events...')
       loadAllEvents()
     }, 30000) // Refresh every 30 seconds
     

@@ -80,40 +80,27 @@ export default function AnnouncementsScreen() {
   } = useQuery({
     queryKey: ['announcements-for-me', myRole, profile],
     queryFn: async () => {
-      try {
-        console.log('📢 Fetching announcements for me');
-        console.log('👤 Current user role:', myRole);
-        console.log('👤 Current profile:', profile);
-        const data = await listAnnouncementsForMe();
-        
-        // Fetch tags for each announcement
-        const announcementsWithTags = await Promise.all(
-          (data || []).map(async (announcement) => {
-            try {
-              const tags = await getAnnouncementTags(announcement.id);
-              return { ...announcement, tags };
-            } catch (fetchError) {
-              console.warn('Failed to fetch tags for announcement:', announcement.id, fetchError);
-              return { ...announcement, tags: [] };
-            }
-          })
-        );
-        
-        console.log('✅ Announcements with tags fetched:', announcementsWithTags?.length || 0);
-        return announcementsWithTags.map(announcement => ({
-          ...announcement,
-          image_path: (announcement as any).image_path ?? null,
-          author_name: announcement.author_name || undefined,
-          tags: Array.isArray(announcement.tags) ? announcement.tags.map((tag: any) => ({
-            id: String(tag?.id || ''),
-            name: String(tag?.name || ''),
-            color: String(tag?.color || '#7C3AED')
-          })) : []
-        })) as Announcement[];
-      } catch (error) {
-        console.error('❌ Error in announcements query:', error);
-        throw error;
-      }
+      const data = await listAnnouncementsForMe();
+      const announcementsWithTags = await Promise.all(
+        (data || []).map(async (announcement) => {
+          try {
+            const tags = await getAnnouncementTags(announcement.id);
+            return { ...announcement, tags };
+          } catch {
+            return { ...announcement, tags: [] };
+          }
+        })
+      );
+      return announcementsWithTags.map(announcement => ({
+        ...announcement,
+        image_path: (announcement as any).image_path ?? null,
+        author_name: announcement.author_name || undefined,
+        tags: Array.isArray(announcement.tags) ? announcement.tags.map((tag: any) => ({
+          id: String(tag?.id || ''),
+          name: String(tag?.name || ''),
+          color: String(tag?.color || '#7C3AED')
+        })) : []
+      })) as Announcement[];
     },
     enabled: !!myRole,
     staleTime: 30 * 1000,
@@ -145,19 +132,12 @@ export default function AnnouncementsScreen() {
 
   // Mark announcement as read
   const markReadMutation = useMutation({
-    mutationFn: async (announcementId: string) => {
-      console.log('📖 Marking announcement as read:', announcementId);
-      const result = await markAnnouncementRead(announcementId);
-      console.log('✅ Announcement marked as read:', result);
-      return result;
-    },
+    mutationFn: markAnnouncementRead,
     onSuccess: () => {
-      // Invalidate and refetch announcements to get updated read status
       queryClient.invalidateQueries({ queryKey: ['announcements-for-me'] });
       showSuccess('Marked as read');
     },
-    onError: (error) => {
-      console.error('❌ Failed to mark as read:', error);
+    onError: () => {
       showError('Failed to mark as read');
     },
   });

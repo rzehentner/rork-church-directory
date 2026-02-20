@@ -85,9 +85,7 @@ export default function VisitorProfileScreen() {
     }
     
     try {
-      console.log('Starting avatar upload for person:', person.id);
       const url = await uploadPersonAvatar(person.id, file);
-      console.log('Avatar uploaded successfully, URL:', url);
       
       if (!url) {
         throw new Error('Upload failed - no URL returned');
@@ -123,15 +121,7 @@ export default function VisitorProfileScreen() {
     setIsSaving(true);
 
     try {
-      console.log('💾 Saving profile data:', {
-        profileForm,
-        personExists: !!person,
-        userId: profile?.id
-      });
-
       if (person) {
-        // Update existing person record
-        console.log('📝 Updating existing person record:', person.id);
         const { data, error } = await supabase
           .from('persons')
           .update({
@@ -144,14 +134,8 @@ export default function VisitorProfileScreen() {
           .eq('id', person.id)
           .select();
 
-        if (error) {
-          console.error('❌ Update error:', error);
-          throw error;
-        }
-        console.log('✅ Person updated successfully:', data);
+        if (error) throw error;
       } else {
-        // Create new person record
-        console.log('🆕 Creating new person record for user:', profile?.id);
         const { data, error } = await supabase
           .from('persons')
           .insert({
@@ -165,17 +149,10 @@ export default function VisitorProfileScreen() {
           })
           .select();
 
-        if (error) {
-          console.error('❌ Insert error:', error);
-          throw error;
-        }
-        console.log('✅ Person created successfully:', data);
+        if (error) throw error;
       }
 
-      // Refresh user data
-      console.log('🔄 Refreshing user data...');
       await refetch();
-      console.log('✅ Profile saved and data refreshed successfully');
       
       Alert.alert(
         'Success',
@@ -188,7 +165,7 @@ export default function VisitorProfileScreen() {
         ]
       );
     } catch (error) {
-      console.error('❌ Error saving profile:', error);
+      console.error('Error saving profile:', error);
       
       let errorMessage = 'Failed to save profile. Please try again.';
       if (error && typeof error === 'object' && 'message' in error) {
