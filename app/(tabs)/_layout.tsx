@@ -12,7 +12,7 @@ export default function TabLayout() {
     <Tabs
       initialRouteName="dashboard"
       screenOptions={{
-        tabBarActiveTintColor: '#2563EB',
+        tabBarActiveTintColor: '#1C2E4A',
         tabBarInactiveTintColor: '#94A3B8',
         headerShown: false,
         tabBarStyle: {

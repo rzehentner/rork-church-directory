@@ -14,7 +14,8 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
-import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight } from 'lucide-react-native';
+import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Info, Code, ExternalLink } from 'lucide-react-native';
+import { Image, Linking } from 'react-native';
 import { useMe } from '@/hooks/me-context';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
 import { NotificationPreferences } from '@/lib/notification-preferences';
@@ -303,6 +304,34 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* About Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>About</Text>
+          <View style={styles.aboutCard}>
+            <Image
+              source={require('@/assets/images/ebc-icon-mark-color.png')}
+              style={styles.aboutLogo}
+              resizeMode="contain"
+            />
+            <Text style={styles.aboutAppName}>EBC Connect</Text>
+            <Text style={styles.aboutChurch}>Edna Baptist Church</Text>
+            <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+            <View style={styles.aboutDivider} />
+            <View style={styles.developerRow}>
+              <Code size={16} color="#6B7280" />
+              <Text style={styles.developerLabel}>Developed by</Text>
+            </View>
+            <Text style={styles.developerName}>Caleb McWhorter</Text>
+            <TouchableOpacity
+              style={styles.developerLink}
+              onPress={() => Linking.openURL('mailto:caleb@ednabc.org')}
+            >
+              <ExternalLink size={14} color="#1C2E4A" />
+              <Text style={styles.developerLinkText}>caleb@ednabc.org</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
@@ -520,6 +549,76 @@ const styles = StyleSheet.create({
   },
   bottomPadding: {
     height: 40,
+  },
+  aboutCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  aboutLogo: {
+    width: 56,
+    height: 56,
+    marginBottom: 12,
+  },
+  aboutAppName: {
+    fontSize: 18,
+    fontWeight: '700' as const,
+    color: '#1C2E4A',
+    marginBottom: 2,
+  },
+  aboutChurch: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  aboutVersion: {
+    fontSize: 12,
+    color: '#9CA3AF',
+    marginBottom: 16,
+  },
+  aboutDivider: {
+    width: '100%',
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginBottom: 16,
+  },
+  developerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  developerLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  developerName: {
+    fontSize: 15,
+    fontWeight: '600' as const,
+    color: '#111827',
+    marginBottom: 8,
+  },
+  developerLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: '#F0F3F8',
+    borderRadius: 8,
+  },
+  developerLinkText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: '#1C2E4A',
   },
   preferencesContainer: {
     marginTop: 16,

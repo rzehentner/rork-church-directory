@@ -13,7 +13,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Mail, Lock, Church, ArrowRight, Sparkles, Fingerprint } from 'lucide-react-native';
+import { Mail, Lock, ArrowRight, Sparkles, Fingerprint } from 'lucide-react-native';
+import { Image } from 'react-native';
 import { useAuth } from '@/hooks/auth-context';
 import { router } from 'expo-router';
 
@@ -78,7 +79,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <LinearGradient colors={['#4F46E5', '#7C3AED']} style={styles.gradient}>
+    <LinearGradient colors={['#1C2E4A', '#263D5C']} style={styles.gradient}>
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -89,11 +90,11 @@ export default function AuthScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.header}>
-              <View style={styles.iconContainer}>
-                <Church size={48} color="#FFFFFF" />
-              </View>
-              <Text style={styles.title}>EBC Connect</Text>
-              <Text style={styles.subtitle}>Edna Baptist Church Community</Text>
+              <Image
+                source={require('@/assets/images/ebc-logo-stacked-white.png')}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
             </View>
 
             <View style={styles.formContainer}>
@@ -103,7 +104,7 @@ export default function AuthScreen() {
                   onPress={handleBiometricAuth}
                   disabled={isLoading}
                 >
-                  <Fingerprint size={32} color="#7C3AED" />
+                  <Fingerprint size={32} color="#1C2E4A" />
                   <Text style={styles.biometricText}>Sign in with Biometrics</Text>
                 </TouchableOpacity>
               )}
@@ -166,7 +167,7 @@ export default function AuthScreen() {
                   setPassword('');
                 }}
               >
-                <Sparkles size={16} color="#7C3AED" />
+                <Sparkles size={16} color="#1C2E4A" />
                 <Text style={styles.magicLinkText}>
                   {useMagicLink ? 'Use password instead' : 'Use magic link'}
                 </Text>
@@ -225,24 +226,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
-  iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold' as const,
-    color: '#FFFFFF',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+  logoImage: {
+    width: 180,
+    height: 180,
   },
   formContainer: {
     backgroundColor: '#FFFFFF',
@@ -272,7 +258,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   button: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#1C2E4A',
     borderRadius: 12,
     height: 56,
     flexDirection: 'row',
@@ -298,7 +284,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   magicLinkText: {
-    color: '#7C3AED',
+    color: '#1C2E4A',
     fontSize: 14,
     fontWeight: '500' as const,
     marginLeft: 8,
@@ -313,7 +299,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   switchLink: {
-    color: '#7C3AED',
+    color: '#1C2E4A',
     fontSize: 14,
     fontWeight: '600' as const,
     marginLeft: 4,
@@ -327,7 +313,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   biometricText: {
-    color: '#7C3AED',
+    color: '#1C2E4A',
     fontSize: 16,
     fontWeight: '600' as const,
     marginTop: 8,

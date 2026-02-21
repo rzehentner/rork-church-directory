@@ -263,7 +263,7 @@ export default function DashboardScreen() {
     { id: 'announcements', label: 'Announcements', icon: <Bell size={22} color="#D97706" />, route: '/(tabs)/announcements', color: '#D97706', bgColor: '#FFFBEB', count: stats.unreadAnnouncementsCount },
     { id: 'prayers', label: 'Prayers', icon: <Heart size={22} color="#DC2626" />, route: '/(tabs)/prayers', color: '#DC2626', bgColor: '#FEF2F2', count: stats.activePrayersCount },
     { id: 'forms', label: 'Sign Ups', icon: <ClipboardList size={22} color="#7C3AED" />, route: '/(tabs)/forms', color: '#7C3AED', bgColor: '#F5F3FF', count: stats.openFormsCount },
-    { id: 'family', label: 'My Family', icon: <Home size={22} color="#2563EB" />, route: '/(tabs)/family', color: '#2563EB', bgColor: '#EFF6FF', count: stats.familyMembersCount },
+    { id: 'family', label: 'My Family', icon: <Home size={22} color="#1C2E4A" />, route: '/(tabs)/family', color: '#1C2E4A', bgColor: '#E8EDF4', count: stats.familyMembersCount },
     { id: 'directory', label: 'Directory', icon: <Users size={22} color="#0891B2" />, route: '/(tabs)/directory', color: '#0891B2', bgColor: '#ECFEFF', count: stats.totalDirectoryMembers },
   ];
 
@@ -277,7 +277,7 @@ export default function DashboardScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color="#1C2E4A" />
         </View>
       </View>
     );
@@ -320,7 +320,7 @@ export default function DashboardScreen() {
         {isPending && (!person || !person.first_name || !person.last_name) && (
           <TouchableOpacity style={styles.profilePromptCard} onPress={() => router.push('/visitor-profile' as any)}>
             <View style={styles.profilePromptIcon}>
-              <User size={20} color="#2563EB" />
+              <User size={20} color="#1C2E4A" />
             </View>
             <View style={styles.profilePromptContent}>
               <Text style={styles.profilePromptTitle}>Complete Your Profile</Text>
@@ -655,7 +655,7 @@ const styles = StyleSheet.create({
   seeAllLink: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: '#2563EB',
+    color: '#1C2E4A',
     marginBottom: 14,
   },
   quickActionsGrid: {
