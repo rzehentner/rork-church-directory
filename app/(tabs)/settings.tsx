@@ -14,7 +14,7 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
-import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Info, Code, ExternalLink, Smartphone } from 'lucide-react-native';
+import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Code, ExternalLink } from 'lucide-react-native';
 import { Image, Linking } from 'react-native';
 import { useMe } from '@/hooks/me-context';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
