@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
   ScrollView,
@@ -18,6 +17,7 @@ import { useMe } from '@/hooks/me-context'
 import { supabase } from '@/lib/supabase'
 import EventTagPicker from '@/components/EventTagPicker'
 import ImageUploader from '@/components/ImageUploader'
+import { createEventStyles as styles } from '@/styles/create-event.styles'
 
 type Event = {
   id: string
@@ -412,164 +412,3 @@ export default function EditEventScreen() {
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  deleteButton: {
-    padding: 8,
-    borderRadius: 8,
-  },
-  saveButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#7C3AED',
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#9CA3AF',
-  },
-  saveButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  saveButtonTextDisabled: {
-    color: '#D1D5DB',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 20,
-  },
-  section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#111827',
-    backgroundColor: '#FFFFFF',
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  inputWithIcon: {
-    position: 'relative',
-  },
-  inputIcon: {
-    position: 'absolute',
-    left: 12,
-    top: 16,
-    zIndex: 1,
-  },
-  inputWithIconText: {
-    paddingLeft: 44,
-  },
-  switchRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  switchLabel: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#111827',
-  },
-  switchDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  dateRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  dateInput: {
-    flex: 1,
-  },
-  roleContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  roleChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    backgroundColor: '#FFFFFF',
-  },
-  roleChipSelected: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
-  },
-  roleChipText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  roleChipTextSelected: {
-    color: '#FFFFFF',
-  },
-  imageUploaderContainer: {
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  imageHelpText: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    fontStyle: 'italic',
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  errorText: {
-    fontSize: 18,
-    color: '#EF4444',
-    marginBottom: 20,
-  },
-})
