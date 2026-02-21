@@ -17,6 +17,7 @@ import { Mail, Lock, ArrowRight, Sparkles, Fingerprint } from 'lucide-react-nati
 import { Image } from 'react-native';
 import { useAuth } from '@/hooks/auth-context';
 import { router } from 'expo-router';
+import { Colors } from '@/constants/colors';
 
 export default function AuthScreen() {
   const { signIn, signUp, sendMagicLink, user, biometricSignIn, isBiometricAvailable, isBiometricEnabled } = useAuth();
@@ -79,7 +80,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <LinearGradient colors={['#1C2E4A', '#263D5C']} style={styles.gradient}>
+    <LinearGradient colors={[Colors.navyDark, Colors.navy]} style={styles.gradient}>
       <SafeAreaView style={styles.container}>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -104,7 +105,7 @@ export default function AuthScreen() {
                   onPress={handleBiometricAuth}
                   disabled={isLoading}
                 >
-                  <Fingerprint size={32} color="#1C2E4A" />
+                  <Fingerprint size={32} color={Colors.navy} />
                   <Text style={styles.biometricText}>Sign in with Biometrics</Text>
                 </TouchableOpacity>
               )}
@@ -167,7 +168,7 @@ export default function AuthScreen() {
                   setPassword('');
                 }}
               >
-                <Sparkles size={16} color="#1C2E4A" />
+                <Sparkles size={16} color={Colors.navy} />
                 <Text style={styles.magicLinkText}>
                   {useMagicLink ? 'Use password instead' : 'Use magic link'}
                 </Text>
@@ -258,7 +259,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   button: {
-    backgroundColor: '#1C2E4A',
+    backgroundColor: Colors.navy,
     borderRadius: 12,
     height: 56,
     flexDirection: 'row',
@@ -284,7 +285,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   magicLinkText: {
-    color: '#1C2E4A',
+    color: Colors.navy,
     fontSize: 14,
     fontWeight: '500' as const,
     marginLeft: 8,
@@ -299,7 +300,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   switchLink: {
-    color: '#1C2E4A',
+    color: Colors.navyLight,
     fontSize: 14,
     fontWeight: '600' as const,
     marginLeft: 4,
@@ -313,7 +314,7 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E5E7EB',
   },
   biometricText: {
-    color: '#1C2E4A',
+    color: Colors.navy,
     fontSize: 16,
     fontWeight: '600' as const,
     marginTop: 8,

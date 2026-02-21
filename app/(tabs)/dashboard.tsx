@@ -35,6 +35,7 @@ import {
   BookOpen,
 } from 'lucide-react-native';
 import TagPill from '@/components/TagPill';
+import { Colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_GAP = 12;
@@ -263,7 +264,7 @@ export default function DashboardScreen() {
     { id: 'announcements', label: 'Announcements', icon: <Bell size={22} color="#D97706" />, route: '/(tabs)/announcements', color: '#D97706', bgColor: '#FFFBEB', count: stats.unreadAnnouncementsCount },
     { id: 'prayers', label: 'Prayers', icon: <Heart size={22} color="#DC2626" />, route: '/(tabs)/prayers', color: '#DC2626', bgColor: '#FEF2F2', count: stats.activePrayersCount },
     { id: 'forms', label: 'Sign Ups', icon: <ClipboardList size={22} color="#7C3AED" />, route: '/(tabs)/forms', color: '#7C3AED', bgColor: '#F5F3FF', count: stats.openFormsCount },
-    { id: 'family', label: 'My Family', icon: <Home size={22} color="#1C2E4A" />, route: '/(tabs)/family', color: '#1C2E4A', bgColor: '#E8EDF4', count: stats.familyMembersCount },
+    { id: 'family', label: 'My Family', icon: <Home size={22} color={Colors.navy} />, route: '/(tabs)/family', color: Colors.navy, bgColor: '#E8EDF4', count: stats.familyMembersCount },
     { id: 'directory', label: 'Directory', icon: <Users size={22} color="#0891B2" />, route: '/(tabs)/directory', color: '#0891B2', bgColor: '#ECFEFF', count: stats.totalDirectoryMembers },
   ];
 
@@ -277,7 +278,7 @@ export default function DashboardScreen() {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#1C2E4A" />
+          <ActivityIndicator size="large" color={Colors.navy} />
         </View>
       </View>
     );
@@ -519,7 +520,7 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: Colors.warmWhite,
   },
   loadingContainer: {
     flex: 1,
@@ -533,27 +534,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 16,
     paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: Colors.white,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: Colors.border.light,
   },
   heroContent: {
     flex: 1,
   },
   greeting: {
     fontSize: 14,
-    color: '#64748B',
+    color: Colors.steelBlue,
     marginBottom: 2,
   },
   userName: {
     fontSize: 26,
     fontWeight: '700' as const,
-    color: '#0F172A',
+    color: Colors.navyDark,
     letterSpacing: -0.3,
   },
   pendingTag: {
     fontSize: 14,
-    color: '#D97706',
+    color: Colors.status.warning,
     fontWeight: '500' as const,
   },
   notificationBtn: {
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: Colors.cream,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -628,7 +629,7 @@ const styles = StyleSheet.create({
   profilePromptTitle: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#0F172A',
+    color: Colors.navyDark,
   },
   profilePromptText: {
     fontSize: 12,
@@ -648,14 +649,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 17,
     fontWeight: '700' as const,
-    color: '#0F172A',
+    color: Colors.navyDark,
     letterSpacing: -0.2,
     marginBottom: 14,
   },
   seeAllLink: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: '#1C2E4A',
+    color: Colors.navy,
     marginBottom: 14,
   },
   quickActionsGrid: {
@@ -685,7 +686,7 @@ const styles = StyleSheet.create({
   quickActionLabel: {
     fontSize: 14,
     fontWeight: '600' as const,
-    color: '#0F172A',
+    color: Colors.navyDark,
   },
   quickActionCount: {
     fontSize: 22,
@@ -719,12 +720,12 @@ const styles = StyleSheet.create({
   feedItemTitle: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#0F172A',
+    color: Colors.navyDark,
     marginBottom: 3,
   },
   feedItemMeta: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: Colors.steelBlue,
   },
   feedItemMetaRow: {
     flexDirection: 'row',
@@ -754,7 +755,7 @@ const styles = StyleSheet.create({
   joinFamilyTitle: {
     fontSize: 15,
     fontWeight: '600' as const,
-    color: '#0F172A',
+    color: Colors.navyDark,
   },
   joinFamilyText: {
     fontSize: 12,

@@ -14,12 +14,13 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
-import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Info, Code, ExternalLink } from 'lucide-react-native';
+import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Info, Code, ExternalLink, Smartphone } from 'lucide-react-native';
 import { Image, Linking } from 'react-native';
 import { useMe } from '@/hooks/me-context';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
 import { NotificationPreferences } from '@/lib/notification-preferences';
 import { useRouter } from 'expo-router';
+import { Colors } from '@/constants/colors';
 
 export default function SettingsScreen() {
   const { profile } = useUser();
@@ -256,8 +257,8 @@ export default function SettingsScreen() {
               <Switch
                 value={notificationsEnabled}
                 onValueChange={toggleNotifications}
-                trackColor={{ false: '#E5E7EB', true: '#DDD6FE' }}
-                thumbColor={notificationsEnabled ? '#7C3AED' : '#9CA3AF'}
+                trackColor={{ false: Colors.switch.trackOff, true: Colors.switch.trackOn }}
+                thumbColor={notificationsEnabled ? Colors.switch.thumbOn : Colors.switch.thumbOff}
               />
             </View>
           </View>

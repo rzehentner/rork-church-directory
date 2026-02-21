@@ -2,6 +2,7 @@ import { Tabs } from "expo-router";
 import { Users, Home, Settings, Zap, Shield } from "lucide-react-native";
 import React from "react";
 import { useUser } from "@/hooks/user-context";
+import { Colors } from "@/constants/colors";
 
 export default function TabLayout() {
   const { profile, isLoading } = useUser();
@@ -12,13 +13,13 @@ export default function TabLayout() {
     <Tabs
       initialRouteName="dashboard"
       screenOptions={{
-        tabBarActiveTintColor: '#1C2E4A',
-        tabBarInactiveTintColor: '#94A3B8',
+        tabBarActiveTintColor: Colors.navy,
+        tabBarInactiveTintColor: Colors.steelBlue,
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
+          backgroundColor: Colors.white,
           borderTopWidth: 1,
-          borderTopColor: '#E2E8F0',
+          borderTopColor: Colors.border.light,
           paddingBottom: 4,
           paddingTop: 4,
         },

@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
-import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Platform, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Home } from 'lucide-react-native';
+import { Colors } from '@/constants/colors';
 
 export default function IndexScreen() {
   const { user, isLoading: authLoading } = useAuth();
@@ -51,15 +51,16 @@ export default function IndexScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         <View style={styles.logoContainer}>
-          <View style={styles.iconBackground}>
-            <Home size={48} color="#FFFFFF" />
-          </View>
-          <Text style={styles.appName}>EBC Connect</Text>
-          <Text style={styles.tagline}>Edna Baptist Church Community</Text>
+          <Image
+            source={require('@/assets/images/ebc-logo-stacked-color.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.tagline}>Edna Baptist Church</Text>
         </View>
 
         <View style={styles.loadingSection}>
-          <ActivityIndicator size="large" color="#2563EB" />
+          <ActivityIndicator size="large" color={Colors.navy} />
           <Text style={styles.loadingText}>
             {authLoading ? 'Loading your church family...' : 'Welcome back!'}
           </Text>
@@ -72,7 +73,7 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.warmWhite,
   },
   content: {
     flex: 1,
@@ -84,30 +85,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 64,
   },
-  iconBackground: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#2563EB',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 16,
-    elevation: 8,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold' as const,
-    color: '#1F2937',
-    marginBottom: 8,
-    textAlign: 'center',
+  logoImage: {
+    width: 160,
+    height: 160,
+    marginBottom: 16,
   },
   tagline: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Colors.steelBlue,
     textAlign: 'center',
     lineHeight: 24,
   },
@@ -117,7 +102,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: '#6B7280',
+    color: Colors.steelBlue,
     textAlign: 'center',
   },
 });
