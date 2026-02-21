@@ -1,6 +1,3 @@
-import * as Calendar from 'expo-calendar'
-import { File, Paths } from 'expo-file-system'
-import * as Sharing from 'expo-sharing'
 import { Platform } from 'react-native'
 import { getEventICS } from '@/services/events'
 
@@ -9,6 +6,7 @@ async function ensureCalendarId() {
     throw new Error('Calendar access not available on web')
   }
   
+  const Calendar = await import('expo-calendar')
   const { status } = await Calendar.requestCalendarPermissionsAsync()
   if (status !== 'granted') throw new Error('Calendar permission denied')
   const cal = await Calendar.getDefaultCalendarAsync()
@@ -21,6 +19,7 @@ export async function addEventToDevice(ev: any) {
     return
   }
   
+  const Calendar = await import('expo-calendar')
   const calendarId = await ensureCalendarId()
   const deepLink = `myapp://event-detail?id=${ev.id}`
   const notesWithLink = ev.description 
@@ -48,10 +47,9 @@ export async function shareICS(eventId: string, title: string) {
     
     const deepLink = `myapp://event-detail?id=${eventId}`
     
-    // Add the deep link to the ICS content
     const icsWithLink = ics.replace(
       /DESCRIPTION:(.*?)\n/s,
-      (match, description) => {
+      (match: string, description: string) => {
         const cleanDesc = description.replace(/\\n/g, '\n')
         const newDesc = cleanDesc 
           ? `${cleanDesc}\n\nOpen in app: ${deepLink}`
@@ -60,15 +58,10 @@ export async function shareICS(eventId: string, title: string) {
       }
     )
     
-    // Also add URL field to ICS
     const finalIcs = icsWithLink.replace(
       /END:VEVENT/,
       `URL:${deepLink}\nEND:VEVENT`
     )
-    
-    const file = new File(Paths.cache, `${title.replace(/\W+/g,'_')}.ics`)
-    file.write(finalIcs)
-    const fileUri = file.uri
     
     if (Platform.OS === 'web') {
       const link = document.createElement('a')
@@ -76,7 +69,11 @@ export async function shareICS(eventId: string, title: string) {
       link.download = `${title.replace(/\W+/g,'_')}.ics`
       link.click()
     } else {
-      await Sharing.shareAsync(fileUri, { mimeType: 'text/calendar' })
+      const { File, Paths } = await import('expo-file-system')
+      const Sharing = await import('expo-sharing')
+      const file = new File(Paths.cache, `${title.replace(/\W+/g,'_')}.ics`)
+      file.write(finalIcs)
+      await Sharing.shareAsync(file.uri, { mimeType: 'text/calendar' })
     }
   } catch (error) {
     console.error('shareICS error:', error)

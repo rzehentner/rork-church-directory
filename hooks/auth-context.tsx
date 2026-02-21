@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as LocalAuthentication from 'expo-local-authentication';
 import { Platform } from 'react-native';
 
 interface AuthState {
@@ -64,6 +63,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       if (!mounted) return;
       
       try {
+        const LocalAuthentication = await import('expo-local-authentication');
         if (!LocalAuthentication || typeof LocalAuthentication.hasHardwareAsync !== 'function') {
           console.log('LocalAuthentication not available');
           if (mounted) {
@@ -156,6 +156,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         return { error: new Error('Biometric authentication not set up') };
       }
 
+      const LocalAuthentication = await import('expo-local-authentication');
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Authenticate to sign in',
         fallbackLabel: 'Use password',
@@ -193,6 +194,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     }
 
     try {
+      const LocalAuthentication = await import('expo-local-authentication');
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Enable biometric authentication',
         fallbackLabel: 'Cancel',

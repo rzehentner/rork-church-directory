@@ -1,7 +1,6 @@
 import createContextHook from '@nkzw/create-context-hook';
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchUserNotifications, markNotificationAsRead, registerPushEndpoint } from '@/lib/notifications';
 import { useAuth } from '@/hooks/auth-context';
@@ -27,8 +26,8 @@ interface NotificationState {
 export const [NotificationProvider, useNotifications] = createContextHook<NotificationState>(() => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const notificationListener = useRef<Notifications.Subscription | null>(null);
-  const responseListener = useRef<Notifications.Subscription | null>(null);
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
 
   const {
     data: notifications = [],
@@ -79,25 +78,34 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
 
     if (Platform.OS === 'web') return;
 
-    // Set up notification listeners for native platforms
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      if (!notification) return;
-      console.log('Notification received:', notification);
-      // Refetch notifications when a new one is received
-      queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
-    });
+    let mounted = true;
+    const setupListeners = async () => {
+      try {
+        const Notifications = await import('expo-notifications');
+        if (!mounted) return;
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      if (!response) return;
-      console.log('Notification response:', response);
-      // Handle notification tap
-      const notificationData = response.notification.request.content.data as { id?: string } | undefined;
-      if (notificationData?.id && typeof notificationData.id === 'string') {
-        markAsRead(notificationData.id);
+        notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+          if (!notification) return;
+          console.log('Notification received:', notification);
+          queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
+        });
+
+        responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+          if (!response) return;
+          console.log('Notification response:', response);
+          const notificationData = response.notification.request.content.data as { id?: string } | undefined;
+          if (notificationData?.id && typeof notificationData.id === 'string') {
+            markAsRead(notificationData.id);
+          }
+        });
+      } catch (e) {
+        console.warn('Failed to setup notification listeners:', e);
       }
-    });
+    };
+    setupListeners();
 
     return () => {
+      mounted = false;
       if (notificationListener.current) {
         notificationListener.current.remove();
       }
