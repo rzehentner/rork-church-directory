@@ -886,4 +886,15 @@ export const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#7C3AED',
   },
+  roleBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: 'flex-start' as const,
+    marginTop: 4,
+  },
+  roleBadgeText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+  },
 });

@@ -127,6 +127,21 @@ export default function DirectoryScreen() {
   const isAdmin = profile?.role === 'admin';
   const isStaff = myRole === 'leader' || myRole === 'admin';
 
+  const getRoleBadge = (entry: DirectoryEntry & { user_role?: string | null }) => {
+    if (!isStaff) return null;
+    if (!entry.user_id) {
+      return { label: 'No Account', bg: '#F3F4F6', color: '#6B7280' };
+    }
+    switch (entry.user_role) {
+      case 'admin': return { label: 'Admin', bg: '#FEE2E2', color: '#DC2626' };
+      case 'leader': return { label: 'Leader', bg: '#EDE9FE', color: '#7C3AED' };
+      case 'member': return { label: 'Member', bg: '#DCFCE7', color: '#16A34A' };
+      case 'pending': return { label: 'Pending', bg: '#FEF3C7', color: '#D97706' };
+      case 'visitor': return { label: 'Visitor', bg: '#DBEAFE', color: '#2563EB' };
+      default: return { label: 'No Role', bg: '#F3F4F6', color: '#6B7280' };
+    }
+  };
+
   // Load available tags for filtering
   const { data: availableTags } = useQuery({
     queryKey: ['tags', 'active'],
@@ -1153,6 +1168,15 @@ export default function DirectoryScreen() {
                           {member.family_role === 'spouse' && ' (Spouse)'}
                           {member.family_role === 'child' && ' (Child)'}
                         </Text>
+                        {(() => {
+                          const badge = getRoleBadge(member);
+                          if (!badge) return null;
+                          return (
+                            <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
+                              <Text style={[styles.roleBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                            </View>
+                          );
+                        })()}
                         {member.email && (
                           <TouchableOpacity 
                             style={styles.memberDetail}
@@ -1248,6 +1272,15 @@ export default function DirectoryScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
+                    {(() => {
+                      const badge = getRoleBadge(person);
+                      if (!badge) return null;
+                      return (
+                        <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
+                          <Text style={[styles.roleBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                        </View>
+                      );
+                    })()}
                     {person.family_name_display && (
                       <View style={styles.personFamily}>
                         <Users size={12} color="#9CA3AF" />

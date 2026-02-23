@@ -107,6 +107,10 @@ export default function JoinFamilyScreen() {
             family_role: entry.family_role || (entry.is_head_of_family ? 'head' as const : entry.is_spouse ? 'spouse' as const : 'other' as const),
             photo_url: entry.photo_url,
             created_at: '',
+            updated_at: '',
+            created_ip: null,
+            created_via: null,
+            intake_status: null,
           });
         }
         

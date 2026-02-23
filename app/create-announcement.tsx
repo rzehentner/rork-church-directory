@@ -10,7 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/me-context';
@@ -260,7 +260,7 @@ export default function CreateAnnouncementScreen() {
 
   const handleDatePickerChange = (event: any, selectedDate?: Date, field?: 'publishAt' | 'expiresAt') => {
     // On Android, the picker closes automatically
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowExpiryDatePicker(null);
       setShowPublishDatePicker(null);
       
@@ -636,7 +636,7 @@ export default function CreateAnnouncementScreen() {
         </View>
       )}
 
-      {showExpiryDatePicker && Platform.OS === 'android' && (
+      {showExpiryDatePicker && Platform.OS !== 'ios' && (
         <DateTimePicker
           value={formData.expiresAt ? new Date(formData.expiresAt) : new Date()}
           mode={showExpiryDatePicker}
@@ -677,7 +677,7 @@ export default function CreateAnnouncementScreen() {
         </View>
       )}
 
-      {showPublishDatePicker && Platform.OS === 'android' && (
+      {showPublishDatePicker && Platform.OS !== 'ios' && (
         <DateTimePicker
           value={new Date(formData.publishAt)}
           mode={showPublishDatePicker}

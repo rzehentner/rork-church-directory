@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import {
   View,
   Text,
@@ -10,8 +10,9 @@ import {
   TextInput,
 } from 'react-native'
 import { Stack, router } from 'expo-router'
+import { useIsFocused } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search, ClipboardList, UtensilsCrossed } from 'lucide-react-native'
+import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search, ClipboardList, UtensilsCrossed, AlertCircle } from 'lucide-react-native'
 import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
 import { eventImageUrl } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
@@ -19,7 +20,7 @@ import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
 import { getFormSummaries } from '@/services/signup-forms'
-import type { SignupFormSummary } from '@/types/supabase'
+import type { SignupFormSummary } from '@/types/signup'
 import Calendar from '@/components/Calendar'
 import TagPill from '@/components/TagPill'
 import { styles } from '@/styles/events.styles'
@@ -56,10 +57,12 @@ export default function EventsScreen() {
     tagNames: []
   })
   const [formsByEvent, setFormsByEvent] = useState<Record<string, SignupFormSummary>>({})
+  const [error, setError] = useState<string | null>(null)
   
   const { profile } = useUser()
   const { showToast } = useToast()
   const insets = useSafeAreaInsets()
+  const isFocused = useIsFocused()
   const isStaff = profile?.role === 'admin' || profile?.role === 'leader'
 
   const loadAllEvents = useCallback(async () => {
@@ -68,20 +71,21 @@ export default function EventsScreen() {
       const startDate = new Date()
       startDate.setMonth(startDate.getMonth() - 3)
       startDate.setDate(1)
-      
+
       const endDate = new Date()
       endDate.setMonth(endDate.getMonth() + 6)
       endDate.setDate(0) // Last day of the month
-      
+
       const data = await listEventsForDateRange(startDate, endDate)
       setAllEvents(data as Event[])
-    } catch (error) {
-      console.error('Failed to load events:', error)
-      showToast('error', 'Failed to load events')
+      setError(null)
+    } catch (err) {
+      console.error('Failed to load events:', err)
+      setError('Failed to load events')
     } finally {
       setRefreshing(false)
     }
-  }, [showToast])
+  }, [])
 
   const loadTags = useCallback(async () => {
     try {
@@ -110,14 +114,14 @@ export default function EventsScreen() {
     loadFormSummaries()
   }, [loadAllEvents, loadTags, loadFormSummaries])
   
-  // Add a simple interval to refresh events periodically
+  // Refresh events periodically only while tab is focused
   useEffect(() => {
+    if (!isFocused) return
     const interval = setInterval(() => {
       loadAllEvents()
-    }, 30000) // Refresh every 30 seconds
-    
+    }, 60000)
     return () => clearInterval(interval)
-  }, [loadAllEvents])
+  }, [isFocused, loadAllEvents])
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -514,6 +518,15 @@ export default function EventsScreen() {
         }
         ListHeaderComponent={
           <View>
+            {error && (
+              <View style={styles.errorBanner}>
+                <AlertCircle size={18} color="#EF4444" />
+                <Text style={styles.errorBannerText}>{error}</Text>
+                <TouchableOpacity onPress={loadAllEvents} style={styles.retryButton}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             <FilterSection />
             
             <Calendar

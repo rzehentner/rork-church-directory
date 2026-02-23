@@ -1,5 +1,5 @@
 import { supabase } from '@/lib/supabase'
-import type { PotluckFormDetailRow } from '@/types/supabase'
+import type { PotluckFormDetailRow } from '@/types/signup'
 
 export interface PotluckGroupInput {
   title: string

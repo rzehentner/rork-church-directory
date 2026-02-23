@@ -37,7 +37,7 @@ import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
 import TagPill from '@/components/TagPill'
 import { getEventSignupForm } from '@/services/signup-forms'
-import type { SignupForm } from '@/types/supabase'
+import type { SignupForm } from '@/types/signup'
 
 type EventDetail = {
   id: string

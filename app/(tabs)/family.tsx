@@ -10,7 +10,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
@@ -570,7 +570,7 @@ export default function FamilyScreen() {
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{family.family_name_display || family.family_name}</Text>
+                <Text style={styles.cardTitle}>{family.family_name}</Text>
                 {!isEditingFamily && (
                   <TouchableOpacity onPress={() => setIsEditingFamily(true)}>
                     <Edit2 size={20} color="#7C3AED" />
@@ -1038,7 +1038,7 @@ export default function FamilyScreen() {
                     if (date) {
                       setSelectedDate(date);
                     }
-                    if (Platform.OS === 'android') {
+                    if (Platform.OS !== 'ios') {
                       setShowDatePicker(false);
                       if (date) {
                         const dateString = date.toISOString().split('T')[0];

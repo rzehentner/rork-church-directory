@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { Platform } from 'react-native';
+import { isValidUUID } from '@/utils/validation';
 
 export async function uploadImageFromUri(opts: {
   uri: string;
@@ -65,7 +66,7 @@ export async function getSignedUrl(key: string, ttlSeconds = 3600): Promise<stri
 }
 
 export async function uploadPersonAvatar(personId: string, file: any): Promise<string> {
-  if (!personId || personId.includes('<') || personId.includes('>')) throw new Error('Invalid person ID');
+  if (!isValidUUID(personId)) throw new Error('Invalid person ID');
 
   const path = `persons/${personId}/avatar.jpg`;
   const url = await uploadImageFromUri({
@@ -86,7 +87,7 @@ export async function uploadPersonAvatar(personId: string, file: any): Promise<s
 }
 
 export async function uploadFamilyPhoto(familyId: string, file: any, currentKey?: string | null): Promise<string> {
-  if (!familyId || familyId.includes('<') || familyId.includes('>')) throw new Error('Invalid family ID');
+  if (!isValidUUID(familyId)) throw new Error('Invalid family ID');
 
   const validCurrentKey = currentKey && !currentKey.includes('<') && !currentKey.includes('>') ? currentKey : null;
   const path = validCurrentKey ?? `families/${familyId}/photo.jpg`;

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
-import { View, ActivityIndicator, StyleSheet, Text, Platform, Image } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, TouchableOpacity, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/colors';
 
@@ -10,42 +10,45 @@ export default function IndexScreen() {
   const { user, isLoading: authLoading } = useAuth();
   const { profile, person, isLoading: userLoading } = useUser();
   const isNavigatingRef = useRef(false);
+  const [showFallback, setShowFallback] = useState(false);
 
   useEffect(() => {
-    const timeout = Platform.OS === 'web' ? 2000 : 5000;
-
-    const forceTimer = setTimeout(() => {
-      console.log('[IndexScreen] Force timeout triggered');
+    const safetyTimer = setTimeout(() => {
       if (!isNavigatingRef.current) {
-        isNavigatingRef.current = true;
-        router.replace('/(auth)/login' as any);
+        setShowFallback(true);
       }
-    }, timeout);
+    }, 15000);
 
-    return () => clearTimeout(forceTimer);
+    return () => clearTimeout(safetyTimer);
   }, []);
 
   useEffect(() => {
-    console.log(`[IndexScreen] Auth loading: ${authLoading}, User loading: ${userLoading}`);
-    console.log(`[IndexScreen] User: ${user ? 'exists' : 'null'}, Profile: ${profile ? profile.role : 'null'}`);
-
     if (!authLoading && !userLoading && !isNavigatingRef.current) {
       isNavigatingRef.current = true;
 
       if (user) {
         if ((profile?.role === 'pending' || profile?.role === 'visitor') && (!person || !person.first_name || !person.last_name)) {
-          console.log('[IndexScreen] Navigating to visitor profile');
           router.replace('/visitor-profile' as any);
         } else {
-          console.log('[IndexScreen] Navigating to dashboard');
           router.replace('/(tabs)/dashboard' as any);
         }
       } else {
-        console.log('[IndexScreen] Navigating to login');
         router.replace('/(auth)/login' as any);
       }
     }
   }, [user, profile, person, authLoading, userLoading]);
+
+  const handleGoToLogin = () => {
+    if (!isNavigatingRef.current) {
+      isNavigatingRef.current = true;
+      router.replace('/(auth)/login' as any);
+    }
+  };
+
+  const handleRetry = () => {
+    setShowFallback(false);
+    isNavigatingRef.current = false;
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,12 +62,24 @@ export default function IndexScreen() {
           <Text style={styles.tagline}>Edna Baptist Church</Text>
         </View>
 
-        <View style={styles.loadingSection}>
-          <ActivityIndicator size="large" color={Colors.navy} />
-          <Text style={styles.loadingText}>
-            {authLoading ? 'Loading your church family...' : 'Welcome back!'}
-          </Text>
-        </View>
+        {showFallback ? (
+          <View style={styles.fallbackSection}>
+            <Text style={styles.fallbackText}>Taking longer than expected...</Text>
+            <TouchableOpacity style={styles.fallbackButton} onPress={handleGoToLogin}>
+              <Text style={styles.fallbackButtonText}>Go to Login</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+              <Text style={styles.retryButtonText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.loadingSection}>
+            <ActivityIndicator size="large" color={Colors.navy} />
+            <Text style={styles.loadingText}>
+              {authLoading ? 'Loading your church family...' : 'Welcome back!'}
+            </Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -104,5 +119,38 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: Colors.steelBlue,
     textAlign: 'center',
+  },
+  fallbackSection: {
+    alignItems: 'center',
+    gap: 12,
+  },
+  fallbackText: {
+    fontSize: 16,
+    color: Colors.steelBlue,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  fallbackButton: {
+    backgroundColor: Colors.navy,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  fallbackButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600' as const,
+  },
+  retryButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.navy,
+  },
+  retryButtonText: {
+    color: Colors.navy,
+    fontSize: 16,
+    fontWeight: '600' as const,
   },
 });

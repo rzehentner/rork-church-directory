@@ -11,7 +11,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
@@ -388,7 +388,7 @@ export default function VisitorProfileScreen() {
                     if (date) {
                       setSelectedDate(date);
                     }
-                    if (Platform.OS === 'android') {
+                    if (Platform.OS !== 'ios') {
                       setShowDatePicker(false);
                       if (date) {
                         const dateString = date.toISOString().split('T')[0];

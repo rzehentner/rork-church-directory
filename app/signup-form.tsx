@@ -17,7 +17,7 @@ import { getFormFields, getSignupForm, submitSignup, getEventSignupForm } from '
 import { useMe } from '@/hooks/me-context'
 import { useUser } from '@/hooks/user-context'
 import { useToast } from '@/hooks/toast-context'
-import type { SignupFormField, SignupFieldType } from '@/types/supabase'
+import type { SignupFormField, SignupFieldType } from '@/types/signup'
 
 type SignupMode = 'myself' | 'family' | 'other'
 

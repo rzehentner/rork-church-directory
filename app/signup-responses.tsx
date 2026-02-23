@@ -15,7 +15,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { XCircle, Filter, ChevronDown, ChevronUp, User } from 'lucide-react-native'
 import { getAllFormResponses, cancelSignup, getSignupForm } from '@/services/signup-forms'
 import { useToast } from '@/hooks/toast-context'
-import type { SignupResponseDetail, SignupStatus } from '@/types/supabase'
+import type { SignupResponseDetail, SignupStatus } from '@/types/signup'
 
 type StatusFilter = 'all' | SignupStatus
 

@@ -111,7 +111,8 @@ export const [ChurchSettingsProvider, useChurchSettings] = createContextHook(() 
       const { data, error } = await supabase
         .from('church_settings')
         .select('*')
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
         console.error('❌ Error loading church settings:', error.message);

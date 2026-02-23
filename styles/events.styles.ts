@@ -403,4 +403,32 @@ export const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    gap: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#991B1B',
+    fontWeight: '500' as const,
+  },
+  retryButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600' as const,
+  },
 });

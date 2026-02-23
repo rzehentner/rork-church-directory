@@ -5,8 +5,8 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  ActivityIndicator,
   Dimensions,
+  RefreshControl,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
@@ -32,8 +32,10 @@ import {
   ClipboardList,
   Zap,
   BookOpen,
+  Cake,
 } from 'lucide-react-native';
 import TagPill from '@/components/TagPill';
+import { Skeleton } from '@/components/Skeleton';
 import { Colors } from '@/constants/colors';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -88,6 +90,13 @@ interface TaggedEvent {
   matching_tags: SimpleTag[];
 }
 
+interface BirthdayPerson {
+  id: string;
+  first_name: string;
+  last_name: string;
+  date_of_birth: string;
+}
+
 interface QuickAction {
   id: string;
   label: string;
@@ -114,6 +123,9 @@ export default function DashboardScreen() {
   const [recentAnnouncements, setRecentAnnouncements] = useState<RecentAnnouncement[]>([]);
   const [taggedAnnouncements, setTaggedAnnouncements] = useState<TaggedAnnouncement[]>([]);
   const [taggedEvents, setTaggedEvents] = useState<TaggedEvent[]>([]);
+  const [birthdays, setBirthdays] = useState<BirthdayPerson[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const isPending = profile?.role === 'pending';
   const isAdmin = myRole === 'admin' || myRole === 'leader';
@@ -193,6 +205,34 @@ export default function DashboardScreen() {
     } catch (error) { console.error('Error loading tagged announcements:', error); }
   }, [myPersonId]);
 
+  const loadBirthdays = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('persons')
+        .select('id, first_name, last_name, date_of_birth')
+        .not('date_of_birth', 'is', null);
+
+      if (error || !data) { setBirthdays([]); return; }
+
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const filtered = data
+        .filter((p) => {
+          const dob = new Date(p.date_of_birth);
+          return dob.getMonth() === currentMonth;
+        })
+        .sort((a, b) => {
+          const dayA = new Date(a.date_of_birth).getDate();
+          const dayB = new Date(b.date_of_birth).getDate();
+          return dayA - dayB;
+        });
+
+      setBirthdays(filtered);
+    } catch (error) {
+      console.error('Error loading birthdays:', error);
+    }
+  }, []);
+
   const loadDashboardData = useCallback(async () => {
     try {
       const [eventsResult, announcementsResult, directoryResult, prayersResult, formsResult] = await Promise.all([
@@ -229,14 +269,25 @@ export default function DashboardScreen() {
         );
         setRecentAnnouncements(formatted);
       }
-    } catch (error) { console.error('Error loading dashboard data:', error); }
+      setError(null);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError('Failed to load dashboard data');
+    }
   }, [familyMembers]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadDashboardData(), loadTaggedAnnouncements(), loadTaggedEvents(), loadBirthdays()]);
+    setRefreshing(false);
+  }, [loadDashboardData, loadTaggedAnnouncements, loadTaggedEvents, loadBirthdays]);
 
   useEffect(() => {
     loadDashboardData();
     loadTaggedAnnouncements();
     loadTaggedEvents();
-  }, [loadDashboardData, loadTaggedAnnouncements, loadTaggedEvents]);
+    loadBirthdays();
+  }, [loadDashboardData, loadTaggedAnnouncements, loadTaggedEvents, loadBirthdays]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -273,19 +324,28 @@ export default function DashboardScreen() {
     });
   }
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.navy} />
-        </View>
+  const QuickActionsSkeleton = () => (
+    <View style={styles.sectionContainer}>
+      <Skeleton width={100} height={17} borderRadius={4} style={{ marginBottom: 14 }} />
+      <View style={styles.quickActionsGrid}>
+        {Array.from({ length: 6 }).map((_, i) => (
+          <View key={`qa-skel-${i}`} style={styles.quickActionCard}>
+            <Skeleton width={44} height={44} borderRadius={12} style={{ marginBottom: 10 }} />
+            <Skeleton width={70} height={14} borderRadius={4} />
+          </View>
+        ))}
       </View>
-    );
-  }
+    </View>
+  );
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[Colors.navy]} tintColor={Colors.navy} />
+        }
+      >
         <View style={styles.heroSection}>
           <View style={styles.heroContent}>
             <Text style={styles.greeting}>
@@ -310,6 +370,16 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
 
+        {error && (
+          <View style={styles.errorBanner}>
+            <AlertCircle size={18} color="#EF4444" />
+            <Text style={styles.errorBannerText}>{error}</Text>
+            <TouchableOpacity onPress={onRefresh} style={styles.errorRetryButton}>
+              <Text style={styles.errorRetryText}>Retry</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {isPending && (
           <View style={styles.pendingBanner}>
             <AlertCircle size={18} color="#D97706" />
@@ -330,27 +400,52 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         )}
 
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionLabel}>Quick Access</Text>
-          <View style={styles.quickActionsGrid}>
-            {quickActions.map((action) => (
-              <TouchableOpacity
-                key={action.id}
-                style={styles.quickActionCard}
-                onPress={() => router.push(action.route as any)}
-                testID={`hub-${action.id}`}
-              >
-                <View style={[styles.quickActionIcon, { backgroundColor: action.bgColor }]}>
-                  {action.icon}
-                </View>
-                <Text style={styles.quickActionLabel}>{action.label}</Text>
-                {action.count !== undefined && action.count > 0 && (
-                  <Text style={[styles.quickActionCount, { color: action.color }]}>{action.count}</Text>
-                )}
-              </TouchableOpacity>
-            ))}
+        {birthdays.length > 0 && (
+          <View style={styles.birthdayCard}>
+            <View style={styles.birthdayHeader}>
+              <Cake size={20} color="#D4A843" />
+              <Text style={styles.birthdayHeaderText}>Happy Birthday!</Text>
+            </View>
+            <View style={styles.birthdayList}>
+              {birthdays.map((person) => {
+                const dob = new Date(person.date_of_birth);
+                const formattedDate = dob.toLocaleDateString([], { month: 'short', day: 'numeric' });
+                return (
+                  <View key={person.id} style={styles.birthdayItem}>
+                    <Text style={styles.birthdayName}>{person.first_name} {person.last_name}</Text>
+                    <Text style={styles.birthdayDate}>{formattedDate}</Text>
+                  </View>
+                );
+              })}
+            </View>
           </View>
-        </View>
+        )}
+
+        {isLoading ? (
+          <QuickActionsSkeleton />
+        ) : (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionLabel}>Quick Access</Text>
+            <View style={styles.quickActionsGrid}>
+              {quickActions.map((action) => (
+                <TouchableOpacity
+                  key={action.id}
+                  style={styles.quickActionCard}
+                  onPress={() => router.push(action.route as any)}
+                  testID={`hub-${action.id}`}
+                >
+                  <View style={[styles.quickActionIcon, { backgroundColor: action.bgColor }]}>
+                    {action.icon}
+                  </View>
+                  <Text style={styles.quickActionLabel}>{action.label}</Text>
+                  {action.count !== undefined && action.count > 0 && (
+                    <Text style={[styles.quickActionCount, { color: action.color }]}>{action.count}</Text>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
 
         {taggedAnnouncements.length > 0 && (
           <View style={styles.sectionContainer}>
@@ -520,11 +615,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.warmWhite,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   heroSection: {
     flexDirection: 'row',
@@ -769,7 +859,79 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  birthdayCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 14,
+    padding: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#D4A843',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  birthdayHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  birthdayHeaderText: {
+    fontSize: 16,
+    fontWeight: '700' as const,
+    color: '#D4A843',
+  },
+  birthdayList: {
+    gap: 8,
+  },
+  birthdayItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  birthdayName: {
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: Colors.navyDark,
+  },
+  birthdayDate: {
+    fontSize: 13,
+    color: Colors.steelBlue,
+  },
   bottomSpacing: {
     height: 30,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    marginHorizontal: 20,
+    marginTop: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 10,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: '#991B1B',
+    fontSize: 13,
+    fontWeight: '500' as const,
+  },
+  errorRetryButton: {
+    backgroundColor: '#EF4444',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  errorRetryText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '600' as const,
   },
 });

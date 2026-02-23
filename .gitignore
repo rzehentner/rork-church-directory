@@ -44,3 +44,10 @@ rork-eslint.config.js
 core
 node_modules
 .expo
+
+# Build artifacts
+build-debug.log
+tmp/
+
+# Lock files (using bun.lock as primary)
+package-lock.json

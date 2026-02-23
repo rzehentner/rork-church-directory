@@ -20,7 +20,7 @@ import { router } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 export default function AuthScreen() {
-  const { signIn, signUp, sendMagicLink, user, biometricSignIn, isBiometricAvailable, isBiometricEnabled } = useAuth();
+  const { signIn, signUp, sendMagicLink, resetPassword, user, biometricSignIn, isBiometricAvailable, isBiometricEnabled, enableBiometric } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
@@ -29,7 +29,7 @@ export default function AuthScreen() {
 
   useEffect(() => {
     if (user) {
-      router.replace('/(tabs)/family' as any);
+      router.replace('/(tabs)/dashboard' as any);
     }
   }, [user]);
 
@@ -72,7 +72,35 @@ export default function AuthScreen() {
         const { error } = isSignUp ? await signUp(email, password) : await signIn(email, password);
         if (error) {
           Alert.alert('Error', error.message);
+        } else if (!isSignUp && isBiometricAvailable && !isBiometricEnabled) {
+          Alert.alert(
+            'Enable Biometric Login',
+            'Would you like to enable biometric authentication for faster sign-in next time?',
+            [
+              { text: 'Not Now', style: 'cancel' },
+              { text: 'Enable', onPress: () => enableBiometric(email, password) },
+            ]
+          );
         }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    const resetEmail = email.trim();
+    if (!resetEmail) {
+      Alert.alert('Error', 'Please enter your email address first');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const { error } = await resetPassword(resetEmail);
+      if (error) {
+        Alert.alert('Error', error.message);
+      } else {
+        Alert.alert('Success', 'Check your email for a password reset link.');
       }
     } finally {
       setIsLoading(false);
@@ -137,6 +165,16 @@ export default function AuthScreen() {
                     testID="password-input"
                   />
                 </View>
+              )}
+
+              {!useMagicLink && !isSignUp && (
+                <TouchableOpacity
+                  onPress={handleForgotPassword}
+                  disabled={isLoading}
+                  style={styles.forgotPasswordButton}
+                >
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                </TouchableOpacity>
               )}
 
               <TouchableOpacity
@@ -333,5 +371,15 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     fontSize: 12,
     marginHorizontal: 10,
+  },
+  forgotPasswordButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 8,
+    marginTop: -8,
+  },
+  forgotPasswordText: {
+    color: Colors.navyLight,
+    fontSize: 14,
+    fontWeight: '500' as const,
   },
 });

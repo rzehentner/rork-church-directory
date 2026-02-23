@@ -6,7 +6,7 @@ import type {
   MySignupForm,
   SignupResponseDetail,
   SignupFieldType,
-} from '@/types/supabase'
+} from '@/types/signup'
 
 export interface CreateFormFieldInput {
   field_key: string

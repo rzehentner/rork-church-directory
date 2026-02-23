@@ -4,7 +4,26 @@ import { supabase } from '@/lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
+import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { router } from 'expo-router';
+
+const BIOMETRIC_KEY = 'biometric_credentials';
+
+async function getSecureItem(key: string): Promise<string | null> {
+  if (Platform.OS === 'web') return null;
+  return SecureStore.getItemAsync(key);
+}
+
+async function setSecureItem(key: string, value: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await SecureStore.setItemAsync(key, value);
+}
+
+async function deleteSecureItem(key: string): Promise<void> {
+  if (Platform.OS === 'web') return;
+  await SecureStore.deleteItemAsync(key);
+}
 
 interface AuthState {
   session: Session | null;
@@ -14,6 +33,8 @@ interface AuthState {
   signUp: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   sendMagicLink: (email: string) => Promise<{ error: Error | null }>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
+  updatePassword: (newPassword: string) => Promise<{ error: Error | null }>;
   biometricSignIn: () => Promise<{ error: Error | null }>;
   isBiometricAvailable: boolean;
   isBiometricEnabled: boolean;
@@ -80,8 +101,8 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           setIsBiometricAvailable(compatible && enrolled);
         }
         
-        const biometricData = await AsyncStorage.getItem('biometric_credentials');
-        
+        const biometricData = await getSecureItem(BIOMETRIC_KEY);
+
         if (mounted) {
           setIsBiometricEnabled(!!biometricData);
         }
@@ -96,12 +117,16 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
       if (!mounted) return;
-      
+
       setSession(session);
       setUser(session?.user ?? null);
-      
+
+      if (event === 'PASSWORD_RECOVERY') {
+        router.replace('/reset-password' as any);
+      }
+
       if (session) {
         AsyncStorage.setItem('session', JSON.stringify(session)).catch(console.warn);
       } else {
@@ -117,16 +142,6 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
 
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (!error && isBiometricAvailable) {
-      const biometricData = await AsyncStorage.getItem('biometric_credentials');
-      if (!biometricData) {
-        const savedEmail = await AsyncStorage.getItem('last_email');
-        if (savedEmail === email) {
-          await AsyncStorage.setItem('biometric_credentials', JSON.stringify({ email, password }));
-          setIsBiometricEnabled(true);
-        }
-      }
-    }
     return { error };
   };
 
@@ -145,13 +160,25 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     return { error };
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'https://connect.ednabaptist.church/reset-password',
+    });
+    return { error };
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    return { error };
+  };
+
   const biometricSignIn = async () => {
     if (Platform.OS === 'web') {
       return { error: new Error('Biometric authentication not available on web') };
     }
 
     try {
-      const biometricData = await AsyncStorage.getItem('biometric_credentials');
+      const biometricData = await getSecureItem(BIOMETRIC_KEY);
       if (!biometricData) {
         return { error: new Error('Biometric authentication not set up') };
       }
@@ -166,7 +193,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         try {
           const parsedData = JSON.parse(biometricData);
           if (!parsedData || typeof parsedData !== 'object' || !parsedData.email || !parsedData.password) {
-            await AsyncStorage.removeItem('biometric_credentials');
+            await deleteSecureItem(BIOMETRIC_KEY);
             setIsBiometricEnabled(false);
             return { error: new Error('Invalid biometric data. Please set up biometric authentication again.') };
           }
@@ -175,7 +202,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
           return { error };
         } catch (parseError) {
           console.error('Failed to parse biometric data:', parseError);
-          await AsyncStorage.removeItem('biometric_credentials');
+          await deleteSecureItem(BIOMETRIC_KEY);
           setIsBiometricEnabled(false);
           return { error: new Error('Invalid biometric data. Please set up biometric authentication again.') };
         }
@@ -200,7 +227,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       });
 
       if (result.success) {
-        await AsyncStorage.setItem('biometric_credentials', JSON.stringify({ email, password }));
+        await setSecureItem(BIOMETRIC_KEY, JSON.stringify({ email, password }));
         await AsyncStorage.setItem('last_email', email);
         setIsBiometricEnabled(true);
         return { error: null };
@@ -213,7 +240,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
   };
 
   const disableBiometric = async () => {
-    await AsyncStorage.removeItem('biometric_credentials');
+    await deleteSecureItem(BIOMETRIC_KEY);
     setIsBiometricEnabled(false);
   };
 
@@ -225,6 +252,8 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     signUp,
     signOut,
     sendMagicLink,
+    resetPassword,
+    updatePassword,
     biometricSignIn,
     isBiometricAvailable,
     isBiometricEnabled,

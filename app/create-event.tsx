@@ -9,7 +9,7 @@ import {
   Switch,
   Platform,
 } from 'react-native'
-import DateTimePicker from '@react-native-community/datetimepicker'
+import DateTimePicker from '@/components/DateTimePicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
 import { createEvent, setEventTags, scheduleReminder } from '@/services/events'
@@ -134,7 +134,7 @@ export default function CreateEventScreen() {
   }
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowStartDatePicker(false)
       if (selectedDate) {
         const newStartDate = new Date(startDate)
@@ -159,7 +159,7 @@ export default function CreateEventScreen() {
   }
 
   const handleStartTimeChange = (event: any, selectedTime?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowStartTimePicker(false)
       if (selectedTime) {
         const newStartDate = new Date(startDate)
@@ -183,7 +183,7 @@ export default function CreateEventScreen() {
   }
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowEndDatePicker(false)
       if (selectedDate) {
         const newEndDate = new Date(endDate)
@@ -201,7 +201,7 @@ export default function CreateEventScreen() {
   }
 
   const handleEndTimeChange = (event: any, selectedTime?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowEndTimePicker(false)
       if (selectedTime) {
         const newEndDate = new Date(endDate)

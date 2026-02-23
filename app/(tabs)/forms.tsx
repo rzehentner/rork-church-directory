@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed, ClipboardList } from 'lucide-react-native'
 import { getMySignupForms, getFormSummaries } from '@/services/signup-forms'
-import type { MySignupForm, SignupFormSummary } from '@/types/supabase'
+import type { MySignupForm, SignupFormSummary } from '@/types/signup'
 
 function getStatusBadge(status: MySignupForm['my_signup_status']) {
   if (status === 'confirmed') {

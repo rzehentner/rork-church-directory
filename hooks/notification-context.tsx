@@ -83,8 +83,7 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       if (!notification) return;
       console.log('Notification received:', notification);
-      // Refetch notifications when a new one is received
-      queryClient.invalidateQueries({ queryKey: ['notifications', user.id] });
+      refetch();
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
@@ -105,7 +104,7 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
         responseListener.current.remove();
       }
     };
-  }, [user, queryClient, markAsRead]);
+  }, [user, refetch, markAsRead]);
 
   return useMemo(() => ({
     notifications,

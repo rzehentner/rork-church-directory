@@ -23,7 +23,7 @@ import {
 } from 'lucide-react-native'
 import { createPotluckForm, type PotluckGroupInput } from '@/services/potluck'
 import { useToast } from '@/hooks/toast-context'
-import DateTimePicker from '@react-native-community/datetimepicker'
+import DateTimePicker from '@/components/DateTimePicker'
 
 interface ItemDraft {
   id: string
@@ -241,7 +241,7 @@ export default function CreatePotluckFormScreen() {
               mode="datetime"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={(_, date) => {
-                if (Platform.OS === 'android') setShowDatePicker(false)
+                if (Platform.OS !== 'ios') setShowDatePicker(false)
                 if (date) setDeadline(date)
               }}
               minimumDate={new Date()}

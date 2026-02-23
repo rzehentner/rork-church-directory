@@ -322,13 +322,13 @@ export default function SettingsScreen() {
               <Code size={16} color="#6B7280" />
               <Text style={styles.developerLabel}>Developed by</Text>
             </View>
-            <Text style={styles.developerName}>Caleb McWhorter</Text>
+            <Text style={styles.developerName}>Robert Zehentner (Pine Belt Data)</Text>
             <TouchableOpacity
               style={styles.developerLink}
-              onPress={() => Linking.openURL('mailto:caleb@ednabc.org')}
+              onPress={() => Linking.openURL('mailto:rob@pinebeltrides.com')}
             >
               <ExternalLink size={14} color="#1C2E4A" />
-              <Text style={styles.developerLinkText}>caleb@ednabc.org</Text>
+              <Text style={styles.developerLinkText}>rob@pinebeltrides.com</Text>
             </TouchableOpacity>
           </View>
         </View>
