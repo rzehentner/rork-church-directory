@@ -84,33 +84,22 @@ export default function SettingsScreen() {
         ]
       );
     } else {
-      if (!user?.email) return;
-      
       Alert.alert(
         'Enable Biometric Authentication',
-        'You will need to re-enter your password to enable biometric authentication.',
+        'Use your fingerprint or face to sign in faster next time.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Continue',
-            onPress: () => {
-              Alert.prompt(
-                'Enter Password',
-                'Please enter your password to enable biometric authentication',
-                async (password) => {
-                  if (password) {
-                    setIsEnablingBiometric(true);
-                    const { error } = await enableBiometric(user.email!, password);
-                    setIsEnablingBiometric(false);
-                    if (error) {
-                      Alert.alert('Error', error.message);
-                    } else {
-                      Alert.alert('Success', 'Biometric authentication enabled');
-                    }
-                  }
-                },
-                'secure-text'
-              );
+            text: 'Enable',
+            onPress: async () => {
+              setIsEnablingBiometric(true);
+              const { error } = await enableBiometric();
+              setIsEnablingBiometric(false);
+              if (error) {
+                Alert.alert('Error', error.message);
+              } else {
+                Alert.alert('Success', 'Biometric authentication enabled');
+              }
             },
           },
         ]

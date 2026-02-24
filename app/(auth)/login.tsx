@@ -69,6 +69,10 @@ export default function AuthScreen() {
           setEmail('');
         }
       } else {
+        if (isSignUp && password.length < 8) {
+          Alert.alert('Error', 'Password must be at least 8 characters');
+          return;
+        }
         const { error } = isSignUp ? await signUp(email, password) : await signIn(email, password);
         if (error) {
           Alert.alert('Error', error.message);
@@ -78,7 +82,7 @@ export default function AuthScreen() {
             'Would you like to enable biometric authentication for faster sign-in next time?',
             [
               { text: 'Not Now', style: 'cancel' },
-              { text: 'Enable', onPress: () => enableBiometric(email, password) },
+              { text: 'Enable', onPress: () => enableBiometric() },
             ]
           );
         }

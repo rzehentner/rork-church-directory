@@ -75,6 +75,8 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
 }
 
 export async function addTagToPerson(personId: string, tagId: string): Promise<void> {
+  if (!isValidUUID(personId)) throw new Error('Invalid person ID');
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   const { data: tag, error: tagError } = await supabase.from('tags').select('name').eq('id', tagId).single();
   if (tagError || !tag) throw new Error('Tag not found');
 
@@ -87,6 +89,8 @@ export async function addTagToPerson(personId: string, tagId: string): Promise<v
 }
 
 export async function removeTagFromPerson(personId: string, tagId: string): Promise<void> {
+  if (!isValidUUID(personId)) throw new Error('Invalid person ID');
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   const { data: tag, error: tagError } = await supabase.from('tags').select('name').eq('id', tagId).single();
   if (tagError || !tag) throw new Error('Tag not found');
 
@@ -159,6 +163,7 @@ export async function updateTag(tagId: string, updates: {
   color?: string;
   description?: string;
 }): Promise<void> {
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   const { error } = await supabase
     .from('tags')
     .update({ ...updates, updated_at: new Date().toISOString() })
@@ -167,6 +172,7 @@ export async function updateTag(tagId: string, updates: {
 }
 
 export async function deleteTag(tagId: string, hardDelete: boolean = false): Promise<void> {
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   if (hardDelete) {
     const { error } = await supabase.from('tags').delete().eq('id', tagId);
     if (error) throw error;
@@ -176,6 +182,7 @@ export async function deleteTag(tagId: string, hardDelete: boolean = false): Pro
 }
 
 export async function reactivateTag(tagId: string): Promise<void> {
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   const { error } = await supabase
     .from('tags')
     .update({ is_active: true, updated_at: new Date().toISOString() })

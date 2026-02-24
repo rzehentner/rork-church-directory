@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/hooks/user-context';
+import { useMe } from '@/hooks/me-context';
 import {
   Search,
   Users,
@@ -44,6 +45,7 @@ interface FamilyWithMembers {
 
 export default function JoinFamilyScreen() {
   const { joinFamily, replacePersonInFamily } = useUser();
+  const { myRole, isAdminOrLeader } = useMe();
   const insets = useSafeAreaInsets();
   const [searchQuery, setSearchQuery] = useState('');
   const [families, setFamilies] = useState<FamilyWithMembers[]>([]);
@@ -128,9 +130,8 @@ export default function JoinFamilyScreen() {
     const query = searchQuery.toLowerCase();
     return (
       family.family_name_display.toLowerCase().includes(query) ||
-      family.members.some(member => 
-        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query) ||
-        member.email?.toLowerCase().includes(query)
+      family.members.some(member =>
+        `${member.first_name} ${member.last_name}`.toLowerCase().includes(query)
       )
     );
   });
@@ -337,21 +338,21 @@ export default function JoinFamilyScreen() {
                             )}
                           </View>
                           
-                          {member.email && (
+                          {isAdminOrLeader && member.email && (
                             <View style={styles.memberDetail}>
                               <Mail size={12} color="#9CA3AF" />
                               <Text style={styles.memberDetailText}>{member.email}</Text>
                             </View>
                           )}
-                          
-                          {member.phone && (
+
+                          {isAdminOrLeader && member.phone && (
                             <View style={styles.memberDetail}>
                               <Phone size={12} color="#9CA3AF" />
                               <Text style={styles.memberDetailText}>{member.phone}</Text>
                             </View>
                           )}
-                          
-                          {member.date_of_birth && (
+
+                          {isAdminOrLeader && member.date_of_birth && (
                             <View style={styles.memberDetail}>
                               <Calendar size={12} color="#9CA3AF" />
                               <Text style={styles.memberDetailText}>

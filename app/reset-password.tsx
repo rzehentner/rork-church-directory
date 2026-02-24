@@ -30,8 +30,8 @@ export default function ResetPasswordScreen() {
       return;
     }
 
-    if (newPassword.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+    if (newPassword.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
       return;
     }
 

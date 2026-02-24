@@ -2,7 +2,6 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
@@ -38,7 +37,7 @@ interface AuthState {
   biometricSignIn: () => Promise<{ error: Error | null }>;
   isBiometricAvailable: boolean;
   isBiometricEnabled: boolean;
-  enableBiometric: (email: string, password: string) => Promise<{ error: Error | null }>;
+  enableBiometric: () => Promise<{ error: Error | null }>;
   disableBiometric: () => Promise<void>;
 }
 
@@ -51,21 +50,21 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
 
   useEffect(() => {
     let mounted = true;
-    
+    let biometricTimer: ReturnType<typeof setTimeout>;
+
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (!mounted) return;
-        
+
         setSession(session);
         setUser(session?.user ?? null);
         setIsLoading(false);
-        
+
         if (Platform.OS !== 'web') {
-          setTimeout(() => {
+          biometricTimer = setTimeout(() => {
             initBiometrics().catch(error => {
-              console.warn('Biometric setup failed (non-critical):', error);
               if (mounted) {
                 setIsBiometricAvailable(false);
                 setIsBiometricEnabled(false);
@@ -126,16 +125,11 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       if (event === 'PASSWORD_RECOVERY') {
         router.replace('/reset-password' as any);
       }
-
-      if (session) {
-        AsyncStorage.setItem('session', JSON.stringify(session)).catch(console.warn);
-      } else {
-        AsyncStorage.removeItem('session').catch(console.warn);
-      }
     });
 
     return () => {
       mounted = false;
+      clearTimeout(biometricTimer);
       subscription.unsubscribe();
     };
   }, []);
@@ -152,7 +146,8 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    await AsyncStorage.removeItem('session');
+    await deleteSecureItem(BIOMETRIC_KEY);
+    setIsBiometricEnabled(false);
   };
 
   const sendMagicLink = async (email: string) => {
@@ -192,19 +187,24 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       if (result.success) {
         try {
           const parsedData = JSON.parse(biometricData);
-          if (!parsedData || typeof parsedData !== 'object' || !parsedData.email || !parsedData.password) {
+          if (!parsedData || typeof parsedData !== 'object' || !parsedData.refresh_token) {
             await deleteSecureItem(BIOMETRIC_KEY);
             setIsBiometricEnabled(false);
-            return { error: new Error('Invalid biometric data. Please set up biometric authentication again.') };
+            return { error: new Error('Biometric data expired. Please sign in with your password and re-enable biometrics.') };
           }
-          const { email, password } = parsedData;
-          const { error } = await supabase.auth.signInWithPassword({ email, password });
-          return { error };
+          const { data, error } = await supabase.auth.refreshSession({
+            refresh_token: parsedData.refresh_token,
+          });
+          if (error || !data.session) {
+            await deleteSecureItem(BIOMETRIC_KEY);
+            setIsBiometricEnabled(false);
+            return { error: error ?? new Error('Session expired. Please sign in with your password and re-enable biometrics.') };
+          }
+          return { error: null };
         } catch (parseError) {
-          console.error('Failed to parse biometric data:', parseError);
           await deleteSecureItem(BIOMETRIC_KEY);
           setIsBiometricEnabled(false);
-          return { error: new Error('Invalid biometric data. Please set up biometric authentication again.') };
+          return { error: new Error('Biometric data expired. Please sign in with your password and re-enable biometrics.') };
         }
       } else {
         return { error: new Error('Authentication failed') };
@@ -214,12 +214,17 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     }
   };
 
-  const enableBiometric = async (email: string, password: string) => {
+  const enableBiometric = async () => {
     if (Platform.OS === 'web') {
       return { error: new Error('Biometric authentication not available on web') };
     }
 
     try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      if (!currentSession?.refresh_token) {
+        return { error: new Error('No active session. Please sign in first.') };
+      }
+
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Enable biometric authentication',
         fallbackLabel: 'Cancel',
@@ -227,8 +232,9 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       });
 
       if (result.success) {
-        await setSecureItem(BIOMETRIC_KEY, JSON.stringify({ email, password }));
-        await AsyncStorage.setItem('last_email', email);
+        await setSecureItem(BIOMETRIC_KEY, JSON.stringify({
+          refresh_token: currentSession.refresh_token,
+        }));
         setIsBiometricEnabled(true);
         return { error: null };
       } else {

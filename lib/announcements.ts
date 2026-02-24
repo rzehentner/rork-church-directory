@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isValidUUID } from '@/utils/validation'
 
 type Role = 'admin'|'leader'|'member'|'visitor'|'pending'
 
@@ -47,6 +48,7 @@ export async function createAnnouncement(input: {
 }
 
 export async function getAnnouncement(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .select('*')
@@ -58,6 +60,7 @@ export async function getAnnouncement(id: string) {
 }
 
 export async function updateAnnouncement(id: string, patch: Partial<Announcement>) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .update({
@@ -76,6 +79,7 @@ export async function updateAnnouncement(id: string, patch: Partial<Announcement
 }
 
 export async function publishAnnouncement(id: string, when: string | null = null) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .update({
@@ -90,6 +94,7 @@ export async function publishAnnouncement(id: string, when: string | null = null
 }
 
 export async function unpublishAnnouncement(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .update({ is_published: false })
@@ -101,6 +106,7 @@ export async function unpublishAnnouncement(id: string) {
 }
 
 export async function getAnnouncementTags(announcementId: string) {
+  if (!isValidUUID(announcementId)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcement_audience_tags')
     .select('tag_id, tags!inner(id, name, color)')
@@ -111,6 +117,7 @@ export async function getAnnouncementTags(announcementId: string) {
 }
 
 export async function setAnnouncementTags(announcementId: string, tagIds: string[]) {
+  if (!isValidUUID(announcementId)) throw new Error('Invalid announcement ID')
   const { data: curr, error: e1 } = await supabase
     .from('announcement_audience_tags')
     .select('tag_id')
@@ -154,6 +161,7 @@ export async function listAnnouncementsForMe(limit = 20, from = 0) {
 }
 
 export async function markAnnouncementRead(announcementId: string) {
+  if (!isValidUUID(announcementId)) return
   const { data, error } = await supabase.rpc('mark_announcement_read', {
     p_announcement_id: announcementId
   })

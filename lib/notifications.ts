@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
+import { isValidUUID } from '@/utils/validation';
 
 // Configure notification behavior
 Notifications.setNotificationHandler({
@@ -90,6 +91,7 @@ export async function fetchUserNotifications() {
 }
 
 export async function markNotificationAsRead(id: string) {
+  if (!isValidUUID(id)) return;
   const { error } = await supabase
     .from('user_notifications')
     .update({ read_at: new Date().toISOString() })
@@ -101,22 +103,16 @@ export async function markNotificationAsRead(id: string) {
 }
 
 export async function scheduleEventReminder(eventId: string, minutesBefore: number = 60, attendeesOnly: boolean = true) {
+  if (!isValidUUID(eventId)) return { data: null, error: new Error('Invalid event ID') };
   try {
     const { data, error } = await supabase.rpc('schedule_event_reminder', {
-      event_id: eventId,
-      minutes_before: minutesBefore,
-      attendees_only: attendeesOnly
+      p_event_id: eventId,
+      p_minutes_before: minutesBefore,
+      p_attendees_only: attendeesOnly,
     });
-
-    if (error) {
-      console.error('Error scheduling event reminder:', error);
-    } else {
-      console.log('Event reminder scheduled successfully');
-    }
 
     return { data, error };
   } catch (error) {
-    console.error('Error in scheduleEventReminder:', error);
     return { data: null, error };
   }
 }

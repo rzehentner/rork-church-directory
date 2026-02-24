@@ -90,18 +90,22 @@ export async function deletePrayer(id: string) {
 }
 
 export async function bulkUpdatePrayerStatus(ids: string[], status: PrayerStatus) {
+  const validIds = ids.filter(isValidUUID);
+  if (validIds.length === 0) throw new Error('No valid prayer request IDs provided');
   const { error } = await supabase
     .from('prayer_requests')
     .update({ status })
-    .in('id', ids);
+    .in('id', validIds);
   if (error) throw error;
 }
 
 export async function bulkDeletePrayers(ids: string[]) {
+  const validIds = ids.filter(isValidUUID);
+  if (validIds.length === 0) throw new Error('No valid prayer request IDs provided');
   const { error } = await supabase
     .from('prayer_requests')
     .delete()
-    .in('id', ids);
+    .in('id', validIds);
   if (error) throw error;
 }
 
