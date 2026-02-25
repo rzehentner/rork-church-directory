@@ -17,27 +17,17 @@ export interface AdminUserListItem {
 export async function adminListUsers(
   roles?: ('pending' | 'visitor' | 'member' | 'leader' | 'admin')[] | null
 ): Promise<AdminUserListItem[]> {
-  console.log('🔍 adminListUsers called with roles:', roles);
-  
   try {
     const { data, error } = await supabase.rpc('admin_list_users', {
       p_roles: roles || null
     });
-    
+
     if (error) {
-      console.error('❌ RPC admin_list_users error:', error);
       throw error;
     }
-    
-    console.log('✅ adminListUsers success:', {
-      count: data?.length || 0,
-      roles: roles,
-      sampleData: data?.slice(0, 3)
-    });
-    
+
     return data || [];
   } catch (error) {
-    console.error('❌ adminListUsers failed:', error);
     throw error;
   }
 }

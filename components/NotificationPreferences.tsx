@@ -50,8 +50,7 @@ export function NotificationPreferencesSection({ onPreferencesChange }: Notifica
         await notificationStorage.setNotificationPreferences(updatedPrefs);
         setPreferences(updatedPrefs);
       }
-    } catch (error) {
-      console.error('Error loading preferences and tags:', error);
+    } catch {
     } finally {
       setLoading(false);
     }

@@ -233,8 +233,8 @@ export default function CreateBulletinScreen() {
       try {
         const Print = await import('expo-print');
         await Print.printAsync({ html, width: 396, height: 612 });
-      } catch (e) {
-        console.log('Print preview cancelled or failed:', e);
+      } catch {
+        // print preview cancelled or failed; no action needed
       }
     }
   }, [generateHTML]);
@@ -256,12 +256,10 @@ export default function CreateBulletinScreen() {
         const Print = await import('expo-print');
         const { shareAsync } = await import('expo-sharing');
         const { uri } = await Print.printToFileAsync({ html, width: 396, height: 612 });
-        console.log('PDF saved to:', uri);
         await shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
         showSuccess('Bulletin PDF created');
       }
-    } catch (error) {
-      console.error('Error generating PDF:', error);
+    } catch {
       showError('Failed to generate bulletin PDF');
     } finally {
       setIsGenerating(false);

@@ -6,29 +6,29 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Linking,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Stack, useLocalSearchParams, router } from 'expo-router'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { 
-  MapPin, 
-  Clock, 
-  Calendar as CalendarIcon, 
-  Users, 
+import {
+  MapPin,
+  Clock,
+  Calendar as CalendarIcon,
+  Users,
   Edit3,
   Share2,
   ExternalLink,
   ChevronLeft
 } from 'lucide-react-native'
-import { 
-  getEvent, 
-  rsvpEvent, 
+import {
+  getEvent,
+  rsvpEvent,
   getEventRSVPs,
-  type RSVP, 
-  type EventRSVP 
+  type RSVP,
+  type EventRSVP
 } from '@/services/events'
 import { eventImageUrl } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
@@ -37,7 +37,7 @@ import { useToast } from '@/hooks/toast-context'
 import { listTags, type Tag } from '@/services/tags'
 import TagPill from '@/components/TagPill'
 import { getEventSignupForm } from '@/services/signup-forms'
-import type { SignupForm } from '@/types/supabase'
+import type { SignupForm } from '@/types/signup'
 
 type EventDetail = {
   id: string
@@ -62,7 +62,7 @@ export default function EventDetailScreen() {
   const [availableTags, setAvailableTags] = useState<Tag[]>([])
   const [loading, setLoading] = useState(true)
   const [rsvpLoading, setRSVPLoading] = useState(false)
-  
+
   const { profile, myRole, isLoading: meLoading } = useMe()
   const { showToast } = useToast()
   const insets = useSafeAreaInsets()
@@ -74,9 +74,7 @@ export default function EventDetailScreen() {
   const { data: signupForm, refetch: refetchSignupForm } = useQuery({
     queryKey: ['event-signup-form', id],
     queryFn: async () => {
-      console.log('Fetching signup form for event:', id)
       const form = await getEventSignupForm(id)
-      console.log('Signup form result:', form?.id ?? 'none', 'type:', form?.form_type ?? 'none', 'active:', form?.is_active ?? 'N/A')
       return form
     },
     enabled: !!id,
@@ -86,8 +84,7 @@ export default function EventDetailScreen() {
     try {
       const tags = await listTags(true)
       setAvailableTags(tags)
-    } catch (error) {
-      console.error('Failed to load tags:', error)
+    } catch {
     }
   }
 
@@ -101,8 +98,7 @@ export default function EventDetailScreen() {
     try {
       const eventData = await getEvent(id)
       setEvent(eventData as EventDetail)
-    } catch (error) {
-      console.error('Failed to load event:', error)
+    } catch {
       showToast('error', 'Failed to load event details')
       router.back()
     } finally {
@@ -122,16 +118,15 @@ export default function EventDetailScreen() {
   useEffect(() => {
     const loadRSVPs = async () => {
       if (!id || !event || meLoading || !canViewRSVPs) return
-      
+
       try {
         const rsvpData = await getEventRSVPs(id)
         setRSVPs(rsvpData)
-      } catch (error) {
-        console.error('Failed to load RSVPs:', error)
+      } catch {
         // Don't show error for RSVPs as it's not critical
       }
     }
-    
+
     loadRSVPs()
   }, [id, event, meLoading, canViewRSVPs, myRole])
 
@@ -139,25 +134,24 @@ export default function EventDetailScreen() {
 
   const handleRSVP = async (status: RSVP) => {
     if (!event || !status?.trim()) return
-    
+
     const validStatuses: RSVP[] = ['going', 'maybe', 'declined']
     if (!validStatuses.includes(status)) return
-    
+
     setRSVPLoading(true)
     try {
       // Optimistic update
       setEvent(prev => prev ? { ...prev, my_rsvp: status } : null)
-      
+
       await rsvpEvent(event.id, status)
       showToast('success', `RSVP updated to ${status}`)
-      
+
       // Reload RSVPs if staff to see updated list
       if (canViewRSVPs) {
         const rsvpData = await getEventRSVPs(event.id)
         setRSVPs(rsvpData)
       }
-    } catch (error) {
-      console.error('Failed to update RSVP:', error)
+    } catch {
       // Revert optimistic update
       setEvent(prev => prev ? { ...prev, my_rsvp: event.my_rsvp } : null)
       showToast('error', 'Failed to update RSVP')
@@ -168,13 +162,12 @@ export default function EventDetailScreen() {
 
   const handleAddToCalendar = async () => {
     if (!event) return
-    
+
     try {
 
       await addEventToDevice(event)
       showToast('success', 'Event added to calendar')
     } catch (error) {
-      console.error('Failed to add to calendar:', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to add to calendar'
       showToast('error', errorMessage)
     }
@@ -182,10 +175,10 @@ export default function EventDetailScreen() {
 
   const handleShare = async () => {
     if (!event) return
-    
+
     try {
       const message = `Check out this event: ${event.title}\n\n${formatEventTime(event)}${event.location ? `\nLocation: ${event.location}` : ''}${event.description ? `\n\n${event.description}` : ''}`
-      
+
       // For web, copy to clipboard
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
         await navigator.clipboard.writeText(message)
@@ -194,18 +187,17 @@ export default function EventDetailScreen() {
         // For mobile, use native sharing if available
         showToast('info', 'Sharing not available')
       }
-    } catch (error) {
-      console.error('Failed to share event:', error)
+    } catch {
       showToast('error', 'Failed to share event')
     }
   }
 
   const handleLocationPress = () => {
     if (!event?.location) return
-    
+
     const encodedLocation = encodeURIComponent(event.location)
     const url = `https://maps.google.com/?q=${encodedLocation}`
-    
+
     Linking.openURL(url).catch(() => {
       showToast('error', 'Could not open maps')
     })
@@ -214,7 +206,7 @@ export default function EventDetailScreen() {
   const formatEventTime = (event: EventDetail) => {
     const start = new Date(event.start_at)
     const end = new Date(event.end_at)
-    
+
     if (event.is_all_day) {
       const sameDay = start.toDateString() === end.toDateString()
       if (sameDay) {
@@ -222,12 +214,12 @@ export default function EventDetailScreen() {
       }
       return `All day • ${start.toLocaleDateString()} - ${end.toLocaleDateString()}`
     }
-    
+
     const sameDay = start.toDateString() === end.toDateString()
     if (sameDay) {
       return `${start.toLocaleDateString()} • ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     }
-    
+
     return `${start.toLocaleString()} - ${end.toLocaleString()}`
   }
 
@@ -241,7 +233,7 @@ export default function EventDetailScreen() {
 
   const RSVPButtons = () => {
     if (!event) return null
-    
+
     return (
       <View style={styles.rsvpContainer}>
         <Text style={styles.sectionTitle}>Your RSVP</Text>
@@ -278,13 +270,13 @@ export default function EventDetailScreen() {
 
   const RSVPList = () => {
     if (!canViewRSVPs || rsvps.length === 0) return null
-    
+
     const counts = getRSVPCounts()
-    
+
     return (
       <View style={styles.rsvpListContainer}>
         <Text style={styles.sectionTitle}>RSVPs ({rsvps.length})</Text>
-        
+
         {/* RSVP Summary */}
         <View style={styles.rsvpSummary}>
           <View style={styles.rsvpSummaryItem}>
@@ -300,7 +292,7 @@ export default function EventDetailScreen() {
             <Text style={styles.rsvpSummaryText}>{counts.declined} Can&apos;t Go</Text>
           </View>
         </View>
-        
+
         {/* RSVP List */}
         <View style={styles.rsvpList}>
           {rsvps.map((rsvp) => (
@@ -323,7 +315,7 @@ export default function EventDetailScreen() {
                 rsvp.status === 'declined' && styles.rsvpStatusDeclined,
               ]}>
                 <Text style={styles.rsvpItemStatusText}>
-                  {rsvp.status === 'going' ? 'Going' : 
+                  {rsvp.status === 'going' ? 'Going' :
                    rsvp.status === 'maybe' ? 'Maybe' : 'Can\'t Go'}
                 </Text>
               </View>
@@ -359,8 +351,8 @@ export default function EventDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           title: event.title,
           headerRight: () => (
             <View style={styles.headerButtons}>
@@ -368,7 +360,7 @@ export default function EventDetailScreen() {
                 <Share2 size={20} color="#7C3AED" />
               </TouchableOpacity>
               {canEdit && (
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => router.push(`/edit-event?id=${event.id}` as any)}
                   style={styles.headerButton}
                 >
@@ -377,33 +369,33 @@ export default function EventDetailScreen() {
               )}
             </View>
           )
-        }} 
+        }}
       />
-      
-      <ScrollView 
+
+      <ScrollView
         style={styles.scrollView}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
         {/* Event Image */}
         {event.image_path && (
-          <Image 
-            source={{ uri: eventImageUrl(event.image_path)! }} 
+          <Image
+            source={{ uri: eventImageUrl(event.image_path)! }}
             style={styles.eventImage}
-            resizeMode="cover"
+            contentFit="cover"
           />
         )}
-        
+
         <View style={styles.content}>
           {/* Event Title */}
           <Text style={styles.eventTitle}>{event.title}</Text>
-          
+
           {/* Event Meta */}
           <View style={styles.eventMeta}>
             <View style={styles.metaRow}>
               <Clock size={20} color="#6B7280" />
               <Text style={styles.metaText}>{formatEventTime(event)}</Text>
             </View>
-            
+
             {event.location && (
               <TouchableOpacity style={styles.metaRow} onPress={handleLocationPress}>
                 <MapPin size={20} color="#6B7280" />
@@ -411,7 +403,7 @@ export default function EventDetailScreen() {
                 <ExternalLink size={16} color="#7C3AED" style={styles.locationIcon} />
               </TouchableOpacity>
             )}
-            
+
             {event.author_name && (
               <View style={styles.metaRow}>
                 <Users size={20} color="#6B7280" />
@@ -493,7 +485,7 @@ export default function EventDetailScreen() {
           ) : (
             <RSVPButtons />
           )}
-          
+
           {/* Add to Calendar Button */}
           <TouchableOpacity
             style={styles.calendarButton}

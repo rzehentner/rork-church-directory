@@ -9,6 +9,8 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 
 import { Stack, useRouter } from 'expo-router';
@@ -75,7 +77,10 @@ export default function CreatePrayerScreen() {
           ),
         }}
       />
-
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <ScrollView style={styles.content} keyboardShouldPersistTaps="handled">
         <View style={styles.section}>
           <Text style={styles.label}>
@@ -120,6 +125,7 @@ export default function CreatePrayerScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }

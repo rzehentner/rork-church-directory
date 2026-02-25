@@ -9,14 +9,15 @@ import {
   Switch,
   Alert,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/me-context';
 import { useToast } from '@/hooks/toast-context';
 import { listTags, type Tag } from '@/services/tags';
-import { createAnnouncement, getAnnouncement, getAnnouncementTags, updateAnnouncement, setAnnouncementTags } from '@/lib/announcements';
+import { createAnnouncement, getAnnouncement, getAnnouncementTags, getAnnouncementRoles, updateAnnouncement, setAnnouncementTags, setAnnouncementRoles } from '@/lib/announcements';
 import { 
   ArrowLeft, 
   Send, 
@@ -94,29 +95,36 @@ export default function CreateAnnouncementScreen() {
     queryKey: ['announcement-tags', announcementId],
     queryFn: () => getAnnouncementTags(announcementId!),
     enabled: isEditMode && !!announcementId,
-    staleTime: 0, // Always fetch fresh data for editing
+    staleTime: 0,
+  });
+
+  // Fetch existing announcement roles if in edit mode
+  const { data: existingRoles = [], isLoading: loadingRoles } = useQuery({
+    queryKey: ['announcement-roles', announcementId],
+    queryFn: () => getAnnouncementRoles(announcementId!),
+    enabled: isEditMode && !!announcementId,
+    staleTime: 0,
   });
   
   // Initialize form with existing data when in edit mode
   React.useEffect(() => {
-    if (isEditMode && existingAnnouncement && existingTags && availableTags.length > 0 && !isFormInitialized) {
+    if (isEditMode && existingAnnouncement && existingTags && existingRoles !== undefined && availableTags.length > 0 && !isFormInitialized) {
       const tagNames = existingTags.map((tag: any) => tag.name);
-      const roleChips = existingAnnouncement.roles_allowed || [];
-      
+
       setFormData({
         title: existingAnnouncement.title,
         body: existingAnnouncement.body || '',
         publishNow: existingAnnouncement.is_published && !existingAnnouncement.published_at,
         publishAt: existingAnnouncement.published_at || new Date().toISOString(),
         expiresAt: existingAnnouncement.expires_at || '',
-        roleChips: roleChips,
+        roleChips: existingRoles,
         tagChips: tagNames,
         isPublic: existingAnnouncement.is_public,
       });
-      
+
       setIsFormInitialized(true);
     }
-  }, [isEditMode, existingAnnouncement, existingTags, availableTags, isFormInitialized]);
+  }, [isEditMode, existingAnnouncement, existingTags, existingRoles, availableTags, isFormInitialized]);
 
   // Create/Update announcement mutation
   const saveMutation = useMutation({
@@ -126,7 +134,7 @@ export default function CreateAnnouncementScreen() {
           title: data.title.trim(),
           body: data.body.trim() || null,
           is_public: data.isPublic,
-          roles_allowed: data.isPublic ? null : (data.roleChips.length > 0 ? data.roleChips as any : null),
+          roles: (data.isPublic ? [] : data.roleChips) as any,
           published_at: data.publishNow ? new Date().toISOString() : data.publishAt,
           expires_at: data.expiresAt || null,
           is_published: data.publishNow || existingAnnouncement?.is_published || false,
@@ -142,17 +150,17 @@ export default function CreateAnnouncementScreen() {
           try {
             await uploadAnnouncementImage(imageUri, announcement.id);
           } catch (imgErr) {
-            console.error('Image upload failed:', imgErr);
+            // image upload is non-critical; continue
           }
         }
-        
+
         return announcement;
       } else {
         const announcement = await createAnnouncement({
           title: data.title.trim(),
           body: data.body.trim() || null,
           is_public: data.isPublic,
-          roles_allowed: data.isPublic ? null : (data.roleChips.length > 0 ? data.roleChips as any : null),
+          roles: (data.isPublic ? [] : data.roleChips) as any,
           published_at: data.publishNow ? null : data.publishAt,
           expires_at: data.expiresAt || null,
           publish_immediately: data.publishNow,
@@ -173,7 +181,7 @@ export default function CreateAnnouncementScreen() {
           try {
             await uploadAnnouncementImage(imageUri, announcement.id);
           } catch (imgErr) {
-            console.error('Image upload failed:', imgErr);
+            // image upload is non-critical; continue
           }
         }
 
@@ -188,8 +196,7 @@ export default function CreateAnnouncementScreen() {
       showSuccess(isEditMode ? 'Announcement updated successfully' : 'Announcement created successfully');
       router.push('/(tabs)/admin' as any);
     },
-    onError: (error) => {
-      console.error('Failed to save announcement:', error);
+    onError: () => {
       showError(isEditMode ? 'Failed to update announcement. Please try again.' : 'Failed to create announcement. Please try again.');
     },
   });
@@ -260,7 +267,7 @@ export default function CreateAnnouncementScreen() {
 
   const handleDatePickerChange = (event: any, selectedDate?: Date, field?: 'publishAt' | 'expiresAt') => {
     // On Android, the picker closes automatically
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowExpiryDatePicker(null);
       setShowPublishDatePicker(null);
       
@@ -315,7 +322,7 @@ export default function CreateAnnouncementScreen() {
   }
   
   // Show loading state when fetching existing announcement data
-  if (isEditMode && (loadingAnnouncement || loadingTags || !isFormInitialized)) {
+  if (isEditMode && (loadingAnnouncement || loadingTags || loadingRoles || !isFormInitialized)) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
@@ -335,6 +342,10 @@ export default function CreateAnnouncementScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <ArrowLeft size={24} color="#6B7280" />
@@ -563,7 +574,6 @@ export default function CreateAnnouncementScreen() {
               <ImageUploader
                 currentImageUrl={imageUri}
                 onUpload={async (file) => {
-                  console.log('[CreateAnnouncement] Image selected:', file.uri);
                   setImageUri(file.uri);
                   return file.uri;
                 }}
@@ -605,6 +615,7 @@ export default function CreateAnnouncementScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Date Pickers */}
       {showExpiryDatePicker && Platform.OS === 'ios' && (
@@ -636,7 +647,7 @@ export default function CreateAnnouncementScreen() {
         </View>
       )}
 
-      {showExpiryDatePicker && Platform.OS === 'android' && (
+      {showExpiryDatePicker && Platform.OS !== 'ios' && (
         <DateTimePicker
           value={formData.expiresAt ? new Date(formData.expiresAt) : new Date()}
           mode={showExpiryDatePicker}
@@ -677,7 +688,7 @@ export default function CreateAnnouncementScreen() {
         </View>
       )}
 
-      {showPublishDatePicker && Platform.OS === 'android' && (
+      {showPublishDatePicker && Platform.OS !== 'ios' && (
         <DateTimePicker
           value={new Date(formData.publishAt)}
           mode={showPublishDatePicker}

@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Family App Management System",
-    "slug": "family-app-management-system",
+    "name": "EBC Connect",
+    "slug": "ebc-connect",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "ebcconnect",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "splash": {
@@ -13,25 +13,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "scripts": {
-      "start": "bunx rork start -p edd19ns3buegzug8rrdb6 --tunnel",
-      "start-web": "bunx rork start -p edd19ns3buegzug8rrdb6 --web --tunnel",
-      "start-web-dev": "DEBUG=expo* bunx rork start -p edd19ns3buegzug8rrdb6 --web --tunnel",
-      "start:tunnel": "npx expo start --clear --tunnel",
-      "start:lan": "npx expo start --clear --lan",
-      "clean:locks": "rm -f package-lock.json yarn.lock pnpm-lock.yaml",
-      "clean:expo": "rm -rf .expo .expo-shared dist web-build",
-      "clean:caches": "rm -rf node_modules/.cache .cache",
-      "clean:modules": "rm -rf node_modules && bun install",
-      "clean": "bun run clean:locks && bun run clean:expo && bun run clean:caches",
-      "reset": "bun run clean && bun run doctor && bun run deps:check",
-      "doctor": "npx expo-doctor@latest",
-      "deps:check": "npx expo install --check",
-      "lint": "expo lint"
-    },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.family-app-management-system",
+      "bundleIdentifier": "com.ebcconnect.app",
       "infoPlist": {
         "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to access your photos",
         "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to access your camera",
@@ -39,19 +23,11 @@
         "NSFaceIDUsageDescription": "Allow $(PRODUCT_NAME) to use Face ID.",
         "NSCalendarsUsageDescription": "Allow $(PRODUCT_NAME) to access your calendar",
         "NSRemindersUsageDescription": "Allow $(PRODUCT_NAME) to access your reminders",
-        "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save photos."
+        "NSPhotoLibraryAddUsageDescription": "Allow $(PRODUCT_NAME) to save photos.",
+        "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
-        "com.apple.developer.networking.wifi-info": true,
-        "com": {
-          "apple": {
-            "developer": {
-              "networking": {
-                "wifi-info": true
-              }
-            }
-          }
-        }
+        "com.apple.developer.networking.wifi-info": true
       }
     },
     "android": {
@@ -59,24 +35,22 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.rork.familyapp",
+      "package": "com.ebcconnect.app",
       "permissions": [
-        "CAMERA",
-        "READ_EXTERNAL_STORAGE",
-        "WRITE_EXTERNAL_STORAGE",
-        "USE_BIOMETRIC",
-        "USE_FINGERPRINT",
-        "READ_CALENDAR",
-        "WRITE_CALENDAR",
-        "INTERNET",
+        "android.permission.CAMERA",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR",
+        "android.permission.INTERNET",
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM",
-        "android.permission.REQUEST_INSTALL_PACKAGES",
-        "READ_MEDIA_IMAGES",
-        "READ_MEDIA_VIDEO",
-        "READ_MEDIA_AUDIO",
-        "READ_MEDIA_VISUAL_USER_SELECTED",
-        "ACCESS_MEDIA_LOCATION"
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED"
       ]
     },
     "web": {
@@ -86,7 +60,7 @@
       [
         "expo-router",
         {
-          "origin": "https://rork.com/"
+          "origin": "https://connect.ednabaptist.church/"
         }
       ],
       [
@@ -110,13 +84,9 @@
       [
         "expo-notifications",
         {
-          "icon": "./local/assets/notification_icon.png",
           "color": "#ffffff",
           "defaultChannel": "default",
-          "sounds": [
-            "./local/assets/notification_sound.wav"
-          ],
-          "enableBackgroundRemoteNotifications": false
+          "enableBackgroundRemoteNotifications": true
         }
       ],
       [
@@ -130,6 +100,21 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://connect.ednabaptist.church/"
+      },
+      "eas": {
+        "projectId": "9a4cd3a2-058f-4e51-8680-365b3e37e030"
+      }
+    },
+    "owner": "rzehentner",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9a4cd3a2-058f-4e51-8680-365b3e37e030"
     }
   }
 }

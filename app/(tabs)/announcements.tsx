@@ -1,16 +1,16 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
+  FlatList,
+  RefreshControl,
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
-  PanResponder,
-  Animated,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/me-context';
@@ -19,11 +19,11 @@ import { listAnnouncementsForMe, markAnnouncementRead, getAnnouncementTags } fro
 import { announcementImageUrl } from '@/services/event-images';
 import { listTags, getPersonWithTags } from '@/services/tags';
 import TagPill from '@/components/TagPill';
-import { 
-  Bell, 
-  Plus, 
-  Clock, 
-  CheckCircle, 
+import {
+  Bell,
+  Plus,
+  Clock,
+  CheckCircle,
   AlertCircle,
   Calendar,
   Globe,
@@ -60,14 +60,11 @@ export default function AnnouncementsScreen() {
   const queryClient = useQueryClient();
   const { showSuccess, showError } = useToast();
   const insets = useSafeAreaInsets();
-  
+
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTagFilter, setSelectedTagFilter] = useState<string | null>(null);
   const [showUnreadOnly, setShowUnreadOnly] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
-  const scrollViewRef = useRef<ScrollView>(null);
-  const pullDistance = useRef(new Animated.Value(0)).current;
-  const isPulling = useRef(false);
 
   const isAdminOrLeader = myRole === 'admin' || myRole === 'leader';
 
@@ -105,14 +102,14 @@ export default function AnnouncementsScreen() {
     enabled: !!myRole,
     staleTime: 30 * 1000,
   });
-  
+
   // Fetch available tags for filtering
   const { data: availableTags = [] } = useQuery({
     queryKey: ['tags', 'active'],
     queryFn: () => listTags(true),
     staleTime: 5 * 60 * 1000,
   });
-  
+
   // Fetch user's tags to prioritize groups
   const { data: userTags = [] } = useQuery({
     queryKey: ['user-tags', person?.id],
@@ -121,8 +118,7 @@ export default function AnnouncementsScreen() {
       try {
         const personWithTags = await getPersonWithTags(person.id);
         return personWithTags.tags || [];
-      } catch (fetchError) {
-        console.warn('Failed to fetch user tags:', fetchError);
+      } catch {
         return [];
       }
     },
@@ -147,38 +143,38 @@ export default function AnnouncementsScreen() {
   // Group and filter announcements
   const groupedAnnouncements = useMemo(() => {
     let filteredAnnouncements = announcements;
-    
+
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filteredAnnouncements = filteredAnnouncements.filter(announcement => 
+      filteredAnnouncements = filteredAnnouncements.filter(announcement =>
         announcement.title.toLowerCase().includes(query) ||
         announcement.body?.toLowerCase().includes(query) ||
         announcement.tags?.some(tag => tag.name.toLowerCase().includes(query))
       );
     }
-    
+
     // Apply tag filter
     if (selectedTagFilter) {
-      filteredAnnouncements = filteredAnnouncements.filter(announcement => 
+      filteredAnnouncements = filteredAnnouncements.filter(announcement =>
         announcement.tags?.some(tag => tag.id === selectedTagFilter)
       );
     }
-    
+
     // Apply unread filter
     if (showUnreadOnly) {
-      filteredAnnouncements = filteredAnnouncements.filter(announcement => 
+      filteredAnnouncements = filteredAnnouncements.filter(announcement =>
         !announcement.is_read
       );
     }
-    
+
     // Group announcements by tags
     const groups: AnnouncementGroup[] = [];
     const processedAnnouncements = new Set<string>();
     const userTagIds = new Set(userTags.map(tag => tag.id));
-    
+
     // 1. No tags group (announcements without tags)
-    const noTagsAnnouncements = filteredAnnouncements.filter(announcement => 
+    const noTagsAnnouncements = filteredAnnouncements.filter(announcement =>
       !announcement.tags || announcement.tags.length === 0
     );
     if (noTagsAnnouncements.length > 0) {
@@ -189,14 +185,14 @@ export default function AnnouncementsScreen() {
       });
       noTagsAnnouncements.forEach(a => processedAnnouncements.add(a.id));
     }
-    
+
     // 2. User's tags groups (prioritized)
     userTags.forEach(userTag => {
-      const tagAnnouncements = filteredAnnouncements.filter(announcement => 
+      const tagAnnouncements = filteredAnnouncements.filter(announcement =>
         !processedAnnouncements.has(announcement.id) &&
         announcement.tags?.some(tag => tag.id === userTag.id)
       );
-      
+
       if (tagAnnouncements.length > 0) {
         groups.push({
           title: userTag.name,
@@ -207,15 +203,15 @@ export default function AnnouncementsScreen() {
         tagAnnouncements.forEach(a => processedAnnouncements.add(a.id));
       }
     });
-    
+
     // 3. Other tags groups
     const otherTags = availableTags.filter(tag => !userTagIds.has(tag.id));
     otherTags.forEach(tag => {
-      const tagAnnouncements = filteredAnnouncements.filter(announcement => 
+      const tagAnnouncements = filteredAnnouncements.filter(announcement =>
         !processedAnnouncements.has(announcement.id) &&
         announcement.tags?.some(announcementTag => announcementTag.id === tag.id)
       );
-      
+
       if (tagAnnouncements.length > 0) {
         groups.push({
           title: tag.name,
@@ -226,7 +222,7 @@ export default function AnnouncementsScreen() {
         tagAnnouncements.forEach(a => processedAnnouncements.add(a.id));
       }
     });
-    
+
     return groups;
   }, [announcements, searchQuery, selectedTagFilter, showUnreadOnly, userTags, availableTags]);
 
@@ -238,15 +234,15 @@ export default function AnnouncementsScreen() {
   const handleCreateAnnouncement = () => {
     router.push('/create-announcement' as any);
   };
-  
+
   const clearSearch = () => {
     setSearchQuery('');
   };
-  
+
   const clearTagFilter = () => {
     setSelectedTagFilter(null);
   };
-  
+
   const toggleUnreadFilter = () => {
     setShowUnreadOnly(!showUnreadOnly);
   };
@@ -257,49 +253,17 @@ export default function AnnouncementsScreen() {
       await refetch();
       await queryClient.invalidateQueries({ queryKey: ['tags'] });
       await queryClient.invalidateQueries({ queryKey: ['user-tags'] });
-    } catch (error) {
-      console.error('Failed to refresh:', error);
+    } catch {
     } finally {
       setRefreshing(false);
-      Animated.timing(pullDistance, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
     }
   };
-
-  const panResponder = PanResponder.create({
-    onMoveShouldSetPanResponder: (evt, gestureState) => {
-      return gestureState.dy > 0 && !isPulling.current;
-    },
-    onPanResponderGrant: () => {
-      isPulling.current = true;
-    },
-    onPanResponderMove: (evt, gestureState) => {
-      if (gestureState.dy > 0 && gestureState.dy < 100) {
-        pullDistance.setValue(gestureState.dy);
-      }
-    },
-    onPanResponderRelease: (evt, gestureState) => {
-      isPulling.current = false;
-      if (gestureState.dy > 60) {
-        handleRefresh();
-      } else {
-        Animated.timing(pullDistance, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: false,
-        }).start();
-      }
-    },
-  });
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
-    
+
     if (diffInHours < 24) {
       return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } else if (diffInHours < 168) { // 7 days
@@ -314,48 +278,10 @@ export default function AnnouncementsScreen() {
     return new Date(expiresAt) < new Date();
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <Text style={styles.loadingText}>Loading announcements...</Text>
-        </View>
-      </View>
-    );
-  }
-
-  if (error) {
-    console.error('❌ Error fetching announcements:', {
-      error,
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
-    
-    const errorMessage = error instanceof Error 
-      ? error.message 
-      : typeof error === 'object' && error !== null 
-        ? JSON.stringify(error, null, 2) 
-        : 'Unknown error occurred';
-        
-    return (
-      <View style={styles.container}>
-        <View style={styles.errorContainer}>
-          <AlertCircle size={48} color="#EF4444" />
-          <Text style={styles.errorTitle}>Failed to load announcements</Text>
-          <Text style={styles.errorText}>{errorMessage}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-            <Text style={styles.retryButtonText}>Retry</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
   const renderAnnouncementCard = (announcement: Announcement, groupColor?: string) => {
     const expired = isExpired(announcement.expires_at);
     const primaryColor = groupColor || announcement.tags?.[0]?.color || '#7C3AED';
-    
+
     return (
       <View
         key={announcement.id}
@@ -367,13 +293,13 @@ export default function AnnouncementsScreen() {
       >
         {/* Color strip on the left */}
         <View style={[styles.colorStrip, { backgroundColor: primaryColor }]} />
-        
+
         <View style={styles.cardContent}>
           {announcement.image_path && (
             <Image
               source={{ uri: announcementImageUrl(announcement.image_path)! }}
               style={styles.announcementImage}
-              resizeMode="cover"
+              contentFit="cover"
             />
           )}
           <View style={styles.announcementHeader}>
@@ -396,7 +322,7 @@ export default function AnnouncementsScreen() {
                 )}
               </View>
             </View>
-            
+
             <View style={styles.statusIndicators}>
               {announcement.is_public && (
                 <View style={styles.publicBadge}>
@@ -467,6 +393,62 @@ export default function AnnouncementsScreen() {
     );
   };
 
+  const renderItem = useCallback(({ item: group }: { item: AnnouncementGroup }) => (
+    <View style={styles.groupContainer}>
+      <View style={styles.groupHeader}>
+        <View style={[styles.groupColorDot, { backgroundColor: group.color }]} />
+        <Text style={[
+          styles.groupTitle,
+          group.isUserTag && styles.userGroupTitle
+        ]}>
+          {group.title}
+        </Text>
+        <Text style={styles.groupCount}>({group.announcements.length})</Text>
+        {group.isUserTag && (
+          <View style={styles.userBadge}>
+            <Text style={styles.userBadgeText}>Your Tag</Text>
+          </View>
+        )}
+      </View>
+
+      {group.announcements.map((announcement) =>
+        renderAnnouncementCard(announcement, group.color)
+      )}
+    </View>
+  ), [markReadMutation.isPending]);
+
+  if (isLoading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#7C3AED" />
+          <Text style={styles.loadingText}>Loading announcements...</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    const errorMessage = error instanceof Error
+      ? error.message
+      : typeof error === 'object' && error !== null
+        ? JSON.stringify(error, null, 2)
+        : 'Unknown error occurred';
+
+    return (
+      <View style={styles.container}>
+        <View style={styles.errorContainer}>
+          <AlertCircle size={48} color="#EF4444" />
+          <Text style={styles.errorTitle}>Failed to load announcements</Text>
+          <Text style={styles.errorText}>{errorMessage}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -484,7 +466,7 @@ export default function AnnouncementsScreen() {
           </TouchableOpacity>
         )}
       </View>
-      
+
       {/* Search and Filter Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -502,7 +484,7 @@ export default function AnnouncementsScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         <TouchableOpacity
           style={[
             styles.unreadFilterButton,
@@ -517,7 +499,7 @@ export default function AnnouncementsScreen() {
           ]}>Unread</Text>
         </TouchableOpacity>
       </View>
-      
+
       {/* Filter Tags - Always Visible */}
       <View style={styles.filtersContainer}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tagFilters}>
@@ -552,39 +534,27 @@ export default function AnnouncementsScreen() {
         </ScrollView>
       </View>
 
-      <View style={styles.scrollContainer} {...panResponder.panHandlers}>
-        <Animated.View style={[styles.pullToRefreshIndicator, {
-          height: pullDistance,
-          opacity: pullDistance.interpolate({
-            inputRange: [0, 60],
-            outputRange: [0, 1],
-            extrapolate: 'clamp',
-          }),
-        }]}>
-          <View style={styles.refreshIndicatorContent}>
-            {refreshing ? (
-              <ActivityIndicator size="small" color="#7C3AED" />
-            ) : (
-              <Text style={styles.pullToRefreshText}>Pull to refresh</Text>
-            )}
-          </View>
-        </Animated.View>
-        <ScrollView
-          ref={scrollViewRef}
-          style={styles.scrollView}
-          showsVerticalScrollIndicator={false}
-          scrollEventThrottle={16}
-        >
-        {groupedAnnouncements.length === 0 ? (
+      <FlatList
+        data={groupedAnnouncements}
+        keyExtractor={(item) => item.title}
+        renderItem={renderItem}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={8}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.announcementsContainer}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        }
+        ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Bell size={64} color="#9CA3AF" />
             <Text style={styles.emptyTitle}>
               {searchQuery || selectedTagFilter ? 'No matching announcements' : 'No announcements'}
             </Text>
             <Text style={styles.emptyText}>
-              {searchQuery || selectedTagFilter 
+              {searchQuery || selectedTagFilter
                 ? 'Try adjusting your search or filters'
-                : isAdminOrLeader 
+                : isAdminOrLeader
                   ? 'Create your first announcement to get started'
                   : 'Check back later for updates from your community'
               }
@@ -599,35 +569,8 @@ export default function AnnouncementsScreen() {
               </TouchableOpacity>
             )}
           </View>
-        ) : (
-          <View style={styles.announcementsContainer}>
-            {groupedAnnouncements.map((group, groupIndex) => (
-              <View key={`group-${groupIndex}`} style={styles.groupContainer}>
-                <View style={styles.groupHeader}>
-                  <View style={[styles.groupColorDot, { backgroundColor: group.color }]} />
-                  <Text style={[
-                    styles.groupTitle,
-                    group.isUserTag && styles.userGroupTitle
-                  ]}>
-                    {group.title}
-                  </Text>
-                  <Text style={styles.groupCount}>({group.announcements.length})</Text>
-                  {group.isUserTag && (
-                    <View style={styles.userBadge}>
-                      <Text style={styles.userBadgeText}>Your Tag</Text>
-                    </View>
-                  )}
-                </View>
-                
-                {group.announcements.map((announcement) => 
-                  renderAnnouncementCard(announcement, group.color)
-                )}
-              </View>
-            ))}
-          </View>
-        )}
-        </ScrollView>
-      </View>
+        }
+      />
     </View>
   );
 }
@@ -710,25 +653,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600' as const,
-  },
-  scrollContainer: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  pullToRefreshIndicator: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  refreshIndicatorContent: {
-    paddingVertical: 10,
-  },
-  pullToRefreshText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500' as const,
   },
   emptyContainer: {
     flex: 1,

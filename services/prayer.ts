@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { isValidUUID } from '@/utils/validation';
 
 type PrayerStatus = 'open' | 'answered' | 'archived';
 
@@ -30,6 +31,7 @@ export async function listPrayers(status: PrayerStatus = 'open', limit = 100) {
 }
 
 export async function getPrayer(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid prayer request ID');
   const { data, error } = await supabase
     .from('prayer_requests_with_counts')
     .select('*')
@@ -70,6 +72,7 @@ export async function updatePrayer(id: string, patch: {
   for_person_id?: string | null;
   is_anonymous?: boolean;
 }) {
+  if (!isValidUUID(id)) throw new Error('Invalid prayer request ID');
   const { error } = await supabase
     .from('prayer_requests')
     .update(patch)
@@ -78,6 +81,7 @@ export async function updatePrayer(id: string, patch: {
 }
 
 export async function deletePrayer(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid prayer request ID');
   const { error } = await supabase
     .from('prayer_requests')
     .delete()
@@ -86,28 +90,34 @@ export async function deletePrayer(id: string) {
 }
 
 export async function bulkUpdatePrayerStatus(ids: string[], status: PrayerStatus) {
+  const validIds = ids.filter(isValidUUID);
+  if (validIds.length === 0) throw new Error('No valid prayer request IDs provided');
   const { error } = await supabase
     .from('prayer_requests')
     .update({ status })
-    .in('id', ids);
+    .in('id', validIds);
   if (error) throw error;
 }
 
 export async function bulkDeletePrayers(ids: string[]) {
+  const validIds = ids.filter(isValidUUID);
+  if (validIds.length === 0) throw new Error('No valid prayer request IDs provided');
   const { error } = await supabase
     .from('prayer_requests')
     .delete()
-    .in('id', ids);
+    .in('id', validIds);
   if (error) throw error;
 }
 
 export async function markPrayed(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid prayer request ID');
   const { data, error } = await supabase.rpc('mark_prayed', { p_prayer_id: id });
   if (error) throw error;
   return !!data;
 }
 
 export async function unmarkPrayedToday(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid prayer request ID');
   const { data, error } = await supabase.rpc('unmark_prayed_today', { p_prayer_id: id });
   if (error) throw error;
   return !!data;

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase'
-import type { PotluckFormDetailRow } from '@/types/supabase'
+import { isValidUUID } from '@/utils/validation'
+import type { PotluckFormDetailRow } from '@/types/signup'
 
 export interface PotluckGroupInput {
   title: string
@@ -41,6 +42,7 @@ export async function createPotluckForm(params: {
   deadline?: string | null
   groups: PotluckGroupInput[]
 }) {
+  if (!isValidUUID(params.eventId)) throw new Error('Invalid event ID')
   const { data, error } = await supabase.rpc('create_potluck_form', {
     p_event_id: params.eventId,
     p_title: params.title || null,
@@ -61,6 +63,7 @@ export async function addPotluckItems(params: {
   groupTitle?: string
   items: { name: string; description?: string; quantity_needed?: number }[]
 }) {
+  if (!isValidUUID(params.formId)) throw new Error('Invalid form ID')
   const { data, error } = await supabase.rpc('add_potluck_items', {
     p_form_id: params.formId,
     p_group_id: params.groupId ?? null,
@@ -80,6 +83,7 @@ export async function claimPotluckItem(params: {
   manualName?: string | null
   note?: string | null
 }) {
+  if (!isValidUUID(params.itemId)) throw new Error('Invalid item ID')
   const { data, error } = await supabase.rpc('claim_potluck_item', {
     p_item_id: params.itemId,
     p_person_id: params.personId,
@@ -94,6 +98,7 @@ export async function claimPotluckItem(params: {
 }
 
 export async function unclaimPotluckItem(claimId: string) {
+  if (!isValidUUID(claimId)) throw new Error('Invalid claim ID')
   const { data, error } = await supabase.rpc('unclaim_potluck_item', {
     p_claim_id: claimId,
   })
@@ -105,6 +110,7 @@ export async function unclaimPotluckItem(claimId: string) {
 }
 
 export async function getPotluckFormDetail(formId: string): Promise<PotluckGroupParsed[]> {
+  if (!isValidUUID(formId)) throw new Error('Invalid form ID')
   const { data: rows, error } = await supabase
     .from('potluck_form_detail')
     .select('*')

@@ -10,7 +10,7 @@ import {
   Platform,
   Modal,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
@@ -116,7 +116,7 @@ export default function FamilyScreen() {
           const avatarResults = await Promise.all(
             familyMembers.map(async (m) => ({
               id: m.id,
-              url: m.photo_url ? await getSignedUrl(m.photo_url).then(u => u ? `${u}&t=${ts}` : null).catch(() => null) : null,
+              url: m.photo_path ? await getSignedUrl(m.photo_path).then(u => u ? `${u}&t=${ts}` : null).catch(() => null) : null,
             }))
           );
           setMemberAvatars(avatarResults.reduce((acc, { id, url }) => { acc[id] = url; return acc; }, {} as Record<string, string | null>));
@@ -129,8 +129,7 @@ export default function FamilyScreen() {
           );
           setMemberTags(tagResults.reduce((acc, { id, tags }) => { acc[id] = tags; return acc; }, {} as Record<string, any[]>));
         }
-      } catch (error) {
-        console.error('Error loading images:', error);
+      } catch {
       }
     };
     if (family || familyMembers.length > 0) loadImages();
@@ -144,8 +143,7 @@ export default function FamilyScreen() {
         ...prev,
         [memberId]: personWithTags.tags
       }));
-    } catch (error) {
-      console.error('Error refreshing member tags:', error);
+    } catch {
     }
   };
 
@@ -196,13 +194,12 @@ export default function FamilyScreen() {
       // Immediately update the UI with the new URL
       setMemberAvatars(prev => ({ ...prev, [personId]: url }));
       
-      // Refresh the family data to get the updated photo_url
+      // Refresh the family data to get the updated photo_path
 
       await refetch();
       
       return url;
     } catch (error) {
-      console.error('Error uploading person avatar:', error);
       if (error instanceof Error) {
         Alert.alert('Upload Failed', error.message);
       }
@@ -570,7 +567,7 @@ export default function FamilyScreen() {
 
             <View style={styles.card}>
               <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>{family.family_name_display || family.family_name}</Text>
+                <Text style={styles.cardTitle}>{family.family_name}</Text>
                 {!isEditingFamily && (
                   <TouchableOpacity onPress={() => setIsEditingFamily(true)}>
                     <Edit2 size={20} color="#7C3AED" />
@@ -1038,7 +1035,7 @@ export default function FamilyScreen() {
                     if (date) {
                       setSelectedDate(date);
                     }
-                    if (Platform.OS === 'android') {
+                    if (Platform.OS !== 'ios') {
                       setShowDatePicker(false);
                       if (date) {
                         const dateString = date.toISOString().split('T')[0];

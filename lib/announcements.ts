@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isValidUUID } from '@/utils/validation'
 
 type Role = 'admin'|'leader'|'member'|'visitor'|'pending'
 
@@ -10,7 +11,6 @@ export type Announcement = {
   is_published: boolean
   published_at: string | null
   expires_at: string | null
-  roles_allowed: Role[] | null
   is_public: boolean
   created_by: string
   created_at: string
@@ -20,7 +20,7 @@ export type Announcement = {
 export async function createAnnouncement(input: {
   title: string
   body?: string | null
-  roles_allowed?: Role[] | null
+  roles?: Role[]
   is_public?: boolean
   published_at?: string | null
   expires_at?: string | null
@@ -32,7 +32,6 @@ export async function createAnnouncement(input: {
     .insert([{
       title: input.title,
       body: input.body ?? null,
-      roles_allowed: input.roles_allowed ?? null,
       is_public: !!input.is_public,
       is_published: !!input.publish_immediately,
       published_at: input.publish_immediately ? new Date().toISOString() : input.published_at,
@@ -43,10 +42,18 @@ export async function createAnnouncement(input: {
     .single()
 
   if (error) throw error
+
+  // Write role access to junction table
+  const roles = input.is_public ? [] : (input.roles ?? [])
+  if (roles.length > 0) {
+    await setAnnouncementRoles(data.id, roles)
+  }
+
   return data as Announcement
 }
 
 export async function getAnnouncement(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .select('*')
@@ -57,25 +64,33 @@ export async function getAnnouncement(id: string) {
   return data as Announcement
 }
 
-export async function updateAnnouncement(id: string, patch: Partial<Announcement>) {
+export async function updateAnnouncement(id: string, patch: Partial<Announcement & { roles?: Role[] }>) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
+  const { roles, ...dbPatch } = patch as any
   const { data, error } = await supabase
     .from('announcements')
     .update({
-      title: patch.title,
-      body: patch.body,
-      roles_allowed: patch.roles_allowed ?? null,
-      is_public: patch.is_public,
-      published_at: patch.published_at ?? null,
-      expires_at: patch.expires_at ?? null,
+      title: dbPatch.title,
+      body: dbPatch.body,
+      is_public: dbPatch.is_public,
+      published_at: dbPatch.published_at ?? null,
+      expires_at: dbPatch.expires_at ?? null,
     })
     .eq('id', id)
     .select('*')
     .single()
   if (error) throw error
+
+  // Update role access junction table if roles provided
+  if (roles !== undefined) {
+    await setAnnouncementRoles(id, dbPatch.is_public ? [] : (roles ?? []))
+  }
+
   return data as Announcement
 }
 
 export async function publishAnnouncement(id: string, when: string | null = null) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .update({
@@ -90,6 +105,7 @@ export async function publishAnnouncement(id: string, when: string | null = null
 }
 
 export async function unpublishAnnouncement(id: string) {
+  if (!isValidUUID(id)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcements')
     .update({ is_published: false })
@@ -101,6 +117,7 @@ export async function unpublishAnnouncement(id: string) {
 }
 
 export async function getAnnouncementTags(announcementId: string) {
+  if (!isValidUUID(announcementId)) throw new Error('Invalid announcement ID')
   const { data, error } = await supabase
     .from('announcement_audience_tags')
     .select('tag_id, tags!inner(id, name, color)')
@@ -111,6 +128,7 @@ export async function getAnnouncementTags(announcementId: string) {
 }
 
 export async function setAnnouncementTags(announcementId: string, tagIds: string[]) {
+  if (!isValidUUID(announcementId)) throw new Error('Invalid announcement ID')
   const { data: curr, error: e1 } = await supabase
     .from('announcement_audience_tags')
     .select('tag_id')
@@ -136,6 +154,36 @@ export async function setAnnouncementTags(announcementId: string, tagIds: string
   }
 }
 
+export async function getAnnouncementRoles(announcementId: string): Promise<string[]> {
+  if (!isValidUUID(announcementId)) throw new Error('Invalid announcement ID')
+  const { data, error } = await supabase
+    .from('announcement_role_access')
+    .select('role')
+    .eq('announcement_id', announcementId)
+  if (error) throw error
+  return (data ?? []).map(r => r.role)
+}
+
+export async function setAnnouncementRoles(announcementId: string, roles: string[]) {
+  if (!isValidUUID(announcementId)) throw new Error('Invalid announcement ID')
+
+  // Delete existing role access rows
+  const { error: deleteError } = await supabase
+    .from('announcement_role_access')
+    .delete()
+    .eq('announcement_id', announcementId)
+  if (deleteError) throw deleteError
+
+  // Insert new role access rows
+  if (roles.length > 0) {
+    const rows = roles.map(role => ({ announcement_id: announcementId, role }))
+    const { error: insertError } = await supabase
+      .from('announcement_role_access')
+      .insert(rows)
+    if (insertError) throw insertError
+  }
+}
+
 export async function listAnnouncementsForMe(limit = 20, from = 0) {
   const { data, error } = await supabase
     .from('announcements_for_me')
@@ -154,6 +202,7 @@ export async function listAnnouncementsForMe(limit = 20, from = 0) {
 }
 
 export async function markAnnouncementRead(announcementId: string) {
+  if (!isValidUUID(announcementId)) return
   const { data, error } = await supabase.rpc('mark_announcement_read', {
     p_announcement_id: announcementId
   })

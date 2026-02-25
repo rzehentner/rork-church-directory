@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isValidUUID } from '@/utils/validation'
 
 export type RSVP = 'going'|'maybe'|'declined'
 
@@ -15,14 +16,12 @@ export async function listUpcomingEvents(limit = 100) {
 }
 
 export async function getEvent(eventId: string) {
-  if (!eventId || typeof eventId !== 'string') throw new Error('Invalid event ID provided')
-  const cleanId = eventId.trim()
-  if (cleanId.length === 0) throw new Error('Empty event ID provided')
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID provided')
 
   const { data, error } = await supabase
     .from('events_for_me')
     .select('*')
-    .eq('id', cleanId)
+    .eq('id', eventId)
     .maybeSingle()
 
   if (error) throw error
@@ -31,7 +30,7 @@ export async function getEvent(eventId: string) {
   const { data: fallbackData, error: fallbackError } = await supabase
     .from('events')
     .select('*')
-    .eq('id', cleanId)
+    .eq('id', eventId)
     .maybeSingle()
 
   if (fallbackError) throw fallbackError
@@ -76,6 +75,7 @@ export async function listByTagsAny(tagNames: string[]) {
 }
 
 export async function rsvpEvent(eventId: string, status: RSVP) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   const { data, error } = await supabase.rpc('rsvp_event', {
     p_event_id: eventId,
     p_status: status
@@ -92,7 +92,7 @@ export async function createEvent(input: {
   is_all_day?: boolean
   location?: string | null
   is_public?: boolean
-  roles_allowed?: ('admin'|'leader'|'member'|'visitor')[] | null
+  roles?: ('admin'|'leader'|'member'|'visitor')[]
   created_by?: string
 }) {
   if (!input.title) throw new Error('Title is required')
@@ -109,7 +109,6 @@ export async function createEvent(input: {
     is_all_day: !!input.is_all_day,
     location: input.location ?? null,
     is_public: !!input.is_public,
-    roles_allowed: input.is_public ? null : (input.roles_allowed ?? null),
     created_by: input.created_by ?? user.id,
   }
 
@@ -120,6 +119,13 @@ export async function createEvent(input: {
     .single()
 
   if (error) throw error
+
+  // Write role access to junction table
+  const roles = input.is_public ? [] : (input.roles ?? [])
+  if (roles.length > 0) {
+    await setEventRoles(data.id, roles)
+  }
+
   return data
 }
 
@@ -131,9 +137,9 @@ export async function updateEvent(id: string, patch: Partial<{
   is_all_day: boolean
   location: string | null
   is_public: boolean
-  roles_allowed: ('admin'|'leader'|'member'|'visitor')[] | null
   image_path: string | null
-}>) {
+}>, roles?: ('admin'|'leader'|'member'|'visitor')[]) {
+  if (!isValidUUID(id)) throw new Error('Invalid event ID')
   const { data, error } = await supabase
     .from('events')
     .update(patch)
@@ -141,10 +147,37 @@ export async function updateEvent(id: string, patch: Partial<{
     .select('*')
     .single()
   if (error) throw error
+
+  // Update role access junction table if roles provided
+  if (roles !== undefined) {
+    await setEventRoles(id, patch.is_public ? [] : roles)
+  }
+
   return data
 }
 
+export async function setEventRoles(eventId: string, roles: string[]) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
+
+  // Delete existing role access rows
+  const { error: deleteError } = await supabase
+    .from('event_role_access')
+    .delete()
+    .eq('event_id', eventId)
+  if (deleteError) throw deleteError
+
+  // Insert new role access rows
+  if (roles.length > 0) {
+    const rows = roles.map(role => ({ event_id: eventId, role }))
+    const { error: insertError } = await supabase
+      .from('event_role_access')
+      .insert(rows)
+    if (insertError) throw insertError
+  }
+}
+
 export async function setEventTags(eventId: string, tagIds: string[]) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   const { data: curr, error: e1 } = await supabase
     .from('event_audience_tags')
     .select('tag_id')
@@ -169,6 +202,7 @@ export async function setEventTags(eventId: string, tagIds: string[]) {
 }
 
 export async function getEventTags(eventId: string) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   const { data, error } = await supabase
     .from('event_audience_tags')
     .select('tag_id, tags (id, name, color, namespace)')
@@ -185,6 +219,7 @@ export async function getEventTags(eventId: string) {
 }
 
 export async function scheduleReminder(eventId: string, minutesBefore = 60, attendeesOnly = true) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   const { data, error } = await supabase.rpc('schedule_event_reminder', {
     p_event_id: eventId,
     p_minutes_before: minutesBefore,
@@ -195,6 +230,7 @@ export async function scheduleReminder(eventId: string, minutesBefore = 60, atte
 }
 
 export async function getEventICS(eventId: string) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   const { data, error } = await supabase.rpc('get_event_ics', { p_event_id: eventId })
   if (error) throw error
   return data as string
@@ -212,6 +248,7 @@ export type EventRSVP = {
 }
 
 export async function getEventRSVPs(eventId: string): Promise<EventRSVP[]> {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   try {
     const { data, error } = await supabase
       .from('event_rsvps')

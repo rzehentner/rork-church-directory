@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { isValidUUID } from '@/utils/validation'
 import type {
   SignupForm,
   SignupFormField,
@@ -6,7 +7,7 @@ import type {
   MySignupForm,
   SignupResponseDetail,
   SignupFieldType,
-} from '@/types/supabase'
+} from '@/types/signup'
 
 export interface CreateFormFieldInput {
   field_key: string
@@ -65,6 +66,7 @@ export async function submitSignup(params: {
 }
 
 export async function cancelSignup(responseId: string) {
+  if (!isValidUUID(responseId)) throw new Error('Invalid response ID')
   const { data, error } = await supabase.rpc('cancel_signup', {
     p_response_id: responseId,
   })
@@ -82,6 +84,7 @@ export async function getMySignupForms(): Promise<MySignupForm[]> {
 }
 
 export async function getFormFields(formId: string): Promise<SignupFormField[]> {
+  if (!isValidUUID(formId)) throw new Error('Invalid form ID')
   const { data, error } = await supabase
     .from('signup_form_fields')
     .select('*')
@@ -93,6 +96,7 @@ export async function getFormFields(formId: string): Promise<SignupFormField[]> 
 }
 
 export async function getFormResponses(formId: string): Promise<SignupResponseDetail[]> {
+  if (!isValidUUID(formId)) throw new Error('Invalid form ID')
   const { data, error } = await supabase
     .from('signup_response_detail')
     .select('*')
@@ -105,6 +109,7 @@ export async function getFormResponses(formId: string): Promise<SignupResponseDe
 }
 
 export async function getAllFormResponses(formId: string): Promise<SignupResponseDetail[]> {
+  if (!isValidUUID(formId)) throw new Error('Invalid form ID')
   const { data, error } = await supabase
     .from('signup_response_detail')
     .select('*')
@@ -116,6 +121,7 @@ export async function getAllFormResponses(formId: string): Promise<SignupRespons
 }
 
 export async function getEventSignupForm(eventId: string): Promise<SignupForm | null> {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
   const { data, error } = await supabase
     .from('signup_forms')
     .select('*')
@@ -147,39 +153,35 @@ export async function updateSignupForm(params: {
   fields: CreateFormFieldInput[]
 }) {
   const { formId, fields, ...formUpdates } = params
-  const updatePayload: Record<string, unknown> = { updated_at: new Date().toISOString() }
-  if (formUpdates.title !== undefined) updatePayload.title = formUpdates.title
-  if (formUpdates.description !== undefined) updatePayload.description = formUpdates.description
-  if (formUpdates.maxSignups !== undefined) updatePayload.max_signups = formUpdates.maxSignups
-  if (formUpdates.deadline !== undefined) updatePayload.deadline = formUpdates.deadline
-  if (formUpdates.isActive !== undefined) updatePayload.is_active = formUpdates.isActive
+  if (!isValidUUID(formId)) throw new Error('Invalid form ID')
 
-  const { error: formError } = await supabase.from('signup_forms').update(updatePayload).eq('id', formId)
-  if (formError) throw formError
+  const fieldRows = fields.map((f, idx) => ({
+    field_key: f.field_key,
+    field_label: f.field_label,
+    field_type: f.field_type,
+    is_required: f.is_required,
+    is_standard: f.is_standard,
+    options: f.options ?? null,
+    placeholder: f.placeholder ?? null,
+    sort_order: idx,
+  }))
 
-  const { error: deleteError } = await supabase.from('signup_form_fields').delete().eq('form_id', formId)
-  if (deleteError) throw deleteError
+  const { data, error } = await supabase.rpc('update_signup_form', {
+    p_form_id: formId,
+    p_title: formUpdates.title ?? null,
+    p_description: formUpdates.description ?? null,
+    p_max_signups: formUpdates.maxSignups ?? null,
+    p_deadline: formUpdates.deadline ?? null,
+    p_is_active: formUpdates.isActive ?? null,
+    p_fields: fieldRows,
+  })
 
-  if (fields.length > 0) {
-    const fieldRows = fields.map((f, idx) => ({
-      form_id: formId,
-      field_key: f.field_key,
-      field_label: f.field_label,
-      field_type: f.field_type,
-      is_required: f.is_required,
-      is_standard: f.is_standard,
-      options: f.options ?? null,
-      placeholder: f.placeholder ?? null,
-      sort_order: idx,
-    }))
-    const { error: insertError } = await supabase.from('signup_form_fields').insert(fieldRows)
-    if (insertError) throw insertError
-  }
-
+  if (error) throw error
   return { success: true, form_id: formId }
 }
 
 export async function getSignupForm(formId: string): Promise<SignupForm | null> {
+  if (!isValidUUID(formId)) throw new Error('Invalid form ID')
   const { data, error } = await supabase
     .from('signup_forms')
     .select('*')

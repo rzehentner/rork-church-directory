@@ -3,12 +3,12 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Image,
   Alert,
   StyleSheet,
   ActivityIndicator,
   Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Camera, Upload } from 'lucide-react-native';
 
@@ -137,7 +137,7 @@ export default function ImageUploader({
                 borderRadius: isCircular ? size / 2 : 12,
               },
             ]}
-            resizeMode="cover"
+            contentFit="cover"
           />
           {!disabled && (
             <View style={styles.overlay}>

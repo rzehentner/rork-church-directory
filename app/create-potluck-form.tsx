@@ -9,6 +9,7 @@ import {
   Switch,
   Platform,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native'
 import { Stack, useLocalSearchParams, router } from 'expo-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -22,8 +23,7 @@ import {
 } from 'lucide-react-native'
 import { createPotluckForm, type PotluckGroupInput } from '@/services/potluck'
 import { useToast } from '@/hooks/toast-context'
-import DateTimePicker from '@react-native-community/datetimepicker'
-import { potluckFormStyles as styles } from '@/styles/create-potluck-form.styles'
+import DateTimePicker from '@/components/DateTimePicker'
 
 interface ItemDraft {
   id: string
@@ -67,8 +67,7 @@ export default function CreatePotluckFormScreen() {
 
   const createMutation = useMutation({
     mutationFn: createPotluckForm,
-    onSuccess: (data) => {
-      console.log('Potluck form created successfully:', JSON.stringify(data))
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
       queryClient.invalidateQueries({ queryKey: ['signup-form-summary'] })
       queryClient.invalidateQueries({ queryKey: ['event-signup-form', eventId] })
@@ -77,7 +76,6 @@ export default function CreatePotluckFormScreen() {
       router.back()
     },
     onError: (error: any) => {
-      console.error('Create potluck form error:', JSON.stringify(error))
       const msg = error?.message || error?.details || 'Failed to create potluck form'
       showToast('error', msg)
     },
@@ -178,6 +176,10 @@ export default function CreatePotluckFormScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Create Potluck Form' }} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -241,7 +243,7 @@ export default function CreatePotluckFormScreen() {
               mode="datetime"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={(_, date) => {
-                if (Platform.OS === 'android') setShowDatePicker(false)
+                if (Platform.OS !== 'ios') setShowDatePicker(false)
                 if (date) setDeadline(date)
               }}
               minimumDate={new Date()}
@@ -395,6 +397,7 @@ export default function CreatePotluckFormScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   )
 }

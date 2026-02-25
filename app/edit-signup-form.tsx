@@ -28,9 +28,8 @@ import {
   type CreateFormFieldInput,
 } from '@/services/signup-forms'
 import { useToast } from '@/hooks/toast-context'
-import type { SignupFieldType } from '@/types/supabase'
-import DateTimePicker from '@react-native-community/datetimepicker'
-import { signupFormStyles as styles } from '@/styles/signup-form.styles'
+import type { SignupFieldType } from '@/types/signup'
+import DateTimePicker from '@/components/DateTimePicker'
 
 const FIELD_TYPE_OPTIONS: { value: SignupFieldType; label: string }[] = [
   { value: 'text', label: 'Text' },
@@ -95,7 +94,6 @@ export default function EditSignupFormScreen() {
 
   useEffect(() => {
     if (form && existingFields && !initialized) {
-      console.log('Initializing edit form with:', form.title, existingFields.length, 'fields')
       setTitle(form.title ?? '')
       setDescription(form.description ?? '')
       setMaxSignups(form.max_signups ? String(form.max_signups) : '')
@@ -126,7 +124,6 @@ export default function EditSignupFormScreen() {
   const updateMutation = useMutation({
     mutationFn: updateSignupForm,
     onSuccess: () => {
-      console.log('Signup form updated successfully')
       queryClient.invalidateQueries({ queryKey: ['signup-form', formId] })
       queryClient.invalidateQueries({ queryKey: ['signup-form-fields', formId] })
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
@@ -138,7 +135,6 @@ export default function EditSignupFormScreen() {
       router.back()
     },
     onError: (error: any) => {
-      console.error('Update signup form error:', error)
       showToast('error', error?.message || 'Failed to update signup form')
     },
   })
@@ -350,7 +346,7 @@ export default function EditSignupFormScreen() {
               mode="datetime"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={(_, date) => {
-                if (Platform.OS === 'android') setShowDatePicker(false)
+                if (Platform.OS !== 'ios') setShowDatePicker(false)
                 if (date) setDeadline(date)
               }}
               minimumDate={new Date()}

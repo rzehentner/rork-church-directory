@@ -9,6 +9,7 @@ import {
   Switch,
   Platform,
   Alert,
+  KeyboardAvoidingView,
 } from 'react-native'
 import { Stack, useLocalSearchParams, router } from 'expo-router'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -23,9 +24,8 @@ import {
 } from 'lucide-react-native'
 import { createSignupForm, type CreateFormFieldInput } from '@/services/signup-forms'
 import { useToast } from '@/hooks/toast-context'
-import type { SignupFieldType } from '@/types/supabase'
-import DateTimePicker from '@react-native-community/datetimepicker'
-import { signupFormStyles as styles } from '@/styles/signup-form.styles'
+import type { SignupFieldType } from '@/types/signup'
+import DateTimePicker from '@/components/DateTimePicker'
 
 const FIELD_TYPE_OPTIONS: { value: SignupFieldType; label: string }[] = [
   { value: 'text', label: 'Text' },
@@ -84,8 +84,7 @@ export default function CreateSignupFormScreen() {
 
   const createMutation = useMutation({
     mutationFn: createSignupForm,
-    onSuccess: (data) => {
-      console.log('Signup form created:', data)
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
       queryClient.invalidateQueries({ queryKey: ['signup-form-summary'] })
       queryClient.invalidateQueries({ queryKey: ['event-signup-form', eventId] })
@@ -93,7 +92,6 @@ export default function CreateSignupFormScreen() {
       router.back()
     },
     onError: (error: any) => {
-      console.error('Create signup form error:', error)
       showToast('error', error?.message || 'Failed to create signup form')
     },
   })
@@ -215,6 +213,10 @@ export default function CreateSignupFormScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: 'Create Signup Form' }} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -276,7 +278,7 @@ export default function CreateSignupFormScreen() {
               mode="datetime"
               display={Platform.OS === 'ios' ? 'spinner' : 'default'}
               onChange={(_, date) => {
-                if (Platform.OS === 'android') setShowDatePicker(false)
+                if (Platform.OS !== 'ios') setShowDatePicker(false)
                 if (date) setDeadline(date)
               }}
               minimumDate={new Date()}
@@ -467,6 +469,7 @@ export default function CreateSignupFormScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   )
 }

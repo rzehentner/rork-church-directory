@@ -30,7 +30,6 @@ const MONTHS = [
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 export default function Calendar({ events, selectedDate, onDateSelect, onMonthChange }: CalendarProps) {
-  console.log('Calendar rendering with:', { eventsCount: events.length, selectedDate: selectedDate.toISOString() })
   const [currentMonth, setCurrentMonth] = useState(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1))
 
   const eventsByDate = useMemo(() => {
@@ -102,8 +101,6 @@ export default function Calendar({ events, selectedDate, onDateSelect, onMonthCh
     onDateSelect(date)
   }
 
-  console.log('Calendar days generated:', calendarDays.length)
-  
   return (
     <View style={styles.container} testID="calendar-container">
       {/* Header */}

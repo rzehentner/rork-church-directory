@@ -118,8 +118,7 @@ const [ToastProvider, useToast] = createContextHook(() => {
         });
 
         return unsubscribe;
-      } catch (error) {
-        console.warn('NetInfo setup failed:', error);
+      } catch {
         if (mounted) {
           setIsOffline(false);
         }

@@ -9,8 +9,9 @@ import {
   ActivityIndicator,
   Platform,
   Modal,
+  KeyboardAvoidingView,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import DateTimePicker from '@/components/DateTimePicker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
@@ -57,14 +58,13 @@ export default function VisitorProfileScreen() {
       
       // Load avatar if exists
       const loadAvatar = async () => {
-        if (person.photo_url) {
+        if (person.photo_path) {
           try {
-            const url = await getSignedUrl(person.photo_url);
+            const url = await getSignedUrl(person.photo_path);
             if (url) {
               setAvatarUrl(`${url}&t=${Date.now()}`);
             }
-          } catch (error) {
-            console.error('Error loading avatar:', error);
+          } catch {
           }
         }
       };
@@ -94,12 +94,11 @@ export default function VisitorProfileScreen() {
       // Immediately update the UI with the new URL
       setAvatarUrl(url);
       
-      // Refresh the user data to get the updated photo_url
+      // Refresh the user data to get the updated photo_path
       await refetch();
       
       return url;
     } catch (error) {
-      console.error('Error uploading avatar:', error);
       if (error instanceof Error) {
         Alert.alert('Upload Failed', error.message);
       }
@@ -165,8 +164,6 @@ export default function VisitorProfileScreen() {
         ]
       );
     } catch (error) {
-      console.error('Error saving profile:', error);
-      
       let errorMessage = 'Failed to save profile. Please try again.';
       if (error && typeof error === 'object' && 'message' in error) {
         errorMessage = `Failed to save profile: ${error.message}`;
@@ -210,6 +207,10 @@ export default function VisitorProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
@@ -353,6 +354,7 @@ export default function VisitorProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Date Picker Modal */}
       {showDatePicker && (
@@ -388,7 +390,7 @@ export default function VisitorProfileScreen() {
                     if (date) {
                       setSelectedDate(date);
                     }
-                    if (Platform.OS === 'android') {
+                    if (Platform.OS !== 'ios') {
                       setShowDatePicker(false);
                       if (date) {
                         const dateString = date.toISOString().split('T')[0];

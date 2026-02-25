@@ -19,30 +19,16 @@ export interface Tag {
   updated_at?: string;
 }
 
-let mockTagsStore: Tag[] = [
-  { id: '1', name: 'Family Leader', color: '#3B82F6', self_assignable: false, assign_min_role: 'admin', is_active: true, created_at: new Date().toISOString() },
-  { id: '2', name: 'Youth', color: '#10B981', self_assignable: false, assign_min_role: 'leader', is_active: true, created_at: new Date().toISOString() },
-  { id: '3', name: 'Elder', color: '#8B5CF6', self_assignable: true, assign_min_role: 'member', is_active: true, created_at: new Date().toISOString() },
-  { id: '4', name: 'Volunteer', color: '#F59E0B', self_assignable: true, assign_min_role: 'member', is_active: true, created_at: new Date().toISOString() },
-  { id: '5', name: 'Seniors', color: '#EC4899', self_assignable: true, assign_min_role: 'member', is_active: true, created_at: new Date().toISOString() },
-  { id: '6', name: 'Choir', color: '#06B6D4', self_assignable: false, assign_min_role: 'leader', is_active: true, created_at: new Date().toISOString() },
-  { id: '7', name: 'Archived Tag', color: '#9CA3AF', self_assignable: false, assign_min_role: 'member', is_active: false, created_at: new Date().toISOString() },
-];
-
 export interface PersonWithTags extends Person {
   tags: Tag[];
 }
 
 export async function listTags(activeOnly: boolean = false): Promise<Tag[]> {
-  try {
-    let query = supabase.from('tags').select('*').order('name');
-    if (activeOnly) query = query.eq('is_active', true);
-    const { data, error } = await query;
-    if (error) throw error;
-    return data || [];
-  } catch {
-    return activeOnly ? mockTagsStore.filter(t => t.is_active) : mockTagsStore;
-  }
+  let query = supabase.from('tags').select('*').order('name');
+  if (activeOnly) query = query.eq('is_active', true);
+  const { data, error } = await query;
+  if (error) throw error;
+  return data || [];
 }
 
 export async function getMyProfile(): Promise<Profile> {
@@ -89,6 +75,8 @@ export async function getPersonWithTags(personId: string): Promise<PersonWithTag
 }
 
 export async function addTagToPerson(personId: string, tagId: string): Promise<void> {
+  if (!isValidUUID(personId)) throw new Error('Invalid person ID');
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   const { data: tag, error: tagError } = await supabase.from('tags').select('name').eq('id', tagId).single();
   if (tagError || !tag) throw new Error('Tag not found');
 
@@ -101,6 +89,8 @@ export async function addTagToPerson(personId: string, tagId: string): Promise<v
 }
 
 export async function removeTagFromPerson(personId: string, tagId: string): Promise<void> {
+  if (!isValidUUID(personId)) throw new Error('Invalid person ID');
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
   const { data: tag, error: tagError } = await supabase.from('tags').select('name').eq('id', tagId).single();
   if (tagError || !tag) throw new Error('Tag not found');
 
@@ -145,42 +135,24 @@ export async function createTag(tagData: {
   if (!name || name.length === 0) throw new Error('Tag name is required');
   if (name.length > 100) throw new Error('Tag name is too long (max 100 characters)');
 
-  try {
-    const { data, error } = await supabase
-      .from('tags')
-      .insert({
-        name,
-        namespace: tagData.namespace?.trim() || null,
-        color: tagData.color || '#6B7280',
-        description: tagData.description?.trim() || null,
-        parent_id: tagData.parent_id || null,
-        self_assignable: tagData.self_assignable ?? false,
-        assign_min_role: tagData.assign_min_role ?? 'admin',
-        is_active: true
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    if (!data) throw new Error('No data returned from tag creation');
-    return data as Tag;
-  } catch (error) {
-    console.error('Failed to create tag:', error);
-    const newTag: Tag = {
-      id: Math.random().toString(36).substr(2, 9),
+  const { data, error } = await supabase
+    .from('tags')
+    .insert({
       name,
-      namespace: tagData.namespace?.trim(),
+      namespace: tagData.namespace?.trim() || null,
       color: tagData.color || '#6B7280',
-      description: tagData.description?.trim(),
+      description: tagData.description?.trim() || null,
+      parent_id: tagData.parent_id || null,
       self_assignable: tagData.self_assignable ?? false,
       assign_min_role: tagData.assign_min_role ?? 'admin',
-      is_active: true,
-      parent_id: tagData.parent_id,
-      created_at: new Date().toISOString(),
-    };
-    mockTagsStore.push(newTag);
-    return newTag;
-  }
+      is_active: true
+    })
+    .select()
+    .single();
+
+  if (error) throw error;
+  if (!data) throw new Error('No data returned from tag creation');
+  return data as Tag;
 }
 
 export async function updateTag(tagId: string, updates: {
@@ -191,46 +163,29 @@ export async function updateTag(tagId: string, updates: {
   color?: string;
   description?: string;
 }): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('tags')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', tagId);
-    if (error) throw error;
-  } catch {
-    const tagIndex = mockTagsStore.findIndex((tag: Tag) => tag.id === tagId);
-    if (tagIndex !== -1) {
-      mockTagsStore[tagIndex] = { ...mockTagsStore[tagIndex], ...updates, updated_at: new Date().toISOString() };
-    }
-  }
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
+  const { error } = await supabase
+    .from('tags')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', tagId);
+  if (error) throw error;
 }
 
 export async function deleteTag(tagId: string, hardDelete: boolean = false): Promise<void> {
-  try {
-    if (hardDelete) {
-      const { error } = await supabase.from('tags').delete().eq('id', tagId);
-      if (error) throw error;
-    } else {
-      await updateTag(tagId, { is_active: false });
-    }
-  } catch {
-    if (hardDelete) {
-      const idx = mockTagsStore.findIndex((t: Tag) => t.id === tagId);
-      if (idx !== -1) mockTagsStore.splice(idx, 1);
-    } else {
-      await updateTag(tagId, { is_active: false });
-    }
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
+  if (hardDelete) {
+    const { error } = await supabase.from('tags').delete().eq('id', tagId);
+    if (error) throw error;
+  } else {
+    await updateTag(tagId, { is_active: false });
   }
 }
 
 export async function reactivateTag(tagId: string): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('tags')
-      .update({ is_active: true, updated_at: new Date().toISOString() })
-      .eq('id', tagId);
-    if (error) throw error;
-  } catch {
-    await updateTag(tagId, { is_active: true });
-  }
+  if (!isValidUUID(tagId)) throw new Error('Invalid tag ID');
+  const { error } = await supabase
+    .from('tags')
+    .update({ is_active: true, updated_at: new Date().toISOString() })
+    .eq('id', tagId);
+  if (error) throw error;
 }

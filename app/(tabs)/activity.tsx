@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMe } from '@/hooks/me-context';
@@ -20,7 +20,6 @@ import { router } from 'expo-router';
 import {
   Bell,
   Calendar,
-  Clock,
   MapPin,
   CheckCircle,
   ChevronRight,
@@ -60,17 +59,14 @@ export default function ActivityScreen() {
   } = useQuery({
     queryKey: ['announcements-for-me', profile?.id],
     queryFn: async () => {
-      console.log('📢 Activity: Fetching announcements, profileId:', profile?.id);
       try {
         const data = await listAnnouncementsForMe();
-        console.log('📢 Activity: Got announcements:', data?.length);
         return (data || []).map((a: any) => ({
           ...a,
           author_name: a.author_name || undefined,
           tags: [],
         }));
-      } catch (err) {
-        console.error('📢 Activity: Error fetching announcements:', err);
+      } catch {
         return [];
       }
     },
@@ -87,18 +83,14 @@ export default function ActivityScreen() {
   } = useQuery({
     queryKey: ['activity-events', profile?.id],
     queryFn: async () => {
-      console.log('📅 Activity: Fetching events');
       try {
         const startDate = new Date();
         startDate.setFullYear(startDate.getFullYear() - 1);
         const endDate = new Date();
         endDate.setMonth(endDate.getMonth() + 6);
-        console.log('📅 Activity: Date range:', startDate.toISOString(), 'to', endDate.toISOString());
         const data = await listEventsForDateRange(startDate, endDate);
-        console.log('📅 Activity: Got events:', data?.length);
         return data || [];
-      } catch (err) {
-        console.error('📅 Activity: Error fetching events:', err);
+      } catch {
         return [];
       }
     },
@@ -169,7 +161,7 @@ export default function ActivityScreen() {
     await Promise.all([refetchAnnouncements(), refetchEvents()]);
   }, [refetchAnnouncements, refetchEvents]);
 
-  const formatTimeAgo = (dateString: string) => {
+  const formatTimeAgo = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -182,9 +174,9 @@ export default function ActivityScreen() {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
     return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
-  };
+  }, []);
 
-  const formatEventDate = (dateString: string) => {
+  const formatEventDate = useCallback((dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
     const tomorrow = new Date(now);
@@ -203,118 +195,128 @@ export default function ActivityScreen() {
       hour: '2-digit',
       minute: '2-digit',
     });
-  };
+  }, []);
 
-  const isFutureEvent = (dateString: string) => new Date(dateString) > new Date();
+  const isFutureEvent = useCallback((dateString: string) => new Date(dateString) > new Date(), []);
 
-  const renderAnnouncementItem = (item: FeedItem) => (
-    <TouchableOpacity
-      key={item.id}
-      style={[styles.feedCard, !item.isRead && styles.unreadCard]}
-      onPress={() => router.push('/(tabs)/announcements' as any)}
-      testID={`activity-announcement-${item.raw.id}`}
-    >
-      <View style={styles.feedCardHeader}>
-        <View style={[styles.typeIndicator, { backgroundColor: '#DBEAFE' }]}>
-          <Bell size={14} color="#2563EB" />
-        </View>
-        <View style={styles.feedCardHeaderText}>
-          <Text style={styles.feedCardType}>Announcement</Text>
-          <Text style={styles.feedCardTime}>{formatTimeAgo(item.timestamp)}</Text>
-        </View>
-        {!item.isRead && <View style={styles.unreadDot} />}
-      </View>
-
-      <Text style={styles.feedCardTitle}>{item.title}</Text>
-      {item.subtitle ? (
-        <Text style={styles.feedCardSubtitle} numberOfLines={1}>
-          {item.subtitle}
-        </Text>
-      ) : null}
-
-      {item.tags && item.tags.length > 0 && (
-        <View style={styles.tagsRow}>
-          {item.tags.slice(0, 3).map((tag) => (
-            <TagPill
-              key={tag.id}
-              tag={{
-                id: tag.id,
-                name: tag.name,
-                color: tag.color,
-                self_assignable: false,
-                assign_min_role: 'member' as const,
-                is_active: true,
-                created_at: new Date().toISOString(),
-              }}
-              size="small"
-            />
-          ))}
-        </View>
-      )}
-
-      {!item.isRead && (
-        <TouchableOpacity
-          style={styles.markReadBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            markReadMutation.mutate(item.raw.id);
-          }}
-          disabled={markReadMutation.isPending}
-        >
-          <CheckCircle size={12} color="#2563EB" />
-          <Text style={styles.markReadText}>Mark as read</Text>
-        </TouchableOpacity>
-      )}
-    </TouchableOpacity>
-  );
-
-  const renderEventItem = (item: FeedItem) => {
-    const upcoming = isFutureEvent(item.timestamp);
-    return (
+  const renderAnnouncementItem = useCallback(
+    (item: FeedItem) => (
       <TouchableOpacity
-        key={item.id}
-        style={styles.feedCard}
-        onPress={() => router.push(`/event-detail?id=${item.raw.id}` as any)}
-        testID={`activity-event-${item.raw.id}`}
+        style={[styles.feedCard, !item.isRead && styles.unreadCard]}
+        onPress={() => router.push('/(tabs)/announcements' as any)}
+        testID={`activity-announcement-${item.raw.id}`}
       >
-        {item.imagePath && (
-          <Image
-            source={{ uri: eventImageUrl(item.imagePath)! }}
-            style={styles.eventImage}
-            resizeMode="cover"
-          />
-        )}
         <View style={styles.feedCardHeader}>
-          <View style={[styles.typeIndicator, { backgroundColor: upcoming ? '#D1FAE5' : '#F3F4F6' }]}>
-            <Calendar size={14} color={upcoming ? '#059669' : '#6B7280'} />
+          <View style={[styles.typeIndicator, { backgroundColor: '#DBEAFE' }]}>
+            <Bell size={14} color="#2563EB" />
           </View>
           <View style={styles.feedCardHeaderText}>
-            <Text style={styles.feedCardType}>{upcoming ? 'Upcoming Event' : 'Past Event'}</Text>
-            <Text style={styles.feedCardTime}>{formatEventDate(item.timestamp)}</Text>
+            <Text style={styles.feedCardType}>Announcement</Text>
+            <Text style={styles.feedCardTime}>{formatTimeAgo(item.timestamp)}</Text>
           </View>
-          {upcoming && (
-            <View style={styles.upcomingBadge}>
-              <Text style={styles.upcomingBadgeText}>Upcoming</Text>
-            </View>
-          )}
+          {!item.isRead && <View style={styles.unreadDot} />}
         </View>
 
         <Text style={styles.feedCardTitle}>{item.title}</Text>
+        {item.subtitle ? (
+          <Text style={styles.feedCardSubtitle} numberOfLines={1}>
+            {item.subtitle}
+          </Text>
+        ) : null}
 
-        {item.location && (
-          <View style={styles.metaRow}>
-            <MapPin size={12} color="#6B7280" />
-            <Text style={styles.metaText}>{item.location}</Text>
+        {item.tags && item.tags.length > 0 && (
+          <View style={styles.tagsRow}>
+            {item.tags.slice(0, 3).map((tag) => (
+              <TagPill
+                key={tag.id}
+                tag={{
+                  id: tag.id,
+                  name: tag.name,
+                  color: tag.color,
+                  self_assignable: false,
+                  assign_min_role: 'member' as const,
+                  is_active: true,
+                  created_at: new Date().toISOString(),
+                }}
+                size="small"
+              />
+            ))}
           </View>
         )}
 
-        <View style={styles.eventCardFooter}>
-          <Text style={styles.viewDetailsText}>View Details</Text>
-          <ChevronRight size={14} color="#2563EB" />
-        </View>
+        {!item.isRead && (
+          <TouchableOpacity
+            style={styles.markReadBtn}
+            onPress={(e) => {
+              e.stopPropagation();
+              markReadMutation.mutate(item.raw.id);
+            }}
+            disabled={markReadMutation.isPending}
+          >
+            <CheckCircle size={12} color="#2563EB" />
+            <Text style={styles.markReadText}>Mark as read</Text>
+          </TouchableOpacity>
+        )}
       </TouchableOpacity>
-    );
-  };
+    ),
+    [formatTimeAgo, markReadMutation],
+  );
+
+  const renderEventItem = useCallback(
+    (item: FeedItem) => {
+      const upcoming = isFutureEvent(item.timestamp);
+      return (
+        <TouchableOpacity
+          style={styles.feedCard}
+          onPress={() => router.push(`/event-detail?id=${item.raw.id}` as any)}
+          testID={`activity-event-${item.raw.id}`}
+        >
+          {item.imagePath && (
+            <Image
+              source={{ uri: eventImageUrl(item.imagePath)! }}
+              style={styles.eventImage}
+              contentFit="cover"
+            />
+          )}
+          <View style={styles.feedCardHeader}>
+            <View style={[styles.typeIndicator, { backgroundColor: upcoming ? '#D1FAE5' : '#F3F4F6' }]}>
+              <Calendar size={14} color={upcoming ? '#059669' : '#6B7280'} />
+            </View>
+            <View style={styles.feedCardHeaderText}>
+              <Text style={styles.feedCardType}>{upcoming ? 'Upcoming Event' : 'Past Event'}</Text>
+              <Text style={styles.feedCardTime}>{formatEventDate(item.timestamp)}</Text>
+            </View>
+            {upcoming && (
+              <View style={styles.upcomingBadge}>
+                <Text style={styles.upcomingBadgeText}>Upcoming</Text>
+              </View>
+            )}
+          </View>
+
+          <Text style={styles.feedCardTitle}>{item.title}</Text>
+
+          {item.location && (
+            <View style={styles.metaRow}>
+              <MapPin size={12} color="#6B7280" />
+              <Text style={styles.metaText}>{item.location}</Text>
+            </View>
+          )}
+
+          <View style={styles.eventCardFooter}>
+            <Text style={styles.viewDetailsText}>View Details</Text>
+            <ChevronRight size={14} color="#2563EB" />
+          </View>
+        </TouchableOpacity>
+      );
+    },
+    [formatEventDate, isFutureEvent],
+  );
+
+  const renderItem = useCallback(
+    ({ item }: { item: FeedItem }) =>
+      item.type === 'announcement' ? renderAnnouncementItem(item) : renderEventItem(item),
+    [renderAnnouncementItem, renderEventItem],
+  );
 
   if (isLoading) {
     return (
@@ -335,6 +337,47 @@ export default function ActivityScreen() {
   const eventCount = feedItems.filter((i) => i.type === 'event').length;
   const unreadCount = feedItems.filter((i) => i.type === 'announcement' && !i.isRead).length;
 
+  const listHeader = (
+    <View style={styles.filterBar}>
+      {([
+        { key: 'all' as const, label: 'All', count: feedItems.length },
+        { key: 'announcements' as const, label: 'Announcements', count: announcementCount },
+        { key: 'events' as const, label: 'Events', count: eventCount },
+      ]).map((tab) => (
+        <TouchableOpacity
+          key={tab.key}
+          style={[styles.filterTab, activeFilter === tab.key && styles.filterTabActive]}
+          onPress={() => setActiveFilter(tab.key)}
+        >
+          <Text style={[styles.filterTabText, activeFilter === tab.key && styles.filterTabTextActive]}>
+            {tab.label}
+          </Text>
+          {tab.count > 0 && (
+            <View style={[styles.filterCount, activeFilter === tab.key && styles.filterCountActive]}>
+              <Text style={[styles.filterCountText, activeFilter === tab.key && styles.filterCountTextActive]}>
+                {tab.count}
+              </Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const listEmpty = (
+    <View style={styles.emptyContainer}>
+      <Zap size={48} color="#D1D5DB" />
+      <Text style={styles.emptyTitle}>No activity yet</Text>
+      <Text style={styles.emptyText}>
+        {activeFilter === 'all'
+          ? 'Announcements and events will appear here'
+          : activeFilter === 'announcements'
+          ? 'No announcements to show'
+          : 'No events to show'}
+      </Text>
+    </View>
+  );
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -349,59 +392,21 @@ export default function ActivityScreen() {
         )}
       </View>
 
-      <View style={styles.filterBar}>
-        {([
-          { key: 'all' as const, label: 'All', count: feedItems.length },
-          { key: 'announcements' as const, label: 'Announcements', count: announcementCount },
-          { key: 'events' as const, label: 'Events', count: eventCount },
-        ]).map((tab) => (
-          <TouchableOpacity
-            key={tab.key}
-            style={[styles.filterTab, activeFilter === tab.key && styles.filterTabActive]}
-            onPress={() => setActiveFilter(tab.key)}
-          >
-            <Text style={[styles.filterTabText, activeFilter === tab.key && styles.filterTabTextActive]}>
-              {tab.label}
-            </Text>
-            {tab.count > 0 && (
-              <View style={[styles.filterCount, activeFilter === tab.key && styles.filterCountActive]}>
-                <Text style={[styles.filterCountText, activeFilter === tab.key && styles.filterCountTextActive]}>
-                  {tab.count}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <ScrollView
+      <FlatList
+        data={filteredItems}
+        keyExtractor={(item) => `${item.type}-${item.id}`}
+        renderItem={renderItem}
         style={styles.feedList}
+        contentContainerStyle={styles.feedContent}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={8}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
         refreshControl={
           <RefreshControl refreshing={false} onRefresh={handleRefresh} tintColor="#2563EB" />
         }
-      >
-        {filteredItems.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Zap size={48} color="#D1D5DB" />
-            <Text style={styles.emptyTitle}>No activity yet</Text>
-            <Text style={styles.emptyText}>
-              {activeFilter === 'all'
-                ? 'Announcements and events will appear here'
-                : activeFilter === 'announcements'
-                ? 'No announcements to show'
-                : 'No events to show'}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.feedContent}>
-            {filteredItems.map((item) =>
-              item.type === 'announcement' ? renderAnnouncementItem(item) : renderEventItem(item)
-            )}
-          </View>
-        )}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
+      />
     </View>
   );
 }
@@ -497,6 +502,7 @@ const styles = StyleSheet.create({
   feedContent: {
     padding: 16,
     gap: 12,
+    paddingBottom: 30,
   },
   feedCard: {
     backgroundColor: '#FFFFFF',
@@ -651,8 +657,5 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     textAlign: 'center',
     paddingHorizontal: 40,
-  },
-  bottomSpacing: {
-    height: 30,
   },
 });

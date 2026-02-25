@@ -7,8 +7,9 @@ import {
   ScrollView,
   Switch,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native'
-import DateTimePicker from '@react-native-community/datetimepicker'
+import DateTimePicker from '@/components/DateTimePicker'
 import { Stack, router } from 'expo-router'
 import { MapPin } from 'lucide-react-native'
 import { createEvent, setEventTags, scheduleReminder } from '@/services/events'
@@ -77,7 +78,7 @@ export default function CreateEventScreen() {
         is_all_day: isAllDay,
         location: location.trim() || null,
         is_public: isPublic,
-        roles_allowed: isPublic ? null : selectedRoles.length > 0 ? selectedRoles : null,
+        roles: isPublic ? [] : selectedRoles,
       }
 
       const event = await createEvent(eventData)
@@ -106,7 +107,6 @@ export default function CreateEventScreen() {
       // Navigate to the events tab and refresh the list
       router.replace('/(tabs)/events' as any)
     } catch (error) {
-      console.error('Failed to create event:', error)
       showToast('error', 'Failed to create event')
     } finally {
       setLoading(false)
@@ -131,7 +131,7 @@ export default function CreateEventScreen() {
   }
 
   const handleStartDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowStartDatePicker(false)
       if (selectedDate) {
         const newStartDate = new Date(startDate)
@@ -156,7 +156,7 @@ export default function CreateEventScreen() {
   }
 
   const handleStartTimeChange = (event: any, selectedTime?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowStartTimePicker(false)
       if (selectedTime) {
         const newStartDate = new Date(startDate)
@@ -180,7 +180,7 @@ export default function CreateEventScreen() {
   }
 
   const handleEndDateChange = (event: any, selectedDate?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowEndDatePicker(false)
       if (selectedDate) {
         const newEndDate = new Date(endDate)
@@ -198,7 +198,7 @@ export default function CreateEventScreen() {
   }
 
   const handleEndTimeChange = (event: any, selectedTime?: Date) => {
-    if (Platform.OS === 'android') {
+    if (Platform.OS !== 'ios') {
       setShowEndTimePicker(false)
       if (selectedTime) {
         const newEndDate = new Date(endDate)
@@ -216,8 +216,12 @@ export default function CreateEventScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{ 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+      <Stack.Screen
+        options={{
           title: 'Create Event',
           headerRight: () => (
             <TouchableOpacity
@@ -520,7 +524,6 @@ export default function CreateEventScreen() {
               <ImageUploader
                 currentImageUrl={imageUri}
                 onUpload={async (file) => {
-                  console.log('[CreateEvent] Image selected:', file.uri)
                   // Store the local URI for later upload
                   setImageUri(file.uri)
                   // Return the local URI to show in the UI
@@ -598,6 +601,7 @@ export default function CreateEventScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   )
 }

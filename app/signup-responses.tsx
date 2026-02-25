@@ -8,14 +8,14 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
-  Image,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { Stack, useLocalSearchParams, router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { XCircle, Filter, ChevronDown, ChevronUp, User } from 'lucide-react-native'
 import { getAllFormResponses, cancelSignup, getSignupForm } from '@/services/signup-forms'
 import { useToast } from '@/hooks/toast-context'
-import type { SignupResponseDetail, SignupStatus } from '@/types/supabase'
+import type { SignupResponseDetail, SignupStatus } from '@/types/signup'
 
 type StatusFilter = 'all' | SignupStatus
 
@@ -106,8 +106,8 @@ export default function SignupResponsesScreen() {
           activeOpacity={0.7}
         >
           <View style={styles.cardLeft}>
-            {item.person_photo_url ? (
-              <Image source={{ uri: item.person_photo_url }} style={styles.avatar} />
+            {item.person_photo_path ? (
+              <Image source={{ uri: item.person_photo_path }} style={styles.avatar} />
             ) : (
               <View style={styles.avatarPlaceholder}>
                 <User size={18} color="#9CA3AF" />

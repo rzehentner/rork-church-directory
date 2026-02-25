@@ -49,8 +49,7 @@ export default function SettingsScreen() {
             try {
               await supabase.auth.signOut();
               router.replace('/');
-            } catch (error) {
-              console.error('Error signing out:', error);
+            } catch {
               Alert.alert('Error', 'Failed to sign out');
             }
           },
@@ -63,8 +62,7 @@ export default function SettingsScreen() {
     setNotificationsEnabled(!notificationsEnabled);
   };
 
-  const handleNotificationPreferencesChange = (preferences: NotificationPreferences) => {
-    console.log('Notification preferences updated:', preferences);
+  const handleNotificationPreferencesChange = (_preferences: NotificationPreferences) => {
   };
 
   const toggleBiometric = async () => {
@@ -84,33 +82,22 @@ export default function SettingsScreen() {
         ]
       );
     } else {
-      if (!user?.email) return;
-      
       Alert.alert(
         'Enable Biometric Authentication',
-        'You will need to re-enter your password to enable biometric authentication.',
+        'Use your fingerprint or face to sign in faster next time.',
         [
           { text: 'Cancel', style: 'cancel' },
           {
-            text: 'Continue',
-            onPress: () => {
-              Alert.prompt(
-                'Enter Password',
-                'Please enter your password to enable biometric authentication',
-                async (password) => {
-                  if (password) {
-                    setIsEnablingBiometric(true);
-                    const { error } = await enableBiometric(user.email!, password);
-                    setIsEnablingBiometric(false);
-                    if (error) {
-                      Alert.alert('Error', error.message);
-                    } else {
-                      Alert.alert('Success', 'Biometric authentication enabled');
-                    }
-                  }
-                },
-                'secure-text'
-              );
+            text: 'Enable',
+            onPress: async () => {
+              setIsEnablingBiometric(true);
+              const { error } = await enableBiometric();
+              setIsEnablingBiometric(false);
+              if (error) {
+                Alert.alert('Error', error.message);
+              } else {
+                Alert.alert('Success', 'Biometric authentication enabled');
+              }
             },
           },
         ]
@@ -322,13 +309,13 @@ export default function SettingsScreen() {
               <Code size={16} color="#6B7280" />
               <Text style={styles.developerLabel}>Developed by</Text>
             </View>
-            <Text style={styles.developerName}>Caleb McWhorter</Text>
+            <Text style={styles.developerName}>Robert Zehentner (Pine Belt Data)</Text>
             <TouchableOpacity
               style={styles.developerLink}
-              onPress={() => Linking.openURL('mailto:caleb@ednabc.org')}
+              onPress={() => Linking.openURL('mailto:rob@pinebeltrides.com')}
             >
               <ExternalLink size={14} color="#1C2E4A" />
-              <Text style={styles.developerLinkText}>caleb@ednabc.org</Text>
+              <Text style={styles.developerLinkText}>rob@pinebeltrides.com</Text>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,0 +1,39 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git clone:*)",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git fetch:*)",
+      "Bash(git checkout:*)",
+      "Bash(bun install:*)",
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)",
+      "Bash(npm install:*)",
+      "Bash(du:*)",
+      "Bash(find:*)",
+      "Bash(npx expo-doctor:*)",
+      "Bash(npx expo install:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(export PATH=\"$PATH:/c/Users/rob/.bun/bin\")",
+      "Bash(bun:*)",
+      "Bash(eas:*)",
+      "Bash(npx eas-cli:*)",
+      "Bash(npx expo export)",
+      "Bash(ls:*)",
+      "Bash(node -e:*)",
+      "Bash(npm ls:*)",
+      "Bash(npx expo export:*)",
+      "Bash(npx tsc:*)",
+      "Bash(python3 -c \" import sys, json for line in sys.stdin: line = line.strip\\(\\) if not line: continue try: obj = json.loads\\(line\\) msg = obj.get\\(''message'', {}\\) content = msg.get\\(''content'', ''''\\) if isinstance\\(content, list\\): for item in content: if isinstance\\(item, dict\\) and ''text'' in item: text = item[''text''] if ''recommend'' in text.lower\\(\\): print\\(text[:5000]\\) print\\(''---END OF ENTRY---''\\) elif isinstance\\(content, str\\) and ''recommend'' in content.lower\\(\\): print\\(content[:5000]\\) print\\(''---END OF ENTRY---''\\) except: pass \")",
+      "Bash(npx eas update:*)",
+      "Bash(npx expo start:*)",
+      "Bash(npx supabase:*)",
+      "Skill(commit-commands:commit)",
+      "Bash(cd /f/Projects/ebcconnect && git stash pop 2>&1)",
+      "Bash(cd /f/Projects/ebcconnect && git stash pop --index 2>&1 || git checkout stash -- hooks/auth-context.tsx hooks/user-context.tsx hooks/me-context.tsx 2>&1)",
+      "Bash(tail:*)",
+      "Bash(cd:*)"
+    ]
+  }
+}

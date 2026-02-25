@@ -107,18 +107,16 @@ export const [ChurchSettingsProvider, useChurchSettings] = createContextHook(() 
   const settingsQuery = useQuery({
     queryKey: ['church-settings'],
     queryFn: async () => {
-      console.log('📍 Loading church settings from Supabase');
       const { data, error } = await supabase
         .from('church_settings')
         .select('*')
-        .single();
+        .limit(1)
+        .maybeSingle();
 
       if (error) {
-        console.error('❌ Error loading church settings:', error.message);
         return null;
       }
 
-      console.log('📍 Church settings loaded:', data?.name || '(no name set)');
       return data as DbChurchSettings;
     },
     staleTime: 5 * 60 * 1000,
@@ -136,11 +134,9 @@ export const [ChurchSettingsProvider, useChurchSettings] = createContextHook(() 
   const saveMutation = useMutation({
     mutationFn: async (newSettings: ChurchSettings) => {
       if (!settingsId) {
-        console.error('❌ No church_settings row ID found, cannot update');
         throw new Error('Church settings not loaded yet');
       }
 
-      console.log('💾 Saving church settings to Supabase:', newSettings.churchName);
       const dbPayload = mapSettingsToDb(newSettings);
 
       const { data, error } = await supabase
@@ -151,11 +147,9 @@ export const [ChurchSettingsProvider, useChurchSettings] = createContextHook(() 
         .single();
 
       if (error) {
-        console.error('❌ Error saving church settings:', error.message);
         throw error;
       }
 
-      console.log('✅ Church settings saved successfully');
       return data as DbChurchSettings;
     },
     onSuccess: (data) => {

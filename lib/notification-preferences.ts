@@ -63,8 +63,7 @@ export const notificationStorage = {
         };
       }
       return DEFAULT_NOTIFICATION_PREFERENCES;
-    } catch (error) {
-      console.error('Error getting notification preferences:', error);
+    } catch {
       return DEFAULT_NOTIFICATION_PREFERENCES;
     }
   },
@@ -72,8 +71,7 @@ export const notificationStorage = {
   async setNotificationPreferences(preferences: NotificationPreferences): Promise<void> {
     try {
       await AsyncStorage.setItem(NOTIFICATION_PREFERENCES_KEY, JSON.stringify(preferences));
-    } catch (error) {
-      console.error('Error setting notification preferences:', error);
+    } catch {
     }
   },
 
@@ -82,8 +80,7 @@ export const notificationStorage = {
       const preferences = await this.getNotificationPreferences();
       preferences.announcements.tagPreferences[tagId] = enabled;
       await this.setNotificationPreferences(preferences);
-    } catch (error) {
-      console.error('Error updating announcement tag preference:', error);
+    } catch {
     }
   },
 
@@ -92,8 +89,7 @@ export const notificationStorage = {
       const preferences = await this.getNotificationPreferences();
       preferences.announcements.enabled = enabled;
       await this.setNotificationPreferences(preferences);
-    } catch (error) {
-      console.error('Error updating announcements enabled:', error);
+    } catch {
     }
   },
 
@@ -102,8 +98,7 @@ export const notificationStorage = {
       const preferences = await this.getNotificationPreferences();
       preferences.general.enabled = enabled;
       await this.setNotificationPreferences(preferences);
-    } catch (error) {
-      console.error('Error updating general notifications enabled:', error);
+    } catch {
     }
   },
 
@@ -112,8 +107,7 @@ export const notificationStorage = {
       const preferences = await this.getNotificationPreferences();
       preferences.events.enabled = enabled;
       await this.setNotificationPreferences(preferences);
-    } catch (error) {
-      console.error('Error updating events enabled:', error);
+    } catch {
     }
   },
 
@@ -124,8 +118,7 @@ export const notificationStorage = {
         (preferences.events as any)[type] = enabled;
         await this.setNotificationPreferences(preferences);
       }
-    } catch (error) {
-      console.error('Error updating event notification type:', error);
+    } catch {
     }
   },
 
@@ -134,8 +127,7 @@ export const notificationStorage = {
       const preferences = await this.getNotificationPreferences();
       preferences.events.tagPreferences[tagId] = enabled;
       await this.setNotificationPreferences(preferences);
-    } catch (error) {
-      console.error('Error updating event tag preference:', error);
+    } catch {
     }
   },
 };
