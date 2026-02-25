@@ -77,7 +77,7 @@ export async function uploadPersonAvatar(personId: string, file: any): Promise<s
 
   const { error } = await supabase
     .from('persons')
-    .update({ photo_url: path })
+    .update({ photo_path: path })
     .eq('id', personId)
     .select()
     .single();

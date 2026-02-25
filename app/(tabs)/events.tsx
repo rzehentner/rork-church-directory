@@ -4,11 +4,11 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  Image,
   RefreshControl,
   ScrollView,
   TextInput,
 } from 'react-native'
+import { Image } from 'expo-image'
 import { Stack, router } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -58,7 +58,7 @@ export default function EventsScreen() {
   })
   const [formsByEvent, setFormsByEvent] = useState<Record<string, SignupFormSummary>>({})
   const [error, setError] = useState<string | null>(null)
-  
+
   const { profile } = useUser()
   const { showToast } = useToast()
   const insets = useSafeAreaInsets()
@@ -79,8 +79,7 @@ export default function EventsScreen() {
       const data = await listEventsForDateRange(startDate, endDate)
       setAllEvents(data as Event[])
       setError(null)
-    } catch (err) {
-      console.error('Failed to load events:', err)
+    } catch {
       setError('Failed to load events')
     } finally {
       setRefreshing(false)
@@ -91,8 +90,7 @@ export default function EventsScreen() {
     try {
       const tags = await listTags(true)
       setAvailableTags(tags)
-    } catch (error) {
-      console.error('Failed to load tags:', error)
+    } catch {
     }
   }, [])
 
@@ -113,7 +111,7 @@ export default function EventsScreen() {
     loadTags()
     loadFormSummaries()
   }, [loadAllEvents, loadTags, loadFormSummaries])
-  
+
   // Refresh events periodically only while tab is focused
   useEffect(() => {
     if (!isFocused) return
@@ -130,15 +128,14 @@ export default function EventsScreen() {
 
   const handleRSVP = async (eventId: string, status: RSVP) => {
     try {
-      setAllEvents(prev => prev.map(event => 
+      setAllEvents(prev => prev.map(event =>
         event.id === eventId ? { ...event, my_rsvp: status } : event
       ))
-      
+
       await rsvpEvent(eventId, status)
       showToast('success', `RSVP updated to ${status}`)
-    } catch (error) {
-      console.error('Failed to update RSVP:', error)
-      setAllEvents(prev => prev.map(event => 
+    } catch {
+      setAllEvents(prev => prev.map(event =>
         event.id === eventId ? { ...event, my_rsvp: null } : event
       ))
       showToast('error', 'Failed to update RSVP')
@@ -149,8 +146,7 @@ export default function EventsScreen() {
     try {
       await addEventToDevice(event)
       showToast('success', 'Event added to calendar')
-    } catch (error) {
-      console.error('Failed to add to calendar:', error)
+    } catch {
       showToast('error', 'Failed to add to calendar')
     }
   }
@@ -160,18 +156,18 @@ export default function EventsScreen() {
   // Filter events based on current filters and view mode
   const filteredEvents = useMemo(() => {
     let events = allEvents
-    
+
     // Apply search filter first
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim()
-      events = events.filter(event => 
+      events = events.filter(event =>
         event.title.toLowerCase().includes(query) ||
         event.description?.toLowerCase().includes(query) ||
         event.location?.toLowerCase().includes(query) ||
         event.audience_tags?.some(tagName => tagName.toLowerCase().includes(query))
       )
     }
-    
+
     // Filter by view mode
     if (viewMode === 'upcoming') {
       const now = new Date()
@@ -182,19 +178,19 @@ export default function EventsScreen() {
       startOfDay.setHours(0, 0, 0, 0)
       const endOfDay = new Date(selectedDate)
       endOfDay.setHours(23, 59, 59, 999)
-      
+
       events = events.filter(event => {
         const eventStart = new Date(event.start_at)
         const eventEnd = new Date(event.end_at)
         return eventStart <= endOfDay && eventEnd >= startOfDay
       })
     }
-    
+
     // Filter by RSVP status
     if (filters.rsvpStatus !== 'all') {
       events = events.filter(event => event.my_rsvp === filters.rsvpStatus)
     }
-    
+
     // Filter by tags (if any tags are selected)
     if (filters.tagNames.length > 0) {
       events = events.filter(event => {
@@ -205,39 +201,39 @@ export default function EventsScreen() {
         return event.audience_tags.some(tagName => filters.tagNames.includes(tagName))
       })
     }
-    
+
     return events.sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime())
   }, [allEvents, viewMode, selectedDate, filters, searchQuery])
-  
+
   const formatEventTime = (event: Event) => {
     const start = new Date(event.start_at)
     const end = new Date(event.end_at)
-    
+
     if (event.is_all_day) {
       return start.toLocaleDateString()
     }
-    
+
     const sameDay = start.toDateString() === end.toDateString()
     if (sameDay) {
       return `${start.toLocaleDateString()} • ${start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
     }
-    
+
     return `${start.toLocaleString()} - ${end.toLocaleString()}`
   }
-  
+
   const clearFilters = () => {
     setFilters({ rsvpStatus: 'all', tagNames: [] })
   }
-  
+
   const clearSearch = () => {
     setSearchQuery('')
   }
-  
+
   const hasActiveFilters = filters.rsvpStatus !== 'all' || filters.tagNames.length > 0 || searchQuery.trim() !== ''
-  
+
   const FilterSection = () => {
     if (!showFilters) return null
-    
+
     return (
       <View style={styles.filtersContainer}>
         <View style={styles.filterHeader}>
@@ -246,7 +242,7 @@ export default function EventsScreen() {
             <X size={20} color="#6B7280" />
           </TouchableOpacity>
         </View>
-        
+
         {/* RSVP Filter */}
         <View style={styles.filterSection}>
           <Text style={styles.filterLabel}>My RSVP Status</Text>
@@ -267,15 +263,15 @@ export default function EventsScreen() {
                   styles.filterChipText,
                   filters.rsvpStatus === status && styles.filterChipTextActive
                 ]}>
-                  {status === 'all' ? 'All Events' : 
-                   status === 'going' ? 'Going' : 
+                  {status === 'all' ? 'All Events' :
+                   status === 'going' ? 'Going' :
                    status === 'maybe' ? 'Maybe' : "Can't Go"}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
-        
+
         {/* Tags Filter */}
         <View style={styles.filterSection}>
           <Text style={styles.filterLabel}>Event Tags</Text>
@@ -308,7 +304,7 @@ export default function EventsScreen() {
             ))}
           </ScrollView>
         </View>
-        
+
         {hasActiveFilters && (
           <TouchableOpacity style={styles.clearFiltersButton} onPress={clearFilters}>
             <Text style={styles.clearFiltersText}>Clear All Filters</Text>
@@ -344,28 +340,28 @@ export default function EventsScreen() {
   )
 
   const renderEvent = ({ item: event }: { item: Event }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       style={styles.eventCard}
       onPress={() => router.push(`/event-detail?id=${event.id}` as any)}
       testID={`event-card-${event.id}`}
     >
       {event.image_path && (
-        <Image 
-          source={{ uri: eventImageUrl(event.image_path)! }} 
+        <Image
+          source={{ uri: eventImageUrl(event.image_path)! }}
           style={styles.eventImage}
-          resizeMode="cover"
+          contentFit="cover"
         />
       )}
-      
+
       <View style={styles.eventContent}>
         <Text style={styles.eventTitle}>{event.title}</Text>
-        
+
         <View style={styles.eventMeta}>
           <View style={styles.metaRow}>
             <Clock size={16} color="#6B7280" />
             <Text style={styles.metaText}>{formatEventTime(event)}</Text>
           </View>
-          
+
           {event.location && (
             <View style={styles.metaRow}>
               <MapPin size={16} color="#6B7280" />
@@ -431,7 +427,7 @@ export default function EventsScreen() {
 
         <View style={styles.eventActions}>
           <RSVPButtons event={event} />
-          
+
           <TouchableOpacity
             style={styles.calendarButton}
             onPress={() => handleAddToCalendar(event)}
@@ -446,12 +442,12 @@ export default function EventsScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           headerShown: false
-        }} 
+        }}
       />
-      
+
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <CalendarIcon size={28} color="#7C3AED" />
@@ -469,7 +465,7 @@ export default function EventsScreen() {
           )}
         </View>
       </View>
-      
+
       {/* Search and Filter Bar */}
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
@@ -487,7 +483,7 @@ export default function EventsScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         <TouchableOpacity
           style={[
             styles.filterButton,
@@ -502,7 +498,7 @@ export default function EventsScreen() {
           ]}>Filter</Text>
         </TouchableOpacity>
       </View>
-      
+
       <FlatList
         data={filteredEvents}
         renderItem={renderEvent}
@@ -528,22 +524,20 @@ export default function EventsScreen() {
               </View>
             )}
             <FilterSection />
-            
+
             <Calendar
               events={allEvents}
               selectedDate={selectedDate}
               onDateSelect={(date) => {
-                console.log('Date selected:', date)
                 setSelectedDate(date)
                 setViewMode('selected')
               }}
               onMonthChange={(date) => {
-                console.log('Month changed:', date)
                 const newSelectedDate = new Date(date.getFullYear(), date.getMonth(), selectedDate.getDate())
                 setSelectedDate(newSelectedDate)
               }}
             />
-            
+
             <View style={styles.viewModeToggle}>
               <TouchableOpacity
                 style={[
@@ -559,7 +553,7 @@ export default function EventsScreen() {
                   Upcoming
                 </Text>
               </TouchableOpacity>
-              
+
               <TouchableOpacity
                 style={[
                   styles.toggleButton,
@@ -575,7 +569,7 @@ export default function EventsScreen() {
                 </Text>
               </TouchableOpacity>
             </View>
-            
+
             {hasActiveFilters && (
               <View style={styles.activeFiltersContainer}>
                 <Text style={styles.activeFiltersText}>
@@ -584,7 +578,7 @@ export default function EventsScreen() {
                 {filters.rsvpStatus !== 'all' && (
                   <View style={styles.activeFilterChip}>
                     <Text style={styles.activeFilterChipText}>
-                      RSVP: {filters.rsvpStatus === 'going' ? 'Going' : 
+                      RSVP: {filters.rsvpStatus === 'going' ? 'Going' :
                              filters.rsvpStatus === 'maybe' ? 'Maybe' : "Can't Go"}
                     </Text>
                   </View>

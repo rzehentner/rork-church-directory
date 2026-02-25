@@ -18,12 +18,10 @@ Notifications.setNotificationHandler({
 export async function registerPushEndpoint() {
   try {
     if (Platform.OS === 'web') {
-      console.log('Push notifications not supported on web');
       return;
     }
 
     if (!Device.isDevice) {
-      console.log('Push notifications not supported on simulator');
       return;
     }
 
@@ -36,7 +34,6 @@ export async function registerPushEndpoint() {
     }
     
     if (finalStatus !== 'granted') {
-      console.log('Push notification permission not granted');
       return;
     }
 
@@ -52,7 +49,6 @@ export async function registerPushEndpoint() {
     const user = (await supabase.auth.getUser()).data.user;
     
     if (!user) {
-      console.log('No authenticated user found');
       return;
     }
 
@@ -65,13 +61,7 @@ export async function registerPushEndpoint() {
       last_seen: new Date().toISOString(),
     }, { onConflict: 'provider,token' });
 
-    if (error) {
-      console.log('Error registering push endpoint:', error.message || String(error));
-    } else {
-      console.log('Push endpoint registered successfully');
-    }
-  } catch (error) {
-    console.log('Push notification registration skipped:', error instanceof Error ? error.message : String(error));
+  } catch {
   }
 }
 
@@ -83,7 +73,6 @@ export async function fetchUserNotifications() {
     .limit(50);
 
   if (error) {
-    console.error('Error fetching notifications:', error.message || JSON.stringify(error));
     throw new Error(error.message || 'Failed to fetch notifications');
   }
 
@@ -98,7 +87,7 @@ export async function markNotificationAsRead(id: string) {
     .eq('id', id);
 
   if (error) {
-    console.error('Error marking notification as read:', error);
+    // non-critical; swallow silently
   }
 }
 

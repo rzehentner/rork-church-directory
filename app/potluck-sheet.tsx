@@ -98,14 +98,12 @@ export default function PotluckSheetScreen() {
   const claimMutation = useMutation({
     mutationFn: claimPotluckItem,
     onSuccess: (data) => {
-      console.log('Claim success:', data)
       queryClient.invalidateQueries({ queryKey: ['potluck-detail', formId] })
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
       showToast('success', `${data.claimant_name} is bringing ${data.item_name}!`)
       closeClaimModal()
     },
     onError: (err: any) => {
-      console.error('Claim error:', err)
       showToast('error', err?.message || 'Failed to claim item')
     },
   })
@@ -193,8 +191,7 @@ export default function PotluckSheetScreen() {
         .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`)
         .limit(10)
       setDirectoryResults((data ?? []) as Person[])
-    } catch (err) {
-      console.error('Directory search error:', err)
+    } catch {
     } finally {
       setSearchLoading(false)
     }

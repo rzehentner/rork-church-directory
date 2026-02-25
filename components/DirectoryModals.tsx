@@ -39,7 +39,7 @@ interface EditingMember {
   is_head_of_family: boolean;
   is_spouse: boolean;
   family_role: FamilyRole;
-  photo_url: string | null;
+  photo_path: string | null;
   isNew?: boolean;
 }
 
@@ -53,7 +53,7 @@ interface EditingPerson {
   is_head_of_family: boolean;
   is_spouse: boolean;
   family_role: FamilyRole;
-  photo_url: string | null;
+  photo_path: string | null;
   family_id: string | null;
   user_id: string | null;
   user_role: 'pending' | 'visitor' | 'member' | 'leader' | 'admin' | null;

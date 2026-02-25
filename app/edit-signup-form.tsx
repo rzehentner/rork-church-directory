@@ -95,7 +95,6 @@ export default function EditSignupFormScreen() {
 
   useEffect(() => {
     if (form && existingFields && !initialized) {
-      console.log('Initializing edit form with:', form.title, existingFields.length, 'fields')
       setTitle(form.title ?? '')
       setDescription(form.description ?? '')
       setMaxSignups(form.max_signups ? String(form.max_signups) : '')
@@ -126,7 +125,6 @@ export default function EditSignupFormScreen() {
   const updateMutation = useMutation({
     mutationFn: updateSignupForm,
     onSuccess: () => {
-      console.log('Signup form updated successfully')
       queryClient.invalidateQueries({ queryKey: ['signup-form', formId] })
       queryClient.invalidateQueries({ queryKey: ['signup-form-fields', formId] })
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
@@ -138,7 +136,6 @@ export default function EditSignupFormScreen() {
       router.back()
     },
     onError: (error: any) => {
-      console.error('Update signup form error:', error)
       showToast('error', error?.message || 'Failed to update signup form')
     },
   })

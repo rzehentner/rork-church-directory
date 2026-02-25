@@ -1,15 +1,16 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   TextInput,
   ActivityIndicator,
   TouchableOpacity,
-  Image,
   Alert,
   Linking,
+  RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -44,7 +45,7 @@ interface DirectoryEntry {
   is_head_of_family: boolean;
   is_spouse: boolean;
   family_role: FamilyRole;
-  photo_url: string | null;
+  photo_path: string | null;
   family_photo_path: string | null;
   user_id?: string | null;
   user_role?: string | null;
@@ -76,7 +77,7 @@ interface EditingMember {
   is_head_of_family: boolean;
   is_spouse: boolean;
   family_role: FamilyRole;
-  photo_url: string | null;
+  photo_path: string | null;
   isNew?: boolean;
 }
 
@@ -90,7 +91,7 @@ interface EditingPerson {
   is_head_of_family: boolean;
   is_spouse: boolean;
   family_role: FamilyRole;
-  photo_url: string | null;
+  photo_path: string | null;
   family_id: string | null;
   user_id: string | null;
   user_role: 'pending' | 'visitor' | 'member' | 'leader' | 'admin' | null;
@@ -156,8 +157,7 @@ export default function DirectoryScreen() {
       try {
         const roles = selectedUserRole ? [selectedUserRole] : null;
         return await adminListUsers(roles);
-      } catch (error) {
-        console.error('Failed to load admin users:', error);
+      } catch {
         return [];
       }
     },
@@ -178,7 +178,7 @@ export default function DirectoryScreen() {
           .order('family_name_display', { ascending: true });
 
         if (viewError) {
-          const baseFields = 'id,first_name,last_name,email,phone,photo_url,is_head_of_family,is_spouse,family_id,user_id,families!inner(id,name,photo_path,address_street,address_city,address_state,address_zip,home_phone)';
+          const baseFields = 'id,first_name,last_name,email,phone,photo_path,is_head_of_family,is_spouse,family_id,user_id,families!inner(id,name,photo_path,address_street,address_city,address_state,address_zip,home_phone)';
           const selectFields = isAdmin ? baseFields + ',profiles(id,role)' : baseFields;
 
           const { data: personsData, error: personsError } = await supabase
@@ -198,7 +198,7 @@ export default function DirectoryScreen() {
             last_name: p.last_name,
             email: p.email,
             phone: p.phone,
-            photo_url: p.photo_url,
+            photo_path: p.photo_path,
             is_head_of_family: p.is_head_of_family,
             is_spouse: p.is_spouse,
             family_role: p.family_role || (p.is_head_of_family ? 'head' : p.is_spouse ? 'spouse' : 'other'),
@@ -231,7 +231,6 @@ export default function DirectoryScreen() {
         }
         return viewData as (DirectoryEntry & { user_role?: string | null })[];
       } catch (err) {
-        console.error('Error loading directory:', err);
         throw err;
       }
     },
@@ -265,11 +264,11 @@ export default function DirectoryScreen() {
                 .catch(() => ({ id: fid, url: null }))
             );
           }
-          if (entry.person_id && !uniqueMembers.has(entry.person_id) && entry.photo_url) {
+          if (entry.person_id && !uniqueMembers.has(entry.person_id) && entry.photo_path) {
             uniqueMembers.add(entry.person_id);
             const pid = entry.person_id;
             memberProms.push(
-              getSignedUrl(entry.photo_url)
+              getSignedUrl(entry.photo_path)
                 .then(url => ({ id: pid, url: url ? `${url}&t=${ts}` : null }))
                 .catch(() => ({ id: pid, url: null }))
             );
@@ -282,8 +281,7 @@ export default function DirectoryScreen() {
         familyResults.forEach(({ id, url }) => { newFamilyPhotos[id] = url; });
         memberResults.forEach(({ id, url }) => { newMemberAvatars[id] = url; });
         setFamilyImages({ familyPhotos: newFamilyPhotos, memberAvatars: newMemberAvatars });
-      } catch (error) {
-        console.error('Error loading directory images:', error);
+      } catch {
       }
     };
     loadImages();
@@ -379,7 +377,7 @@ export default function DirectoryScreen() {
 
   const handleEditFamily = async (familyInfo: DirectoryEntry) => {
     if (!isAdmin || !familyInfo.family_id) return;
-    
+
     setEditingFamily({
       id: familyInfo.family_id,
       name: familyInfo.family_name_display || '',
@@ -390,7 +388,7 @@ export default function DirectoryScreen() {
       home_phone: familyInfo.home_phone || '',
       photo_path: familyInfo.family_photo_path,
     });
-    
+
     // Load family members
     try {
       const { data: members, error } = await supabase
@@ -399,9 +397,9 @@ export default function DirectoryScreen() {
         .eq('family_id', familyInfo.family_id)
         .order('family_role', { ascending: true })
         .order('first_name');
-      
+
       if (error) throw error;
-      
+
       setEditingMembers(members?.map(member => ({
         id: member.id,
         first_name: member.first_name || '',
@@ -412,21 +410,20 @@ export default function DirectoryScreen() {
         is_head_of_family: member.is_head_of_family || false,
         is_spouse: member.is_spouse || false,
         family_role: member.family_role || (member.is_head_of_family ? 'head' as const : member.is_spouse ? 'spouse' as const : 'other' as const),
-        photo_url: member.photo_url,
+        photo_path: member.photo_path,
         isNew: false,
       })) || []);
-    } catch (error) {
-      console.error('Error loading family members:', error);
+    } catch {
       setEditingMembers([]);
     }
-    
+
     setActiveTab('family');
     setIsEditModalVisible(true);
   };
 
   const handleDeleteFamily = () => {
     if (!editingFamily || !isAdmin) return;
-    
+
     Alert.alert(
       'Delete Family',
       `Are you sure you want to delete the "${editingFamily.name}" family and all its members without user accounts? Members with user accounts will be unassigned from this family. This action cannot be undone.`,
@@ -464,7 +461,7 @@ export default function DirectoryScreen() {
 
   const handleSaveFamily = async () => {
     if (!editingFamily) return;
-    
+
     setIsSaving(true);
     try {
       // Update family information
@@ -479,9 +476,9 @@ export default function DirectoryScreen() {
           home_phone: editingFamily.home_phone,
         })
         .eq('id', editingFamily.id);
-      
+
       if (familyError) throw familyError;
-      
+
       // Update members
       for (const member of editingMembers) {
         if (member.isNew) {
@@ -498,9 +495,9 @@ export default function DirectoryScreen() {
               is_head_of_family: member.family_role === 'head',
               is_spouse: member.family_role === 'spouse',
               family_role: member.family_role,
-              photo_url: member.photo_url,
+              photo_path: member.photo_path,
             });
-          
+
           if (insertError) throw insertError;
         } else if (member.id) {
           // Update existing member
@@ -515,24 +512,23 @@ export default function DirectoryScreen() {
               is_head_of_family: member.family_role === 'head',
               is_spouse: member.family_role === 'spouse',
               family_role: member.family_role,
-              photo_url: member.photo_url,
+              photo_path: member.photo_path,
             })
             .eq('id', member.id);
-          
+
           if (updateError) throw updateError;
         }
       }
-      
+
       // Refresh directory data
       queryClient.invalidateQueries({ queryKey: ['directory'] });
-      
+
       setIsEditModalVisible(false);
       setEditingFamily(null);
       setEditingMembers([]);
-      
+
       Alert.alert('Success', 'Family and member information updated successfully!');
-    } catch (error) {
-      console.error('Error updating family:', error);
+    } catch {
       Alert.alert('Error', 'Failed to update family information. Please try again.');
     } finally {
       setIsSaving(false);
@@ -541,10 +537,10 @@ export default function DirectoryScreen() {
 
   const handleUploadFamilyPhoto = async (file: any) => {
     if (!editingFamily) throw new Error('No family selected');
-    
+
     try {
       const url = await uploadFamilyPhoto(editingFamily.id, file, editingFamily.photo_path);
-      
+
       // Update local state
       setFamilyImages(prev => ({
         ...prev,
@@ -553,16 +549,15 @@ export default function DirectoryScreen() {
           [editingFamily.id]: url,
         },
       }));
-      
+
       // Update editing family state
       setEditingFamily(prev => prev ? {
         ...prev,
         photo_path: `families/${editingFamily.id}/photo.jpg`,
       } : null);
-      
+
       return url;
     } catch (error) {
-      console.error('Error uploading family photo:', error);
       throw error;
     }
   };
@@ -577,7 +572,7 @@ export default function DirectoryScreen() {
       is_head_of_family: false,
       is_spouse: false,
       family_role: 'other',
-      photo_url: null,
+      photo_path: null,
       isNew: true,
     };
     setEditingMembers(prev => [...prev, newMember]);
@@ -605,13 +600,12 @@ export default function DirectoryScreen() {
                     .from('persons')
                     .delete()
                     .eq('id', member.id);
-                  
+
                   if (error) throw error;
                 }
-                
+
                 setEditingMembers(prev => prev.filter((_, i) => i !== index));
-              } catch (error) {
-                console.error('Error deleting member:', error);
+              } catch {
                 Alert.alert('Error', 'Failed to delete member. Please try again.');
               }
             },
@@ -622,7 +616,7 @@ export default function DirectoryScreen() {
   };
 
   const handleUpdateMember = (index: number, updates: Partial<EditingMember>) => {
-    setEditingMembers(prev => prev.map((member, i) => 
+    setEditingMembers(prev => prev.map((member, i) =>
       i === index ? { ...member, ...updates } : member
     ));
   };
@@ -636,8 +630,7 @@ export default function DirectoryScreen() {
       } else {
         Alert.alert('Error', 'Phone calls are not supported on this device');
       }
-    } catch (error) {
-      console.error('Error opening phone dialer:', error);
+    } catch {
       Alert.alert('Error', 'Failed to open phone dialer');
     }
   };
@@ -651,8 +644,7 @@ export default function DirectoryScreen() {
       } else {
         Alert.alert('Error', 'Email is not supported on this device');
       }
-    } catch (error) {
-      console.error('Error opening email client:', error);
+    } catch {
       Alert.alert('Error', 'Failed to open email client');
     }
   };
@@ -660,17 +652,17 @@ export default function DirectoryScreen() {
   const handleUploadMemberAvatar = async (index: number, file: any) => {
     const member = editingMembers[index];
     if (!member.id && !member.isNew) throw new Error('Invalid member');
-    
+
     try {
       // For new members, we'll need to create a temporary ID or handle this after creation
       const personId = member.id || `temp_${Date.now()}`;
       const url = await uploadPersonAvatar(personId, file);
-      
-      // Update member photo_url
+
+      // Update member photo_path
       handleUpdateMember(index, {
-        photo_url: `persons/${personId}/avatar.jpg`
+        photo_path: `persons/${personId}/avatar.jpg`
       });
-      
+
       // Update local image cache
       setFamilyImages(prev => ({
         ...prev,
@@ -679,17 +671,16 @@ export default function DirectoryScreen() {
           [personId]: url,
         },
       }));
-      
+
       return url;
     } catch (error) {
-      console.error('Error uploading member avatar:', error);
       throw error;
     }
   };
 
   const handleEditPerson = async (person: DirectoryEntry) => {
     if (!isAdmin || !person.person_id) return;
-    
+
     setEditingPerson({
       id: person.person_id,
       first_name: person.first_name || '',
@@ -700,25 +691,25 @@ export default function DirectoryScreen() {
       is_head_of_family: person.is_head_of_family || false,
       is_spouse: person.is_spouse || false,
       family_role: person.family_role || 'other',
-      photo_url: person.photo_url,
+      photo_path: person.photo_path,
       family_id: person.family_id,
       user_id: null,
       user_role: null,
     });
-    
+
     // Load full person data including date_of_birth and user info
     try {
       let userRole: 'pending' | 'member' | 'leader' | 'admin' | null = null;
-      
+
       // First get the person data
       const { data: personData, error: personError } = await supabase
         .from('persons')
         .select('*')
         .eq('id', person.person_id)
         .single();
-      
+
       if (personError) throw personError;
-      
+
       // If person has a user_id, get the role from profiles table
       if (personData?.user_id) {
         const { data: profileData, error: profileError } = await supabase
@@ -726,12 +717,12 @@ export default function DirectoryScreen() {
           .select('role')
           .eq('id', personData.user_id)
           .single();
-        
+
         if (!profileError && profileData) {
           userRole = profileData.role as 'pending' | 'member' | 'leader' | 'admin';
         }
       }
-      
+
       if (personData) {
         setEditingPerson({
           id: personData.id,
@@ -743,22 +734,21 @@ export default function DirectoryScreen() {
           is_head_of_family: personData.is_head_of_family || false,
           is_spouse: personData.is_spouse || false,
           family_role: personData.family_role || (personData.is_head_of_family ? 'head' as const : personData.is_spouse ? 'spouse' as const : 'other' as const),
-          photo_url: personData.photo_url,
+          photo_path: personData.photo_path,
           family_id: personData.family_id,
           user_id: personData.user_id,
           user_role: userRole,
         });
       }
-    } catch (error) {
-      console.error('Error loading person data:', error);
+    } catch {
     }
-    
+
     setIsEditPersonModalVisible(true);
   };
 
   const handleSavePerson = async () => {
     if (!editingPerson) return;
-    
+
     setIsSaving(true);
     try {
       // Update person information
@@ -773,12 +763,12 @@ export default function DirectoryScreen() {
           is_head_of_family: editingPerson.family_role === 'head',
           is_spouse: editingPerson.family_role === 'spouse',
           family_role: editingPerson.family_role,
-          photo_url: editingPerson.photo_url,
+          photo_path: editingPerson.photo_path,
         })
         .eq('id', editingPerson.id);
-      
+
       if (personError) throw personError;
-      
+
       // Update user role if person has a user account and role has changed
       if (editingPerson.user_id && editingPerson.user_role) {
         const { error: roleError } = await supabase
@@ -787,19 +777,18 @@ export default function DirectoryScreen() {
             role: editingPerson.user_role,
           })
           .eq('id', editingPerson.user_id);
-        
+
         if (roleError) throw roleError;
       }
-      
+
       // Refresh directory data
       queryClient.invalidateQueries({ queryKey: ['directory'] });
-      
+
       setIsEditPersonModalVisible(false);
       setEditingPerson(null);
-      
+
       Alert.alert('Success', 'Person information updated successfully!');
-    } catch (error) {
-      console.error('Error updating person:', error);
+    } catch {
       Alert.alert('Error', 'Failed to update person information. Please try again.');
     } finally {
       setIsSaving(false);
@@ -808,10 +797,10 @@ export default function DirectoryScreen() {
 
   const handleUploadPersonAvatar = async (file: any) => {
     if (!editingPerson) throw new Error('No person selected');
-    
+
     try {
       const url = await uploadPersonAvatar(editingPerson.id, file);
-      
+
       // Update local state
       setFamilyImages(prev => ({
         ...prev,
@@ -820,16 +809,15 @@ export default function DirectoryScreen() {
           [editingPerson.id]: url,
         },
       }));
-      
+
       // Update editing person state
       setEditingPerson(prev => prev ? {
         ...prev,
-        photo_url: `persons/${editingPerson.id}/avatar.jpg`,
+        photo_path: `persons/${editingPerson.id}/avatar.jpg`,
       } : null);
-      
+
       return url;
     } catch (error) {
-      console.error('Error uploading person avatar:', error);
       throw error;
     }
   };
@@ -865,9 +853,319 @@ export default function DirectoryScreen() {
     return availableTags.filter(tag => selectedTagIds.includes(tag.id));
   };
 
+  // Stable array of [familyKey, members[]] tuples for FlatList (family view)
+  const familyEntries = useMemo(
+    () => Object.entries(groupedFamilies).filter(([, members]) => members && members.length > 0),
+    [groupedFamilies]
+  );
+
+  const renderFamilyItem = useCallback(
+    ({ item }: { item: [string, DirectoryEntry[]] }) => {
+      const [familyKey, members] = item;
+      const isExpanded = expandedFamilies.has(familyKey);
+      const familyInfo = members[0];
+      const isUnassigned = familyKey === '[Unassigned]';
+
+      return (
+        <TouchableOpacity
+          style={styles.familyCard}
+          onPress={() => toggleFamily(familyKey)}
+          activeOpacity={0.7}
+        >
+          <View style={styles.familyHeader}>
+            <View style={styles.familyHeaderContent}>
+              {/* Family Photo */}
+              {!isUnassigned && familyInfo.family_id && familyImages.familyPhotos[familyInfo.family_id] && familyImages.familyPhotos[familyInfo.family_id]!.trim() !== '' ? (
+                <Image
+                  source={{ uri: familyImages.familyPhotos[familyInfo.family_id]! }}
+                  style={styles.familyPhoto}
+                  contentFit="cover"
+                />
+              ) : (
+                <View style={styles.familyPhotoPlaceholder}>
+                  <Users size={24} color="#9CA3AF" />
+                </View>
+              )}
+
+              <View style={styles.familyInfo}>
+                <View style={styles.familyTitleRow}>
+                  <Text style={styles.familyName}>
+                    {isUnassigned ? 'Unassigned Members' : familyInfo.family_name_display}
+                  </Text>
+                  <Text style={styles.memberCount}>({members.length})</Text>
+                  {isAdmin && !isUnassigned && (
+                    <TouchableOpacity
+                      style={styles.editButton}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleEditFamily(familyInfo);
+                      }}
+                    >
+                      <Edit3 size={16} color="#7C3AED" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {!isUnassigned && (
+                  <>
+                    {familyInfo.address_city && (
+                      <View style={styles.familyLocation}>
+                        <MapPin size={14} color="#9CA3AF" />
+                        <Text style={styles.locationText}>
+                          {familyInfo.address_city}, {familyInfo.address_state}
+                        </Text>
+                      </View>
+                    )}
+                    {familyInfo.home_phone && (
+                      <TouchableOpacity
+                        style={styles.familyLocation}
+                        onPress={() => handlePhonePress(familyInfo.home_phone!)}
+                        activeOpacity={0.7}
+                      >
+                        <Phone size={14} color="#7C3AED" />
+                        <Text style={[styles.locationText, styles.locationLink]}>
+                          {familyInfo.home_phone}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {familyInfo.address_street && (
+                      <View style={styles.familyLocation}>
+                        <Home size={14} color="#9CA3AF" />
+                        <Text style={styles.locationText}>
+                          {familyInfo.address_street}
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+            </View>
+          </View>
+
+          {isExpanded && (
+            <View style={styles.membersContainer}>
+              {members.filter(member => member?.person_id).map((member) => (
+                <View key={member.person_id} style={styles.memberCard}>
+                  {/* Member Avatar */}
+                  {familyImages.memberAvatars[member.person_id] && familyImages.memberAvatars[member.person_id]!.trim() !== '' ? (
+                    <Image
+                      source={{ uri: familyImages.memberAvatars[member.person_id]! }}
+                      style={styles.memberAvatarImage}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <View style={styles.memberAvatar}>
+                      <User size={20} color="#9CA3AF" />
+                    </View>
+                  )}
+
+                  <View style={styles.memberInfo}>
+                    <Text style={styles.memberName}>
+                      {member.first_name || ''} {member.last_name || ''}
+                      {member.family_role === 'head' && ' (Head)'}
+                      {member.family_role === 'spouse' && ' (Spouse)'}
+                      {member.family_role === 'child' && ' (Child)'}
+                    </Text>
+                    {(() => {
+                      const badge = getRoleBadge(member);
+                      if (!badge) return null;
+                      return (
+                        <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
+                          <Text style={[styles.roleBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                        </View>
+                      );
+                    })()}
+                    {member.email && (
+                      <TouchableOpacity
+                        style={styles.memberDetail}
+                        onPress={() => handleEmailPress(member.email!)}
+                        activeOpacity={0.7}
+                      >
+                        <Mail size={12} color="#7C3AED" />
+                        <Text style={[styles.memberDetailText, styles.memberDetailLink]}>{member.email}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {member.phone && (
+                      <TouchableOpacity
+                        style={styles.memberDetail}
+                        onPress={() => handlePhonePress(member.phone!)}
+                        activeOpacity={0.7}
+                      >
+                        <Phone size={12} color="#7C3AED" />
+                        <Text style={[styles.memberDetailText, styles.memberDetailLink]}>{member.phone}</Text>
+                      </TouchableOpacity>
+                    )}
+                    {/* Member Tags */}
+                    {personTags[member.person_id] && personTags[member.person_id].length > 0 && (
+                      <View style={styles.memberTagsContainer}>
+                        {personTags[member.person_id].map(tag => (
+                          <TagPill
+                            key={tag.id}
+                            tag={tag}
+                            size="small"
+                            testId={`member-tag-${member.person_id}-${tag.id}`}
+                          />
+                        ))}
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Tags Action for Staff - Only for family members */}
+                  {isStaff && (
+                    <TouchableOpacity
+                      style={styles.tagActionButton}
+                      onPress={() => handleOpenTagModal(member.person_id)}
+                      testID={`tags-${member.person_id}`}
+                    >
+                      <Tags size={16} color="#7C3AED" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+        </TouchableOpacity>
+      );
+    },
+    [
+      expandedFamilies,
+      familyImages,
+      isAdmin,
+      isStaff,
+      personTags,
+      getRoleBadge,
+      toggleFamily,
+      handleEditFamily,
+      handlePhonePress,
+      handleEmailPress,
+      handleOpenTagModal,
+    ]
+  );
+
+  const renderPersonItem = useCallback(
+    ({ item: person }: { item: DirectoryEntry }) => {
+      if (!person?.person_id) return null;
+      return (
+        <View style={styles.personCard}>
+          <View style={styles.personCardContent}>
+            {/* Person Avatar */}
+            {familyImages.memberAvatars[person.person_id] && familyImages.memberAvatars[person.person_id]!.trim() !== '' ? (
+              <Image
+                source={{ uri: familyImages.memberAvatars[person.person_id]! }}
+                style={styles.personAvatarImage}
+                contentFit="cover"
+              />
+            ) : (
+              <View style={styles.personAvatar}>
+                <User size={24} color="#9CA3AF" />
+              </View>
+            )}
+
+            <View style={styles.personInfo}>
+              <View style={styles.personNameRow}>
+                <Text style={styles.personName}>
+                  {person.first_name || ''} {person.last_name || ''}
+                </Text>
+                {isAdmin && (
+                  <TouchableOpacity
+                    style={styles.personEditButton}
+                    onPress={() => handleEditPerson(person)}
+                  >
+                    <Edit3 size={16} color="#7C3AED" />
+                  </TouchableOpacity>
+                )}
+                {/* Tags Action for Staff - Only for family members */}
+                {isStaff && (
+                  <TouchableOpacity
+                    style={styles.tagActionButton}
+                    onPress={() => handleOpenTagModal(person.person_id)}
+                    testID={`tags-${person.person_id}`}
+                  >
+                    <Tags size={16} color="#7C3AED" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {(() => {
+                const badge = getRoleBadge(person);
+                if (!badge) return null;
+                return (
+                  <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
+                    <Text style={[styles.roleBadgeText, { color: badge.color }]}>{badge.label}</Text>
+                  </View>
+                );
+              })()}
+              {person.family_name_display && (
+                <View style={styles.personFamily}>
+                  <Users size={12} color="#9CA3AF" />
+                  <Text style={styles.personFamilyText}>
+                    {person.family_name_display}
+                    {person.family_role === 'head' && ' (Head)'}
+                    {person.family_role === 'spouse' && ' (Spouse)'}
+                    {person.family_role === 'child' && ' (Child)'}
+                  </Text>
+                </View>
+              )}
+              {person.email && (
+                <TouchableOpacity
+                  style={styles.personDetail}
+                  onPress={() => handleEmailPress(person.email!)}
+                  activeOpacity={0.7}
+                >
+                  <Mail size={14} color="#7C3AED" />
+                  <Text style={[styles.personDetailText, styles.personDetailLink]}>{person.email}</Text>
+                </TouchableOpacity>
+              )}
+              {person.phone && (
+                <TouchableOpacity
+                  style={styles.personDetail}
+                  onPress={() => handlePhonePress(person.phone!)}
+                  activeOpacity={0.7}
+                >
+                  <Phone size={14} color="#7C3AED" />
+                  <Text style={[styles.personDetailText, styles.personDetailLink]}>{person.phone}</Text>
+                </TouchableOpacity>
+              )}
+              {person.address_city && (
+                <View style={styles.personDetail}>
+                  <MapPin size={14} color="#9CA3AF" />
+                  <Text style={styles.personDetailText}>
+                    {person.address_city}, {person.address_state}
+                  </Text>
+                </View>
+              )}
+              {/* Person Tags */}
+              {personTags[person.person_id] && personTags[person.person_id].length > 0 && (
+                <View style={styles.personTagsContainer}>
+                  {personTags[person.person_id].map(tag => (
+                    <TagPill
+                      key={tag.id}
+                      tag={tag}
+                      size="small"
+                      testId={`person-tag-${person.person_id}-${tag.id}`}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        </View>
+      );
+    },
+    [
+      familyImages,
+      isAdmin,
+      isStaff,
+      personTags,
+      getRoleBadge,
+      handleEditPerson,
+      handlePhonePress,
+      handleEmailPress,
+      handleOpenTagModal,
+    ]
+  );
+
   const handleDeletePerson = () => {
     if (!editingPerson || !isAdmin) return;
-    
+
     Alert.alert(
       'Delete Person',
       `Are you sure you want to delete ${editingPerson.first_name} ${editingPerson.last_name}? This action cannot be undone.`,
@@ -890,7 +1188,6 @@ export default function DirectoryScreen() {
               setEditingPerson(null);
               Alert.alert('Success', 'Person deleted successfully.');
             } catch (error) {
-              console.error('❌ Error deleting person:', error);
               const message = error instanceof Error ? error.message : 'Failed to delete person. Please try again.';
               Alert.alert('Error', message);
             }
@@ -925,7 +1222,6 @@ export default function DirectoryScreen() {
   }
 
   if (error) {
-    console.error('Directory error:', error);
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
@@ -934,7 +1230,7 @@ export default function DirectoryScreen() {
           <Text style={styles.errorText}>
             {error instanceof Error ? error.message : 'An unexpected error occurred'}
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={styles.retryButton}
             onPress={() => queryClient.invalidateQueries({ queryKey: ['directory'] })}
           >
@@ -990,7 +1286,7 @@ export default function DirectoryScreen() {
             </TouchableOpacity>
           )}
         </View>
-        
+
         {/* Active Filters Display */}
         {(selectedTagIds.length > 0 || selectedUserRole) && (
           <View style={styles.activeFiltersContainer}>
@@ -1058,288 +1354,46 @@ export default function DirectoryScreen() {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {viewMode === 'family' ? (
-          // Family View
-          Object.entries(groupedFamilies).map(([familyKey, members]) => {
-          if (!members || members.length === 0) return null;
-          
-          const isExpanded = expandedFamilies.has(familyKey);
-          const familyInfo = members[0];
-          const isUnassigned = familyKey === '[Unassigned]';
-
-          return (
-            <TouchableOpacity
-              key={familyKey}
-              style={styles.familyCard}
-              onPress={() => toggleFamily(familyKey)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.familyHeader}>
-                <View style={styles.familyHeaderContent}>
-                  {/* Family Photo */}
-                  {!isUnassigned && familyInfo.family_id && familyImages.familyPhotos[familyInfo.family_id] && familyImages.familyPhotos[familyInfo.family_id]!.trim() !== '' ? (
-                    <Image
-                      source={{ uri: familyImages.familyPhotos[familyInfo.family_id]! }}
-                      style={styles.familyPhoto}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.familyPhotoPlaceholder}>
-                      <Users size={24} color="#9CA3AF" />
-                    </View>
-                  )}
-                  
-                  <View style={styles.familyInfo}>
-                    <View style={styles.familyTitleRow}>
-                      <Text style={styles.familyName}>
-                        {isUnassigned ? 'Unassigned Members' : familyInfo.family_name_display}
-                      </Text>
-                      <Text style={styles.memberCount}>({members.length})</Text>
-                      {isAdmin && !isUnassigned && (
-                        <TouchableOpacity
-                          style={styles.editButton}
-                          onPress={(e) => {
-                            e.stopPropagation();
-                            handleEditFamily(familyInfo);
-                          }}
-                        >
-                          <Edit3 size={16} color="#7C3AED" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {!isUnassigned && (
-                      <>
-                        {familyInfo.address_city && (
-                          <View style={styles.familyLocation}>
-                            <MapPin size={14} color="#9CA3AF" />
-                            <Text style={styles.locationText}>
-                              {familyInfo.address_city}, {familyInfo.address_state}
-                            </Text>
-                          </View>
-                        )}
-                        {familyInfo.home_phone && (
-                          <TouchableOpacity 
-                            style={styles.familyLocation}
-                            onPress={() => handlePhonePress(familyInfo.home_phone!)}
-                            activeOpacity={0.7}
-                          >
-                            <Phone size={14} color="#7C3AED" />
-                            <Text style={[styles.locationText, styles.locationLink]}>
-                              {familyInfo.home_phone}
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                        {familyInfo.address_street && (
-                          <View style={styles.familyLocation}>
-                            <Home size={14} color="#9CA3AF" />
-                            <Text style={styles.locationText}>
-                              {familyInfo.address_street}
-                            </Text>
-                          </View>
-                        )}
-                      </>
-                    )}
-                  </View>
-                </View>
-              </View>
-
-              {isExpanded && (
-                <View style={styles.membersContainer}>
-                  {members.filter(member => member?.person_id).map((member) => (
-                    <View key={member.person_id} style={styles.memberCard}>
-                      {/* Member Avatar */}
-                      {familyImages.memberAvatars[member.person_id] && familyImages.memberAvatars[member.person_id]!.trim() !== '' ? (
-                        <Image
-                          source={{ uri: familyImages.memberAvatars[member.person_id]! }}
-                          style={styles.memberAvatarImage}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <View style={styles.memberAvatar}>
-                          <User size={20} color="#9CA3AF" />
-                        </View>
-                      )}
-                      
-                      <View style={styles.memberInfo}>
-                        <Text style={styles.memberName}>
-                          {member.first_name || ''} {member.last_name || ''}
-                          {member.family_role === 'head' && ' (Head)'}
-                          {member.family_role === 'spouse' && ' (Spouse)'}
-                          {member.family_role === 'child' && ' (Child)'}
-                        </Text>
-                        {(() => {
-                          const badge = getRoleBadge(member);
-                          if (!badge) return null;
-                          return (
-                            <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
-                              <Text style={[styles.roleBadgeText, { color: badge.color }]}>{badge.label}</Text>
-                            </View>
-                          );
-                        })()}
-                        {member.email && (
-                          <TouchableOpacity 
-                            style={styles.memberDetail}
-                            onPress={() => handleEmailPress(member.email!)}
-                            activeOpacity={0.7}
-                          >
-                            <Mail size={12} color="#7C3AED" />
-                            <Text style={[styles.memberDetailText, styles.memberDetailLink]}>{member.email}</Text>
-                          </TouchableOpacity>
-                        )}
-                        {member.phone && (
-                          <TouchableOpacity 
-                            style={styles.memberDetail}
-                            onPress={() => handlePhonePress(member.phone!)}
-                            activeOpacity={0.7}
-                          >
-                            <Phone size={12} color="#7C3AED" />
-                            <Text style={[styles.memberDetailText, styles.memberDetailLink]}>{member.phone}</Text>
-                          </TouchableOpacity>
-                        )}
-                        {/* Member Tags */}
-                        {personTags[member.person_id] && personTags[member.person_id].length > 0 && (
-                          <View style={styles.memberTagsContainer}>
-                            {personTags[member.person_id].map(tag => (
-                              <TagPill
-                                key={tag.id}
-                                tag={tag}
-                                size="small"
-                                testId={`member-tag-${member.person_id}-${tag.id}`}
-                              />
-                            ))}
-                          </View>
-                        )}
-                      </View>
-                      
-                      {/* Tags Action for Staff - Only for family members */}
-                      {isStaff && (
-                        <TouchableOpacity
-                          style={styles.tagActionButton}
-                          onPress={() => handleOpenTagModal(member.person_id)}
-                          testID={`tags-${member.person_id}`}
-                        >
-                          <Tags size={16} color="#7C3AED" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  ))}
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })
-        ) : (
-          // Person View
-          <View style={styles.personListContainer}>
-            {sortedPersons.filter(person => person?.person_id).map((person) => (
-              <View key={person.person_id} style={styles.personCard}>
-                <View style={styles.personCardContent}>
-                  {/* Person Avatar */}
-                  {familyImages.memberAvatars[person.person_id] && familyImages.memberAvatars[person.person_id]!.trim() !== '' ? (
-                    <Image
-                      source={{ uri: familyImages.memberAvatars[person.person_id]! }}
-                      style={styles.personAvatarImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View style={styles.personAvatar}>
-                      <User size={24} color="#9CA3AF" />
-                    </View>
-                  )}
-                  
-                  <View style={styles.personInfo}>
-                    <View style={styles.personNameRow}>
-                      <Text style={styles.personName}>
-                        {person.first_name || ''} {person.last_name || ''}
-                      </Text>
-                      {isAdmin && (
-                        <TouchableOpacity
-                          style={styles.personEditButton}
-                          onPress={() => handleEditPerson(person)}
-                        >
-                          <Edit3 size={16} color="#7C3AED" />
-                        </TouchableOpacity>
-                      )}
-                      {/* Tags Action for Staff - Only for family members */}
-                      {isStaff && (
-                        <TouchableOpacity
-                          style={styles.tagActionButton}
-                          onPress={() => handleOpenTagModal(person.person_id)}
-                          testID={`tags-${person.person_id}`}
-                        >
-                          <Tags size={16} color="#7C3AED" />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                    {(() => {
-                      const badge = getRoleBadge(person);
-                      if (!badge) return null;
-                      return (
-                        <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
-                          <Text style={[styles.roleBadgeText, { color: badge.color }]}>{badge.label}</Text>
-                        </View>
-                      );
-                    })()}
-                    {person.family_name_display && (
-                      <View style={styles.personFamily}>
-                        <Users size={12} color="#9CA3AF" />
-                        <Text style={styles.personFamilyText}>
-                          {person.family_name_display}
-                          {person.family_role === 'head' && ' (Head)'}
-                          {person.family_role === 'spouse' && ' (Spouse)'}
-                          {person.family_role === 'child' && ' (Child)'}
-                        </Text>
-                      </View>
-                    )}
-                    {person.email && (
-                      <TouchableOpacity 
-                        style={styles.personDetail}
-                        onPress={() => handleEmailPress(person.email!)}
-                        activeOpacity={0.7}
-                      >
-                        <Mail size={14} color="#7C3AED" />
-                        <Text style={[styles.personDetailText, styles.personDetailLink]}>{person.email}</Text>
-                      </TouchableOpacity>
-                    )}
-                    {person.phone && (
-                      <TouchableOpacity 
-                        style={styles.personDetail}
-                        onPress={() => handlePhonePress(person.phone!)}
-                        activeOpacity={0.7}
-                      >
-                        <Phone size={14} color="#7C3AED" />
-                        <Text style={[styles.personDetailText, styles.personDetailLink]}>{person.phone}</Text>
-                      </TouchableOpacity>
-                    )}
-                    {person.address_city && (
-                      <View style={styles.personDetail}>
-                        <MapPin size={14} color="#9CA3AF" />
-                        <Text style={styles.personDetailText}>
-                          {person.address_city}, {person.address_state}
-                        </Text>
-                      </View>
-                    )}
-                    {/* Person Tags */}
-                    {personTags[person.person_id] && personTags[person.person_id].length > 0 && (
-                      <View style={styles.personTagsContainer}>
-                        {personTags[person.person_id].map(tag => (
-                          <TagPill
-                            key={tag.id}
-                            tag={tag}
-                            size="small"
-                            testId={`person-tag-${person.person_id}-${tag.id}`}
-                          />
-                        ))}
-                      </View>
-                    )}
-                  </View>
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+      {viewMode === 'family' ? (
+        <FlatList
+          data={familyEntries}
+          keyExtractor={([familyKey]) => familyKey}
+          renderItem={renderFamilyItem}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          initialNumToRender={15}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={() => queryClient.invalidateQueries({ queryKey: ['directory'] })}
+            />
+          }
+          ListEmptyComponent={
+            <View style={styles.personListContainer} />
+          }
+        />
+      ) : (
+        <FlatList
+          data={sortedPersons.filter(person => person?.person_id)}
+          keyExtractor={(person) => person.person_id}
+          renderItem={renderPersonItem}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          initialNumToRender={15}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.personListContainer}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={() => queryClient.invalidateQueries({ queryKey: ['directory'] })}
+            />
+          }
+          ListEmptyComponent={
+            <View />
+          }
+        />
+      )}
 
       <EditFamilyModal
         visible={isEditModalVisible}

@@ -49,8 +49,7 @@ export default function SettingsScreen() {
             try {
               await supabase.auth.signOut();
               router.replace('/');
-            } catch (error) {
-              console.error('Error signing out:', error);
+            } catch {
               Alert.alert('Error', 'Failed to sign out');
             }
           },
@@ -63,8 +62,7 @@ export default function SettingsScreen() {
     setNotificationsEnabled(!notificationsEnabled);
   };
 
-  const handleNotificationPreferencesChange = (preferences: NotificationPreferences) => {
-    console.log('Notification preferences updated:', preferences);
+  const handleNotificationPreferencesChange = (_preferences: NotificationPreferences) => {
   };
 
   const toggleBiometric = async () => {

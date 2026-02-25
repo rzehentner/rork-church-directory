@@ -33,7 +33,6 @@ export default function PersonTagPicker({ personId, testId, onTagsChanged }: Per
   const [localPersonTags, setLocalPersonTags] = useState<Tag[]>([]);
   const [pendingActions, setPendingActions] = useState<Set<string>>(new Set());
 
-  console.log('PersonTagPicker render:', { personId, myRole });
 
   // Fetch all available tags (only active ones for pickers)
   const {
@@ -104,9 +103,7 @@ export default function PersonTagPicker({ personId, testId, onTagsChanged }: Per
         newSet.delete(tagId);
         return newSet;
       });
-      
-      console.error('Error adding tag:', error);
-      
+
       // Revert optimistic update
       setLocalPersonTags(prev => prev.filter(tag => tag.id !== tagId));
       
@@ -163,9 +160,7 @@ export default function PersonTagPicker({ personId, testId, onTagsChanged }: Per
         newSet.delete(tagId);
         return newSet;
       });
-      
-      console.error('Error removing tag:', error);
-      
+
       // Revert optimistic update
       const tagToRestore = allTags.find(tag => tag.id === tagId);
       if (tagToRestore) {

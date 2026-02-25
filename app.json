@@ -86,7 +86,7 @@
         {
           "color": "#ffffff",
           "defaultChannel": "default",
-          "enableBackgroundRemoteNotifications": false
+          "enableBackgroundRemoteNotifications": true
         }
       ],
       [

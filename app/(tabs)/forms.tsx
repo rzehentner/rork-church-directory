@@ -262,7 +262,6 @@ export default function FormsScreen() {
       .map(summaryToMyForm)
     const merged = [...(myForms ?? []), ...extraForms]
     merged.sort((a, b) => new Date(a.event_start).getTime() - new Date(b.event_start).getTime())
-    console.log('Forms tab: myForms=', myForms?.length, 'summaries=', allSummaries?.length, 'merged=', merged.length)
     return merged
   }, [myForms, allSummaries])
 

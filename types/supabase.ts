@@ -51,6 +51,21 @@ export type Database = {
           },
         ]
       }
+      announcement_role_access: {
+        Row: {
+          announcement_id: string
+          role: string
+        }
+        Insert: {
+          announcement_id: string
+          role: string
+        }
+        Update: {
+          announcement_id?: string
+          role?: string
+        }
+        Relationships: []
+      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -320,6 +335,21 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      event_role_access: {
+        Row: {
+          event_id: string
+          role: string
+        }
+        Insert: {
+          event_id: string
+          role: string
+        }
+        Update: {
+          event_id?: string
+          role?: string
+        }
+        Relationships: []
       }
       events: {
         Row: {
@@ -635,7 +665,7 @@ export type Database = {
           is_spouse: boolean
           last_name: string
           phone: string | null
-          photo_url: string | null
+          photo_path: string | null
           updated_at: string
           user_id: string | null
         }
@@ -654,7 +684,7 @@ export type Database = {
           is_spouse?: boolean
           last_name: string
           phone?: string | null
-          photo_url?: string | null
+          photo_path?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -673,7 +703,7 @@ export type Database = {
           is_spouse?: boolean
           last_name?: string
           phone?: string | null
-          photo_url?: string | null
+          photo_path?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -824,6 +854,7 @@ export type Database = {
           approved_at: string | null
           approved_by: string | null
           created_at: string
+          email: string | null
           id: string
           last_login: string | null
           person_id: string | null
@@ -834,6 +865,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          email?: string | null
           id: string
           last_login?: string | null
           person_id?: string | null
@@ -844,6 +876,7 @@ export type Database = {
           approved_at?: string | null
           approved_by?: string | null
           created_at?: string
+          email?: string | null
           id?: string
           last_login?: string | null
           person_id?: string | null
@@ -1539,6 +1572,7 @@ export type Database = {
           is_public: boolean | null
           location: string | null
           my_rsvp: Database["public"]["Enums"]["rsvp_status"] | null
+          role_tags: string[] | null
           roles_allowed: Database["public"]["Enums"]["user_role"][] | null
           start_at: string | null
           title: string | null
@@ -1586,7 +1620,7 @@ export type Database = {
           last_name: string | null
           person_id: string | null
           phone: string | null
-          photo_url: string | null
+          photo_path: string | null
         }
         Relationships: []
       }
@@ -1595,6 +1629,7 @@ export type Database = {
           email: string | null
           family_name: string | null
           first_name: string | null
+          has_person_record: boolean | null
           last_name: string | null
           profile_id: string | null
           requested_at: string | null
@@ -1773,7 +1808,7 @@ export type Database = {
           person_first_name: string | null
           person_id: string | null
           person_last_name: string | null
-          person_photo_url: string | null
+          person_photo_path: string | null
           respondent_email: string | null
           respondent_name: string | null
           respondent_phone: string | null
@@ -2047,6 +2082,18 @@ export type Database = {
         Returns: boolean
       }
       unclaim_potluck_item: { Args: { p_claim_id: string }; Returns: Json }
+      update_signup_form: {
+        Args: {
+          p_form_id: string
+          p_title: string | null
+          p_description: string | null
+          p_max_signups: number | null
+          p_deadline: string | null
+          p_is_active: boolean | null
+          p_fields: Json
+        }
+        Returns: Json
+      }
       unmark_prayed_today: { Args: { p_prayer_id: string }; Returns: boolean }
       untag_subject: {
         Args: {

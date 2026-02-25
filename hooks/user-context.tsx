@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/auth-context';
 import type { Database } from '@/types/supabase';
@@ -30,7 +30,7 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
   const [familyMembers, setFamilyMembers] = useState<Person[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!user) {
       setProfile(null);
       setPerson(null);
@@ -80,8 +80,7 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
         setFamily(null);
         setFamilyMembers([]);
       }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
+    } catch {
       setProfile(null);
       setPerson(null);
       setFamily(null);
@@ -89,13 +88,13 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     fetchUserData();
-  }, [user]);
+  }, [fetchUserData]);
 
-  const updatePerson = async (updates: Partial<Person>) => {
+  const updatePerson = useCallback(async (updates: Partial<Person>) => {
     if (!person) return { error: new Error('No person record found') };
 
     const { error } = await supabase
@@ -108,9 +107,9 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     }
 
     return { error };
-  };
+  }, [person, fetchUserData]);
 
-  const updateFamily = async (updates: Partial<Family>) => {
+  const updateFamily = useCallback(async (updates: Partial<Family>) => {
     if (!family) return { error: new Error('No family record found') };
 
     const { error } = await supabase
@@ -123,34 +122,29 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     }
 
     return { error };
-  };
+  }, [family, fetchUserData]);
 
-  const createFamily = async (familyData: any) => {
-    console.log('Creating family with data:', familyData);
+  const createFamily = useCallback(async (familyData: any) => {
     const response = await supabase.rpc('create_family_for_self', familyData);
-    console.log('Create family response:', response);
-    
+
     if (!response.error && response.data) {
-      console.log('Family created successfully, refetching user data...');
       await fetchUserData();
-    } else {
-      console.log('Family creation failed:', response.error);
     }
 
     return { familyId: response.data, error: response.error };
-  };
+  }, [fetchUserData]);
 
-  const joinFamily = async (token: string) => {
+  const joinFamily = useCallback(async (token: string) => {
     const { data, error } = await supabase.rpc('join_family_with_token', { p_token: token });
-    
+
     if (!error && data) {
       await fetchUserData();
     }
 
     return { familyId: data, error };
-  };
+  }, [fetchUserData]);
 
-  const replacePersonInFamily = async (familyId: string, personIdToReplace: string) => {
+  const replacePersonInFamily = useCallback(async (familyId: string, personIdToReplace: string) => {
     if (!user) return { error: new Error('User not authenticated') };
 
     try {
@@ -182,9 +176,9 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, [user, person, fetchUserData]);
 
-  return {
+  return useMemo(() => ({
     profile,
     person,
     family,
@@ -196,5 +190,17 @@ export const [UserProvider, useUser] = createContextHook<UserState>(() => {
     createFamily,
     joinFamily,
     replacePersonInFamily,
-  };
+  }), [
+    profile,
+    person,
+    family,
+    familyMembers,
+    isLoading,
+    fetchUserData,
+    updatePerson,
+    updateFamily,
+    createFamily,
+    joinFamily,
+    replacePersonInFamily,
+  ]);
 });

@@ -50,12 +50,14 @@ import { styles } from '@/styles/admin.styles';
 const SWIPE_THRESHOLD = 120;
 
 interface PendingApproval {
-  user_id: string;
+  profile_id: string | null;
   email: string | null;
-  created_at: string;
-  person_id: string | null;
+  requested_at: string | null;
   first_name: string | null;
   last_name: string | null;
+  family_name: string | null;
+  role: string | null;
+  has_person_record: boolean | null;
 }
 
 interface TagFormData {
@@ -80,7 +82,7 @@ interface AdminAnnouncement {
   created_by: string;
   is_published: boolean;
   is_public: boolean;
-  roles_allowed: string[] | null;
+  role_tags: string[] | null;
   created_at: string;
   updated_at: string;
   author_name?: string;
@@ -96,6 +98,7 @@ export default function AdminScreen() {
   const [localChurchSettings, setLocalChurchSettings] = useState(churchSettings);
   const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements' | 'bulletin' | 'church'>('approvals');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showAllPending, setShowAllPending] = useState(false);
   const [showUnpublished, setShowUnpublished] = useState(false);
   const [showCreateTagModal, setShowCreateTagModal] = useState(false);
   const [showEditTagModal, setShowEditTagModal] = useState(false);
@@ -131,7 +134,7 @@ export default function AdminScreen() {
       const { data, error } = await supabase
         .from('pending_approvals')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('requested_at', { ascending: false });
 
       if (error) throw error;
       return data as PendingApproval[];
@@ -152,27 +155,29 @@ export default function AdminScreen() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('announcements')
-        .select('id,title,body,published_at,expires_at,created_by,is_published,is_public,roles_allowed,created_at,updated_at')
+        .select('id,title,body,published_at,expires_at,created_by,is_published,is_public,created_at,updated_at')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      return data?.map(announcement => {
-        let rolesAllowed: string[] | null = null;
-        if (announcement.roles_allowed) {
-          try {
-            if (Array.isArray(announcement.roles_allowed)) {
-              rolesAllowed = announcement.roles_allowed;
-            } else if (typeof announcement.roles_allowed === 'string') {
-              const s = announcement.roles_allowed.trim();
-              if (s.startsWith('[') && s.endsWith(']')) rolesAllowed = JSON.parse(s);
-              else if (s.startsWith('{') && s.endsWith('}')) rolesAllowed = s.slice(1, -1).split(',').map(v => v.trim()).filter(Boolean);
-              else rolesAllowed = s.split(',').map(v => v.trim()).filter(Boolean);
-            }
-          } catch { rolesAllowed = null; }
+      // Batch-load role_tags from junction table
+      const ids = (data ?? []).map(a => a.id);
+      let roleMap: Record<string, string[]> = {};
+      if (ids.length > 0) {
+        const { data: roleRows } = await supabase
+          .from('announcement_role_access')
+          .select('announcement_id, role')
+          .in('announcement_id', ids);
+        for (const row of roleRows ?? []) {
+          if (!roleMap[row.announcement_id]) roleMap[row.announcement_id] = [];
+          roleMap[row.announcement_id].push(row.role);
         }
-        return { ...announcement, roles_allowed: rolesAllowed } as AdminAnnouncement;
-      }) || [];
+      }
+
+      return (data ?? []).map(announcement => ({
+        ...announcement,
+        role_tags: roleMap[announcement.id] || null,
+      })) as AdminAnnouncement[];
     },
     enabled: profile?.role === 'admin' || profile?.role === 'leader',
     staleTime: 30000, // 30 seconds
@@ -195,8 +200,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
       showSuccess('User approved successfully');
     },
-    onError: (error) => {
-      console.error('Error approving user:', error);
+    onError: () => {
       showError('Failed to approve user. Please try again.');
     },
   });
@@ -218,8 +222,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['pending-approvals'] });
       showSuccess('User rejected successfully');
     },
-    onError: (error) => {
-      console.error('Error rejecting user:', error);
+    onError: () => {
       showError('Failed to reject user. Please try again.');
     },
   });
@@ -232,7 +235,6 @@ export default function AdminScreen() {
   const createTagMutation = useMutation({
     mutationFn: createTag,
     onSuccess: (newTag) => {
-      console.log('✅ Tag created successfully:', newTag);
       queryClient.invalidateQueries({ queryKey: ['admin-tags'] });
       queryClient.invalidateQueries({ queryKey: ['tags', 'active'] });
       queryClient.invalidateQueries({ queryKey: ['tags'] });
@@ -241,7 +243,6 @@ export default function AdminScreen() {
       showSuccess(`Tag "${newTag.name}" created successfully`);
     },
     onError: (error) => {
-      console.error('❌ Error creating tag:', error);
       if (error && typeof error === 'object' && 'message' in error) {
         const errorMessage = error.message as string;
         if (errorMessage.includes('duplicate key')) {
@@ -276,8 +277,7 @@ export default function AdminScreen() {
         }
       }
     },
-    onError: (error) => {
-      console.error('❌ Error updating tag:', error);
+    onError: () => {
       showError('Failed to update tag. Please try again.');
     },
   });
@@ -290,8 +290,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       showSuccess(hardDelete ? 'Tag deleted permanently' : 'Tag archived successfully');
     },
-    onError: (error) => {
-      console.error('❌ Error deleting tag:', error);
+    onError: () => {
       showError('Failed to delete tag. Please try again.');
     },
   });
@@ -304,8 +303,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['tags'] });
       showSuccess('Tag reactivated successfully');
     },
-    onError: (error) => {
-      console.error('❌ Error reactivating tag:', error);
+    onError: () => {
       showError('Failed to reactivate tag. Please try again.');
     },
   });
@@ -409,8 +407,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
       showSuccess('Announcement unpublished successfully');
     },
-    onError: (error) => {
-      console.error('❌ Error unpublishing announcement:', error);
+    onError: () => {
       showError('Failed to unpublish announcement. Please try again.');
     },
   });
@@ -421,8 +418,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
       showSuccess('Announcement republished successfully');
     },
-    onError: (error) => {
-      console.error('❌ Error republishing announcement:', error);
+    onError: () => {
       showError('Failed to republish announcement. Please try again.');
     },
   });
@@ -439,8 +435,7 @@ export default function AdminScreen() {
       queryClient.invalidateQueries({ queryKey: ['admin-announcements'] });
       showSuccess('Announcement deleted successfully');
     },
-    onError: (error) => {
-      console.error('❌ Error deleting announcement:', error);
+    onError: () => {
       showError('Failed to delete announcement. Please try again.');
     },
   });
@@ -621,86 +616,118 @@ export default function AdminScreen() {
     );
   }
 
+  const readyApprovals = pendingApprovals?.filter(a => a.has_person_record && a.first_name) || [];
+  const incompleteApprovals = pendingApprovals?.filter(a => !a.has_person_record || !a.first_name) || [];
+  const displayedApprovals = showAllPending ? pendingApprovals || [] : readyApprovals;
+
   const renderApprovals = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Pending Approvals</Text>
-      {pendingApprovals && pendingApprovals.length > 0 ? (
-        pendingApprovals.map((approval) => (
-          <View key={approval.user_id} style={styles.approvalCard}>
-            <View style={styles.approvalHeader}>
-              <View style={styles.userAvatar}>
-                <User size={24} color="#9CA3AF" />
-              </View>
-              <View style={styles.userInfo}>
-                <Text style={styles.userName}>
-                  {approval.first_name && approval.last_name
-                    ? `${approval.first_name} ${approval.last_name}`
-                    : 'No name set'}
-                </Text>
-                {approval.email && (
-                  <View style={styles.userDetail}>
-                    <Mail size={12} color="#9CA3AF" />
-                    <Text style={styles.userDetailText}>{approval.email}</Text>
-                  </View>
-                )}
-                <View style={styles.userDetail}>
-                  <Calendar size={12} color="#9CA3AF" />
-                  <Text style={styles.userDetailText}>
-                    Requested {new Date(approval.created_at).toLocaleDateString()}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Pending Approvals</Text>
+        {incompleteApprovals.length > 0 && (
+          <TouchableOpacity
+            style={[styles.filterToggle, showAllPending && styles.filterToggleActive]}
+            onPress={() => setShowAllPending(!showAllPending)}
+          >
+            <Filter size={14} color={showAllPending ? '#FFFFFF' : '#6B7280'} />
+            <Text style={[styles.filterToggleText, showAllPending && styles.filterToggleTextActive]}>
+              {showAllPending ? 'All' : 'Ready'} ({showAllPending ? pendingApprovals?.length || 0 : readyApprovals.length})
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {displayedApprovals.length > 0 ? (
+        displayedApprovals.map((approval) => {
+          const isIncomplete = !approval.has_person_record || !approval.first_name;
+          return (
+            <View key={approval.profile_id} style={[styles.approvalCard, isIncomplete && styles.approvalCardIncomplete]}>
+              <View style={styles.approvalHeader}>
+                <View style={styles.userAvatar}>
+                  <User size={24} color="#9CA3AF" />
+                </View>
+                <View style={styles.userInfo}>
+                  <Text style={styles.userName}>
+                    {approval.first_name && approval.last_name
+                      ? `${approval.first_name} ${approval.last_name}`
+                      : approval.email || 'Unknown user'}
                   </Text>
+                  {approval.first_name && approval.email && (
+                    <View style={styles.userDetail}>
+                      <Mail size={12} color="#9CA3AF" />
+                      <Text style={styles.userDetailText}>{approval.email}</Text>
+                    </View>
+                  )}
+                  <View style={styles.userDetail}>
+                    <Calendar size={12} color="#9CA3AF" />
+                    <Text style={styles.userDetailText}>
+                      Requested {approval.requested_at ? new Date(approval.requested_at).toLocaleDateString() : 'Unknown'}
+                    </Text>
+                  </View>
+                  {isIncomplete && (
+                    <View style={styles.userDetail}>
+                      <Clock size={12} color="#F59E0B" />
+                      <Text style={[styles.userDetailText, { color: '#F59E0B' }]}>
+                        Profile incomplete
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </View>
-            </View>
 
-            <View style={styles.approvalActions}>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton, 
-                  styles.approveButton,
-                  approveMutation.isPending && styles.actionButtonDisabled
-                ]}
-                onPress={() => handleApprove(approval.user_id, 'member')}
-                disabled={approveMutation.isPending || rejectMutation.isPending}
-              >
-                {approveMutation.isPending ? (
-                  <ActivityIndicator size={16} color="#FFFFFF" />
-                ) : (
-                  <CheckCircle size={16} color="#FFFFFF" />
-                )}
-                <Text style={styles.actionButtonText}>Approve</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.actionButton, 
-                  styles.rejectButton,
-                  rejectMutation.isPending && styles.actionButtonDisabled
-                ]}
-                onPress={() => handleReject(approval.user_id)}
-                disabled={approveMutation.isPending || rejectMutation.isPending}
-              >
-                {rejectMutation.isPending ? (
-                  <ActivityIndicator size={16} color="#FFFFFF" />
-                ) : (
-                  <XCircle size={16} color="#FFFFFF" />
-                )}
-                <Text style={styles.actionButtonText}>Reject</Text>
-              </TouchableOpacity>
-            </View>
+              {!isIncomplete && (
+                <View style={styles.approvalActions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.visitorButton,
+                      approveMutation.isPending && styles.actionButtonDisabled
+                    ]}
+                    onPress={() => handleApprove(approval.profile_id!, 'visitor')}
+                    disabled={approveMutation.isPending}
+                  >
+                    {approveMutation.isPending ? (
+                      <ActivityIndicator size={16} color="#FFFFFF" />
+                    ) : (
+                      <Eye size={16} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.actionButtonText}>Visitor</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[
+                      styles.actionButton,
+                      styles.approveButton,
+                      approveMutation.isPending && styles.actionButtonDisabled
+                    ]}
+                    onPress={() => handleApprove(approval.profile_id!, 'member')}
+                    disabled={approveMutation.isPending}
+                  >
+                    {approveMutation.isPending ? (
+                      <ActivityIndicator size={16} color="#FFFFFF" />
+                    ) : (
+                      <CheckCircle size={16} color="#FFFFFF" />
+                    )}
+                    <Text style={styles.actionButtonText}>Member</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
 
-            {approval.person_id && (
-              <View style={styles.noteContainer}>
-                <Text style={styles.noteText}>
-                  ✓ Pre-loaded person record found
-                </Text>
-              </View>
-            )}
-          </View>
-        ))
+              {approval.family_name && (
+                <View style={styles.noteContainer}>
+                  <Text style={styles.noteText}>
+                    Family: {approval.family_name}
+                  </Text>
+                </View>
+              )}
+            </View>
+          );
+        })
       ) : (
         <View style={styles.emptyContainer}>
           <User size={48} color="#9CA3AF" />
           <Text style={styles.emptyText}>No pending approvals</Text>
-          <Text style={styles.emptySubtext}>All users have been processed</Text>
+          <Text style={styles.emptySubtext}>
+            {showAllPending ? 'No pending users' : 'All profiled users have been processed'}
+          </Text>
         </View>
       )}
     </View>
@@ -850,9 +877,9 @@ export default function AdminScreen() {
                           </>
                         )}
                       </View>
-                      {announcement.roles_allowed && announcement.roles_allowed.length > 0 && (
+                      {announcement.role_tags && announcement.role_tags.length > 0 && (
                         <View style={styles.rolesContainer}>
-                          <Text style={styles.rolesText}>Roles: {announcement.roles_allowed.join(', ')}</Text>
+                          <Text style={styles.rolesText}>Roles: {announcement.role_tags.join(', ')}</Text>
                         </View>
                       )}
                     </View>

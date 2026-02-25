@@ -8,10 +8,12 @@ import {
   ScrollView,
   Switch,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native'
 import { Stack, router, useLocalSearchParams } from 'expo-router'
 import { MapPin, Trash2 } from 'lucide-react-native'
-import { getEvent, updateEvent, setEventTags, getEventTags } from '@/services/events'
+import { getEvent, updateEvent, setEventTags, getEventTags, setEventRoles } from '@/services/events'
 import { eventImageUrl, uploadEventImage } from '@/services/event-images'
 import { useToast } from '@/hooks/toast-context'
 import { useMe } from '@/hooks/me-context'
@@ -29,7 +31,7 @@ type Event = {
   location: string | null
   image_path: string | null
   is_public: boolean
-  roles_allowed: ('admin'|'leader'|'member'|'visitor')[] | null
+  role_tags?: string[] | null
 }
 
 export default function EditEventScreen() {
@@ -81,11 +83,10 @@ export default function EditEventScreen() {
       setEndDate(formatDateForInput(new Date(eventData.end_at)))
       setIsAllDay(eventData.is_all_day)
       setIsPublic(eventData.is_public)
-      setSelectedRoles(eventData.roles_allowed || [])
+      setSelectedRoles((eventData.role_tags || []) as ('admin'|'leader'|'member'|'visitor')[])
       setCurrentImagePath(eventData.image_path)
       setSelectedTags(eventTags.map(tag => tag.id))
     } catch (error) {
-      console.error('Failed to load event:', error)
       showToast('error', 'Failed to load event')
       router.back()
     } finally {
@@ -116,21 +117,18 @@ export default function EditEventScreen() {
         is_all_day: isAllDay,
         location: location.trim() || null,
         is_public: isPublic,
-        roles_allowed: isPublic ? null : selectedRoles.length > 0 ? selectedRoles : null,
       }
 
-      await updateEvent(event.id, updateData)
+      const roles = isPublic ? [] : selectedRoles
+      await updateEvent(event.id, updateData, roles)
 
       await setEventTags(event.id, selectedTags)
 
       // Upload image (optional)
       if (imageUri) {
-        console.log('Uploading event image:', imageUri)
         try {
-          const uploadedUrl = await uploadEventImage(imageUri, event.id)
-          console.log('Image uploaded successfully:', uploadedUrl)
-        } catch (imageError) {
-          console.error('Image upload failed:', imageError)
+          await uploadEventImage(imageUri, event.id)
+        } catch {
           // Don't fail the entire event update if image upload fails
           showToast('warning', 'Event updated but image upload failed')
         }
@@ -139,7 +137,6 @@ export default function EditEventScreen() {
       showToast('success', 'Event updated successfully')
       router.back()
     } catch (error) {
-      console.error('Failed to update event:', error)
       showToast('error', 'Failed to update event')
     } finally {
       setLoading(false)
@@ -170,7 +167,6 @@ export default function EditEventScreen() {
               showToast('success', 'Event deleted successfully')
               router.back()
             } catch (error) {
-              console.error('Failed to delete event:', error)
               showToast('error', 'Failed to delete event')
             } finally {
               setLoading(false)
@@ -218,8 +214,12 @@ export default function EditEventScreen() {
 
   return (
     <View style={styles.container}>
-      <Stack.Screen 
-        options={{ 
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+      <Stack.Screen
+        options={{
           title: 'Edit Event',
           headerRight: () => (
             <View style={styles.headerButtons}>
@@ -333,7 +333,6 @@ export default function EditEventScreen() {
               <ImageUploader
                 currentImageUrl={imageUri || (currentImagePath ? eventImageUrl(currentImagePath) : null)}
                 onUpload={async (file) => {
-                  console.log('[EditEvent] Image selected:', file.uri)
                   // Store the local URI for later upload
                   setImageUri(file.uri)
                   // Return the local URI to show in the UI
@@ -409,6 +408,7 @@ export default function EditEventScreen() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   )
 }

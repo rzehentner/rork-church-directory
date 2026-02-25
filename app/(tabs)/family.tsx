@@ -116,7 +116,7 @@ export default function FamilyScreen() {
           const avatarResults = await Promise.all(
             familyMembers.map(async (m) => ({
               id: m.id,
-              url: m.photo_url ? await getSignedUrl(m.photo_url).then(u => u ? `${u}&t=${ts}` : null).catch(() => null) : null,
+              url: m.photo_path ? await getSignedUrl(m.photo_path).then(u => u ? `${u}&t=${ts}` : null).catch(() => null) : null,
             }))
           );
           setMemberAvatars(avatarResults.reduce((acc, { id, url }) => { acc[id] = url; return acc; }, {} as Record<string, string | null>));
@@ -129,8 +129,7 @@ export default function FamilyScreen() {
           );
           setMemberTags(tagResults.reduce((acc, { id, tags }) => { acc[id] = tags; return acc; }, {} as Record<string, any[]>));
         }
-      } catch (error) {
-        console.error('Error loading images:', error);
+      } catch {
       }
     };
     if (family || familyMembers.length > 0) loadImages();
@@ -144,8 +143,7 @@ export default function FamilyScreen() {
         ...prev,
         [memberId]: personWithTags.tags
       }));
-    } catch (error) {
-      console.error('Error refreshing member tags:', error);
+    } catch {
     }
   };
 
@@ -196,13 +194,12 @@ export default function FamilyScreen() {
       // Immediately update the UI with the new URL
       setMemberAvatars(prev => ({ ...prev, [personId]: url }));
       
-      // Refresh the family data to get the updated photo_url
+      // Refresh the family data to get the updated photo_path
 
       await refetch();
       
       return url;
     } catch (error) {
-      console.error('Error uploading person avatar:', error);
       if (error instanceof Error) {
         Alert.alert('Upload Failed', error.message);
       }

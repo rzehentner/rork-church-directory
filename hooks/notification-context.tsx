@@ -44,9 +44,6 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
   });
 
   useEffect(() => {
-    if (queryError) {
-      console.error('Error fetching notifications:', queryError instanceof Error ? queryError.message : String(queryError));
-    }
   }, [queryError]);
 
   const unreadCount = useMemo(() => notifications.filter(n => !n.read_at).length, [notifications]);
@@ -64,8 +61,7 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
             : notification
         )
       );
-    } catch (error) {
-      console.error('Error marking notification as read:', error);
+    } catch {
     }
   }, [queryClient, user?.id]);
 
@@ -73,22 +69,18 @@ export const [NotificationProvider, useNotifications] = createContextHook<Notifi
     if (!user) return;
 
     // Register push endpoint when user is authenticated (non-blocking)
-    registerPushEndpoint().catch(error => {
-      console.log('Error in registerPushEndpoint:', error instanceof Error ? error.message : String(error));
-    });
+    registerPushEndpoint().catch(() => {});
 
     if (Platform.OS === 'web') return;
 
     // Set up notification listeners for native platforms
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       if (!notification) return;
-      console.log('Notification received:', notification);
       refetch();
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       if (!response) return;
-      console.log('Notification response:', response);
       // Handle notification tap
       const notificationData = response.notification.request.content.data as { id?: string } | undefined;
       if (notificationData?.id && typeof notificationData.id === 'string') {

@@ -29,7 +29,11 @@
       "Bash(npx eas update:*)",
       "Bash(npx expo start:*)",
       "Bash(npx supabase:*)",
-      "Skill(commit-commands:commit)"
+      "Skill(commit-commands:commit)",
+      "Bash(cd /f/Projects/ebcconnect && git stash pop 2>&1)",
+      "Bash(cd /f/Projects/ebcconnect && git stash pop --index 2>&1 || git checkout stash -- hooks/auth-context.tsx hooks/user-context.tsx hooks/me-context.tsx 2>&1)",
+      "Bash(tail:*)",
+      "Bash(cd:*)"
     ]
   }
 }

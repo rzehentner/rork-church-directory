@@ -1,4 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
+import { useMemo } from 'react';
 import { useAuth } from '@/hooks/auth-context';
 import { useUser } from '@/hooks/user-context';
 import type { Database } from '@/types/supabase';
@@ -35,7 +36,7 @@ export const [MeProvider, useMe] = createContextHook<MeState>(() => {
     ? `${person.first_name || ''} ${person.last_name || ''}`.trim()
     : user?.email || 'User';
 
-  const getInitials = () => {
+  const initials = useMemo(() => {
     if (person?.first_name && person?.last_name) {
       return `${person.first_name[0]}${person.last_name[0]}`.toUpperCase();
     }
@@ -43,21 +44,32 @@ export const [MeProvider, useMe] = createContextHook<MeState>(() => {
       return user.email[0].toUpperCase();
     }
     return 'U';
-  };
+  }, [person?.first_name, person?.last_name, user?.email]);
 
-  return {
+  return useMemo(() => ({
     isAuthenticated,
     isAdmin,
     isLeader,
     isAdminOrLeader,
     userId: user?.id || null,
     displayName,
-    initials: getInitials(),
+    initials,
     myRole: profile?.role ?? null,
     myPersonId: person?.id ?? null,
     profile,
     person,
     isLoading,
     error: null,
-  };
+  }), [
+    isAuthenticated,
+    isAdmin,
+    isLeader,
+    isAdminOrLeader,
+    user?.id,
+    displayName,
+    initials,
+    profile,
+    person,
+    isLoading,
+  ]);
 });

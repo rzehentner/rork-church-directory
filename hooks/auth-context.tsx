@@ -1,5 +1,5 @@
 import createContextHook from '@nkzw/create-context-hook';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import * as LocalAuthentication from 'expo-local-authentication';
@@ -72,20 +72,18 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
             });
           }, 2000);
         }
-      } catch (error) {
-        console.error('Auth initialization failed:', error);
+      } catch {
         if (mounted) {
           setIsLoading(false);
         }
       }
     };
-    
+
     const initBiometrics = async () => {
       if (!mounted) return;
-      
+
       try {
         if (!LocalAuthentication || typeof LocalAuthentication.hasHardwareAsync !== 'function') {
-          console.log('LocalAuthentication not available');
           if (mounted) {
             setIsBiometricAvailable(false);
             setIsBiometricEnabled(false);
@@ -105,8 +103,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         if (mounted) {
           setIsBiometricEnabled(!!biometricData);
         }
-      } catch (error) {
-        console.warn('Biometric initialization failed (non-critical):', error);
+      } catch {
         if (mounted) {
           setIsBiometricAvailable(false);
           setIsBiometricEnabled(false);
@@ -134,40 +131,40 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     };
   }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
-  };
+  }, []);
 
-  const signUp = async (email: string, password: string) => {
+  const signUp = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signUp({ email, password });
     return { error };
-  };
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     await deleteSecureItem(BIOMETRIC_KEY);
     setIsBiometricEnabled(false);
-  };
+  }, []);
 
-  const sendMagicLink = async (email: string) => {
+  const sendMagicLink = useCallback(async (email: string) => {
     const { error } = await supabase.auth.signInWithOtp({ email });
     return { error };
-  };
+  }, []);
 
-  const resetPassword = async (email: string) => {
+  const resetPassword = useCallback(async (email: string) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: 'https://connect.ednabaptist.church/reset-password',
     });
     return { error };
-  };
+  }, []);
 
-  const updatePassword = async (newPassword: string) => {
+  const updatePassword = useCallback(async (newPassword: string) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     return { error };
-  };
+  }, []);
 
-  const biometricSignIn = async () => {
+  const biometricSignIn = useCallback(async () => {
     if (Platform.OS === 'web') {
       return { error: new Error('Biometric authentication not available on web') };
     }
@@ -212,9 +209,9 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
-  const enableBiometric = async () => {
+  const enableBiometric = useCallback(async () => {
     if (Platform.OS === 'web') {
       return { error: new Error('Biometric authentication not available on web') };
     }
@@ -243,14 +240,14 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     } catch (error) {
       return { error: error as Error };
     }
-  };
+  }, []);
 
-  const disableBiometric = async () => {
+  const disableBiometric = useCallback(async () => {
     await deleteSecureItem(BIOMETRIC_KEY);
     setIsBiometricEnabled(false);
-  };
+  }, []);
 
-  return {
+  return useMemo(() => ({
     session,
     user,
     isLoading,
@@ -265,5 +262,20 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
     isBiometricEnabled,
     enableBiometric,
     disableBiometric,
-  };
+  }), [
+    session,
+    user,
+    isLoading,
+    signIn,
+    signUp,
+    signOut,
+    sendMagicLink,
+    resetPassword,
+    updatePassword,
+    biometricSignIn,
+    isBiometricAvailable,
+    isBiometricEnabled,
+    enableBiometric,
+    disableBiometric,
+  ]);
 });

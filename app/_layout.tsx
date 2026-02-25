@@ -40,7 +40,6 @@ class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Error Boundary caught an error:', error, errorInfo);
     this.setState({ errorInfo });
   }
 
@@ -179,8 +178,7 @@ export default function RootLayout() {
           await new Promise(resolve => setTimeout(resolve, 200));
           await SplashScreen.hideAsync();
         }
-      } catch (error) {
-        console.warn('Error hiding splash screen:', error);
+      } catch {
       } finally {
         setIsReady(true);
       }

@@ -33,8 +33,7 @@ export default function EventTagPicker({
     try {
       const tags = await listTags(true) // Only active tags
       setAvailableTags(tags)
-    } catch (error) {
-      console.error('Failed to load tags:', error)
+    } catch {
     } finally {
       setLoading(false)
     }

@@ -158,6 +158,6 @@ export interface SignupResponseDetail {
   created_at: string;
   updated_at: string;
   custom_fields: Record<string, string> | null;
-  person_photo_url: string | null;
+  person_photo_path: string | null;
   submitter_name: string | null;
 }

@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Switch,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native'
 import { Stack, useLocalSearchParams, router } from 'expo-router'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -59,7 +60,6 @@ export default function SignupFormScreen() {
   const submitMutation = useMutation({
     mutationFn: submitSignup,
     onSuccess: (data) => {
-      console.log('Signup submitted successfully:', data)
       queryClient.invalidateQueries({ queryKey: ['my-signup-forms'] })
       queryClient.invalidateQueries({ queryKey: ['signup-form-responses'] })
       const statusMsg = data.status === 'waitlisted'
@@ -69,7 +69,6 @@ export default function SignupFormScreen() {
       router.back()
     },
     onError: (error: any) => {
-      console.error('Signup submission error:', error)
       const msg = error?.message || 'Failed to submit signup'
       showToast('error', msg)
     },
@@ -192,6 +191,10 @@ export default function SignupFormScreen() {
   return (
     <View style={styles.container}>
       <Stack.Screen options={{ title: form.title }} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <ScrollView
         style={styles.scroll}
         contentContainerStyle={styles.scrollContent}
@@ -356,6 +359,7 @@ export default function SignupFormScreen() {
           )}
         </TouchableOpacity>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   )
 }

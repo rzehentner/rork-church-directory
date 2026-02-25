@@ -12,8 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser } from '@/hooks/user-context';
 import { useMe } from '@/hooks/me-context';
 import { getPersonWithTags } from '@/services/tags';
-import { getAnnouncementTags } from '@/lib/announcements';
-import { getEventTags } from '@/services/events';
 import { supabase } from '@/lib/supabase';
 import { router } from 'expo-router';
 import {
@@ -133,7 +131,6 @@ export default function DashboardScreen() {
   const loadTaggedEvents = useCallback(async () => {
     if (!myPersonId) return;
     try {
-      console.log('🏷️ Loading tagged events for person:', myPersonId);
       const personWithTags = await getPersonWithTags(myPersonId);
       const userTags = personWithTags.tags;
       const userTagNames = userTags.map(tag => tag.name);
@@ -148,28 +145,40 @@ export default function DashboardScreen() {
 
       if (eventsError || !allEvents || allEvents.length === 0) { setTaggedEvents([]); return; }
 
+      const eventIds = allEvents.map(e => e.id);
+      const { data: allEventTagRows } = await supabase
+        .from('event_audience_tags')
+        .select('event_id, tags!inner(id, name, color)')
+        .in('event_id', eventIds);
+
+      const tagsByEventId = new Map<string, { id: string; name: string; color: string | null }[]>();
+      for (const row of allEventTagRows ?? []) {
+        const tag = row.tags as unknown as { id: string; name: string; color: string | null };
+        if (!tag) continue;
+        const existing = tagsByEventId.get(row.event_id) ?? [];
+        existing.push(tag);
+        tagsByEventId.set(row.event_id, existing);
+      }
+
       const matchingEvents: TaggedEvent[] = [];
       for (const event of allEvents) {
-        try {
-          const tags = await getEventTags(event.id);
-          const matchingTags = tags.filter((tag: any) => userTagNames.includes(tag.name));
-          if (matchingTags.length > 0) {
-            matchingEvents.push({
-              id: event.id, title: event.title, start_at: event.start_at, location: event.location,
-              tag_names: tags.map((t: any) => t.name),
-              matching_tags: matchingTags.map((t: any) => ({ id: t.id, name: t.name, color: t.color })),
-            });
-          }
-        } catch (error) { console.error('Error fetching tags for event:', event.id, error); }
+        const tags = tagsByEventId.get(event.id) ?? [];
+        const matchingTags = tags.filter(tag => userTagNames.includes(tag.name));
+        if (matchingTags.length > 0) {
+          matchingEvents.push({
+            id: event.id, title: event.title, start_at: event.start_at, location: event.location,
+            tag_names: tags.map(t => t.name),
+            matching_tags: matchingTags.map(t => ({ id: t.id, name: t.name, color: t.color })),
+          });
+        }
       }
       setTaggedEvents(matchingEvents.slice(0, 3));
-    } catch (error) { console.error('Error loading tagged events:', error); }
+    } catch { /* tagged events load failure is non-critical */ }
   }, [myPersonId]);
 
   const loadTaggedAnnouncements = useCallback(async () => {
     if (!myPersonId) return;
     try {
-      console.log('🏷️ Loading tagged announcements for person:', myPersonId);
       const personWithTags = await getPersonWithTags(myPersonId);
       const userTags = personWithTags.tags;
       const userTagNames = userTags.map(tag => tag.name);
@@ -184,25 +193,48 @@ export default function DashboardScreen() {
 
       if (announcementsError || !allAnnouncements || allAnnouncements.length === 0) { setTaggedAnnouncements([]); return; }
 
+      const announcementIds = allAnnouncements.map(a => a.id);
+      const uniqueCreatedByIds = [...new Set(allAnnouncements.map(a => a.created_by).filter(Boolean))];
+
+      const [announcementTagRows, authorRows] = await Promise.all([
+        supabase
+          .from('announcement_audience_tags')
+          .select('announcement_id, tags!inner(id, name, color)')
+          .in('announcement_id', announcementIds),
+        uniqueCreatedByIds.length > 0
+          ? supabase.from('persons').select('user_id, first_name, last_name').in('user_id', uniqueCreatedByIds)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      const tagsByAnnouncementId = new Map<string, { id: string; name: string; color: string | null }[]>();
+      for (const row of announcementTagRows.data ?? []) {
+        const tag = row.tags as unknown as { id: string; name: string; color: string | null };
+        if (!tag) continue;
+        const existing = tagsByAnnouncementId.get(row.announcement_id) ?? [];
+        existing.push(tag);
+        tagsByAnnouncementId.set(row.announcement_id, existing);
+      }
+
+      const authorByUserId = new Map<string, string>();
+      for (const person of authorRows.data ?? []) {
+        authorByUserId.set(person.user_id, `${person.first_name} ${person.last_name}`);
+      }
+
       const matchingAnnouncements: TaggedAnnouncement[] = [];
       for (const announcement of allAnnouncements) {
-        try {
-          const tags = await getAnnouncementTags(announcement.id);
-          const matchingTags = tags.filter((tag: any) => userTagNames.includes(tag.name));
-          if (matchingTags.length > 0) {
-            const { data: authorPerson } = await supabase
-              .from('persons').select('first_name, last_name').eq('user_id', announcement.created_by).single();
-            matchingAnnouncements.push({
-              id: announcement.id, title: announcement.title, created_at: announcement.created_at,
-              author_name: authorPerson ? `${authorPerson.first_name} ${authorPerson.last_name}` : 'Unknown',
-              tag_names: tags.map((t: any) => t.name),
-              matching_tags: matchingTags.map((t: any) => ({ id: t.id, name: t.name, color: t.color })),
-            });
-          }
-        } catch (error) { console.error('Error fetching tags for announcement:', announcement.id, error); }
+        const tags = tagsByAnnouncementId.get(announcement.id) ?? [];
+        const matchingTags = tags.filter(tag => userTagNames.includes(tag.name));
+        if (matchingTags.length > 0) {
+          matchingAnnouncements.push({
+            id: announcement.id, title: announcement.title, created_at: announcement.created_at,
+            author_name: authorByUserId.get(announcement.created_by) ?? 'Unknown',
+            tag_names: tags.map(t => t.name),
+            matching_tags: matchingTags.map(t => ({ id: t.id, name: t.name, color: t.color })),
+          });
+        }
       }
       setTaggedAnnouncements(matchingAnnouncements.slice(0, 3));
-    } catch (error) { console.error('Error loading tagged announcements:', error); }
+    } catch { /* tagged announcements load failure is non-critical */ }
   }, [myPersonId]);
 
   const loadBirthdays = useCallback(async () => {
@@ -228,8 +260,7 @@ export default function DashboardScreen() {
         });
 
       setBirthdays(filtered);
-    } catch (error) {
-      console.error('Error loading birthdays:', error);
+    } catch {
     }
   }, []);
 
@@ -257,21 +288,23 @@ export default function DashboardScreen() {
       if (eventsResult.data) setUpcomingEvents(eventsResult.data);
 
       if (announcementsResult.data) {
-        const formatted = await Promise.all(
-          announcementsResult.data.map(async (a) => {
-            const { data: authorPerson } = await supabase
-              .from('persons').select('first_name, last_name').eq('user_id', a.created_by).single();
-            return {
-              id: a.id, title: a.title, created_at: a.created_at,
-              author_name: authorPerson ? `${authorPerson.first_name} ${authorPerson.last_name}` : 'Unknown',
-            };
-          })
-        );
+        const uniqueAuthorIds = [...new Set(announcementsResult.data.map(a => a.created_by).filter(Boolean))];
+        const authorMap = new Map<string, string>();
+        if (uniqueAuthorIds.length > 0) {
+          const { data: authorPersons } = await supabase
+            .from('persons').select('user_id, first_name, last_name').in('user_id', uniqueAuthorIds);
+          for (const person of authorPersons ?? []) {
+            authorMap.set(person.user_id, `${person.first_name} ${person.last_name}`);
+          }
+        }
+        const formatted = announcementsResult.data.map(a => ({
+          id: a.id, title: a.title, created_at: a.created_at,
+          author_name: authorMap.get(a.created_by) ?? 'Unknown',
+        }));
         setRecentAnnouncements(formatted);
       }
       setError(null);
-    } catch (err) {
-      console.error('Error loading dashboard data:', err);
+    } catch {
       setError('Failed to load dashboard data');
     }
   }, [familyMembers]);

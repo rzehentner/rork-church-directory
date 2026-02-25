@@ -8,6 +8,8 @@ import {
   TextInput,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
@@ -68,7 +70,6 @@ export default function JoinFamilyScreen() {
         .order('family_name_display', { nullsFirst: false });
 
       if (directoryError) {
-        console.error('Error fetching directory:', directoryError);
         Alert.alert('Error', 'Failed to load families. Please contact your administrator.');
         return;
       }
@@ -107,7 +108,7 @@ export default function JoinFamilyScreen() {
             is_head_of_family: entry.is_head_of_family || false,
             is_spouse: entry.is_spouse || false,
             family_role: entry.family_role || (entry.is_head_of_family ? 'head' as const : entry.is_spouse ? 'spouse' as const : 'other' as const),
-            photo_url: entry.photo_url,
+            photo_path: entry.photo_path,
             created_at: '',
             updated_at: '',
             created_ip: null,
@@ -118,8 +119,7 @@ export default function JoinFamilyScreen() {
         
         setFamilies(Array.from(familyMap.values()));
       }
-    } catch (error) {
-      console.error('Error fetching families:', error);
+    } catch {
       Alert.alert('Error', 'Failed to load families. Please try again.');
     } finally {
       setIsLoading(false);
@@ -204,8 +204,7 @@ export default function JoinFamilyScreen() {
           },
         ]);
       }
-    } catch (error) {
-      console.error('Error replacing person:', error);
+    } catch {
       Alert.alert('Error', 'Failed to replace person');
     }
   };
@@ -239,8 +238,8 @@ export default function JoinFamilyScreen() {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Stack.Screen 
-        options={{ 
+      <Stack.Screen
+        options={{
           title: 'Join Family',
           headerShown: true,
           headerLeft: () => (
@@ -248,9 +247,12 @@ export default function JoinFamilyScreen() {
               <ArrowLeft size={24} color="#7C3AED" />
             </TouchableOpacity>
           ),
-        }} 
+        }}
       />
-      
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
       <View style={styles.searchContainer}>
         <View style={styles.searchInputContainer}>
           <Search size={20} color="#9CA3AF" />
@@ -408,6 +410,7 @@ export default function JoinFamilyScreen() {
           </TouchableOpacity>
         </View>
       )}
+      </KeyboardAvoidingView>
     </View>
   );
 }

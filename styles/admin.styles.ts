@@ -101,6 +101,26 @@ export const styles = StyleSheet.create({
     fontWeight: '600' as const,
     color: '#1F2937',
   },
+  filterToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 4,
+  },
+  filterToggleActive: {
+    backgroundColor: '#6B7280',
+  },
+  filterToggleText: {
+    fontSize: 13,
+    fontWeight: '500' as const,
+    color: '#6B7280',
+  },
+  filterToggleTextActive: {
+    color: '#FFFFFF',
+  },
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -125,6 +145,12 @@ export const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  approvalCardIncomplete: {
+    opacity: 0.7,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    borderStyle: 'dashed' as const,
   },
   approvalHeader: {
     flexDirection: 'row',
@@ -170,6 +196,9 @@ export const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     gap: 6,
+  },
+  visitorButton: {
+    backgroundColor: '#6B7280',
   },
   approveButton: {
     backgroundColor: '#10B981',
