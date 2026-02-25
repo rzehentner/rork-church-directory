@@ -10,7 +10,6 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
-import * as ImageManipulator from 'expo-image-manipulator';
 import { Camera, Upload } from 'lucide-react-native';
 
 interface ImageUploaderProps {
@@ -42,6 +41,7 @@ export default function ImageUploader({
   const resizeImage = async (uri: string): Promise<{ uri: string }> => {
     const MAX_WIDTH = 1200;
     try {
+      const ImageManipulator = await import('expo-image-manipulator');
       const result = await ImageManipulator.manipulateAsync(
         uri,
         [{ resize: { width: MAX_WIDTH } }],

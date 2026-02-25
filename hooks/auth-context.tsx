@@ -2,8 +2,6 @@ import createContextHook from '@nkzw/create-context-hook';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
-import * as LocalAuthentication from 'expo-local-authentication';
-import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 
@@ -83,6 +81,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
       if (!mounted) return;
 
       try {
+        const LocalAuthentication = await import('expo-local-authentication');
         if (!LocalAuthentication || typeof LocalAuthentication.hasHardwareAsync !== 'function') {
           if (mounted) {
             setIsBiometricAvailable(false);
@@ -175,6 +174,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         return { error: new Error('Biometric authentication not set up') };
       }
 
+      const LocalAuthentication = await import('expo-local-authentication');
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Authenticate to sign in',
         fallbackLabel: 'Use password',

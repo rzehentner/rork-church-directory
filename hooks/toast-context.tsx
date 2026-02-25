@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo } from 'react';
 import createContextHook from '@nkzw/create-context-hook';
 import Toast, { ToastType } from '@/components/Toast';
-import NetInfo from '@react-native-community/netinfo';
 import { Platform } from 'react-native';
 
 interface ToastState {
@@ -106,7 +105,8 @@ const [ToastProvider, useToast] = createContextHook(() => {
     
     const setupNetInfo = async () => {
       try {
-        const unsubscribe = NetInfo.addEventListener((state: any) => {
+        const NetInfo = await import('@react-native-community/netinfo');
+        const unsubscribe = NetInfo.default.addEventListener((state: any) => {
           if (!mounted) return;
           
           const offline = !state.isConnected;

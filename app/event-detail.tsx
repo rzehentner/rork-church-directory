@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { useIsFocused } from '@react-navigation/native'
+
 import {
   View,
   Text,
@@ -106,15 +106,13 @@ export default function EventDetailScreen() {
     }
   }, [id, showToast])
 
-  const isFocused = useIsFocused()
-
   useEffect(() => {
-    if (id && isFocused) {
+    if (id) {
       loadEventCallback()
       loadTags()
       refetchSignupForm()
     }
-  }, [id, isFocused, loadEventCallback, refetchSignupForm])
+  }, [id, loadEventCallback, refetchSignupForm])
 
   // Load RSVPs separately when role is loaded and user is staff
   useEffect(() => {

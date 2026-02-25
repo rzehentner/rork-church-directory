@@ -1,19 +1,27 @@
-import * as Notifications from 'expo-notifications';
-import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { isValidUUID } from '@/utils/validation';
 
-// Configure notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+let notificationHandlerSet = false;
+
+async function ensureNotificationHandler() {
+  if (notificationHandlerSet || Platform.OS === 'web') return;
+  try {
+    const Notifications = await import('expo-notifications');
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+    notificationHandlerSet = true;
+  } catch (e) {
+    console.warn('Failed to set notification handler:', e);
+  }
+}
 
 export async function registerPushEndpoint() {
   try {
@@ -21,9 +29,13 @@ export async function registerPushEndpoint() {
       return;
     }
 
+    const Device = await import('expo-device');
     if (!Device.isDevice) {
       return;
     }
+
+    await ensureNotificationHandler();
+    const Notifications = await import('expo-notifications');
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -37,7 +49,6 @@ export async function registerPushEndpoint() {
       return;
     }
 
-    // Get Expo push token with timeout
     const tokenPromise = Notifications.getExpoPushTokenAsync();
     const timeoutPromise = new Promise((_, reject) => 
       setTimeout(() => reject(new Error('Token fetch timeout')), 10000)
