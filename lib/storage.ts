@@ -1,5 +1,4 @@
 import { supabase } from '@/lib/supabase';
-import { Platform } from 'react-native';
 import { isValidUUID } from '@/utils/validation';
 
 export async function uploadImageFromUri(opts: {
@@ -15,24 +14,11 @@ export async function uploadImageFromUri(opts: {
   const blob = await res.blob();
   if (!blob || blob.size === 0) throw new Error('Selected image is empty or unreadable.');
 
-  let uploadData: ArrayBuffer | Blob;
-  if (Platform.OS === 'web') {
-    uploadData = blob;
-  } else {
-    uploadData = await new Promise<ArrayBuffer>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        if (reader.result instanceof ArrayBuffer) resolve(reader.result);
-        else reject(new Error('Failed to convert blob to ArrayBuffer'));
-      };
-      reader.onerror = () => reject(new Error('Failed to read blob'));
-      reader.readAsArrayBuffer(blob);
-    });
-  }
-
+  // Use Blob on all platforms. Converting to ArrayBuffer on iOS causes
+  // NSURLSession to drop the Authorization header, triggering RLS failures.
   const { error } = await supabase.storage
     .from('avatars')
-    .upload(path, uploadData, {
+    .upload(path, blob, {
       contentType: contentType || 'image/jpeg',
       upsert: true,
       cacheControl: '0'
