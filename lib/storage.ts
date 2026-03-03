@@ -54,12 +54,20 @@ export async function getSignedUrl(key: string, ttlSeconds = 3600): Promise<stri
 export async function uploadPersonAvatar(personId: string, file: any): Promise<string> {
   if (!isValidUUID(personId)) throw new Error('Invalid person ID');
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated — please sign out and sign back in.');
+
   const path = `persons/${personId}/avatar.jpg`;
-  const url = await uploadImageFromUri({
-    uri: file.uri,
-    path,
-    contentType: file.type || 'image/jpeg'
-  });
+  let url: string;
+  try {
+    url = await uploadImageFromUri({
+      uri: file.uri,
+      path,
+      contentType: file.type || 'image/jpeg'
+    });
+  } catch (storageErr: any) {
+    throw new Error(`Storage upload failed (path: ${path}, uid: ${user.id}): ${storageErr?.message}`);
+  }
 
   const { error } = await supabase
     .from('persons')
@@ -68,21 +76,29 @@ export async function uploadPersonAvatar(personId: string, file: any): Promise<s
     .select()
     .single();
 
-  if (error) throw new Error(`Failed to save photo reference: ${error.message}`);
+  if (error) throw new Error(`Person table update failed (person: ${personId}, uid: ${user.id}): ${error.message}`);
   return `${url}?t=${Date.now()}`;
 }
 
 export async function uploadFamilyPhoto(familyId: string, file: any, currentKey?: string | null): Promise<string> {
   if (!isValidUUID(familyId)) throw new Error('Invalid family ID');
 
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated — please sign out and sign back in.');
+
   const validCurrentKey = currentKey && !currentKey.includes('<') && !currentKey.includes('>') ? currentKey : null;
   const path = validCurrentKey ?? `families/${familyId}/photo.jpg`;
 
-  const url = await uploadImageFromUri({
-    uri: file.uri,
-    path,
-    contentType: file.type || 'image/jpeg'
-  });
+  let url: string;
+  try {
+    url = await uploadImageFromUri({
+      uri: file.uri,
+      path,
+      contentType: file.type || 'image/jpeg'
+    });
+  } catch (storageErr: any) {
+    throw new Error(`Storage upload failed (path: ${path}, uid: ${user.id}): ${storageErr?.message}`);
+  }
 
   const { error } = await supabase
     .from('families')
@@ -91,7 +107,7 @@ export async function uploadFamilyPhoto(familyId: string, file: any, currentKey?
     .select()
     .single();
 
-  if (error) throw new Error(`Failed to save photo reference: ${error.message}`);
+  if (error) throw new Error(`Family table update failed (family: ${familyId}, uid: ${user.id}): ${error.message}`);
   return `${url}?t=${Date.now()}`;
 }
 
