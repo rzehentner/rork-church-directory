@@ -171,40 +171,17 @@ export default function FamilyScreen() {
 
   const handleUploadFamilyPhoto = async (file: any) => {
     if (!family) throw new Error('No family found');
-    try {
-      const url = await uploadFamilyPhoto(family.id, file, family.photo_path);
-      setFamilyPhotoUrl(url);
-      await refetch();
-      return url;
-    } catch (error) {
-      if (error instanceof Error) Alert.alert('Upload Failed', error.message);
-      throw error;
-    }
+    const url = await uploadFamilyPhoto(family.id, file, family.photo_path);
+    setFamilyPhotoUrl(url);
+    await refetch();
+    return url;
   };
 
   const handleUploadPersonAvatar = async (personId: string, file: any) => {
-    try {
-
-      const member = familyMembers.find(m => m.id === personId);
-
-      
-      const url = await uploadPersonAvatar(personId, file);
-
-      
-      // Immediately update the UI with the new URL
-      setMemberAvatars(prev => ({ ...prev, [personId]: url }));
-      
-      // Refresh the family data to get the updated photo_path
-
-      await refetch();
-      
-      return url;
-    } catch (error) {
-      if (error instanceof Error) {
-        Alert.alert('Upload Failed', error.message);
-      }
-      throw error;
-    }
+    const url = await uploadPersonAvatar(personId, file);
+    setMemberAvatars(prev => ({ ...prev, [personId]: url }));
+    await refetch();
+    return url;
   };
   
   const handleCreateFamily = async () => {
