@@ -98,7 +98,19 @@ export async function markNotificationAsRead(id: string) {
     .eq('id', id);
 
   if (error) {
-    // non-critical; swallow silently
+    throw new Error(error.message || 'Failed to mark notification as read');
+  }
+}
+
+export async function deleteNotification(id: string) {
+  if (!isValidUUID(id)) return;
+  const { error } = await supabase
+    .from('user_notifications')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(error.message || 'Failed to delete notification');
   }
 }
 

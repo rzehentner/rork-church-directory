@@ -29,7 +29,7 @@
       "entitlements": {
         "com.apple.developer.networking.wifi-info": true
       },
-      "buildNumber": "6"
+      "buildNumber": "7"
     },
     "android": {
       "adaptiveIcon": {
@@ -47,7 +47,7 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.SCHEDULE_EXACT_ALARM"
       ],
-      "versionCode": 7
+      "versionCode": 8
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
