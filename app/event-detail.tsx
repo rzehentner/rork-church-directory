@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
+  Alert,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -21,12 +22,14 @@ import {
   Edit3,
   Share2,
   ExternalLink,
-  ChevronLeft
+  ChevronLeft,
+  Archive,
 } from 'lucide-react-native'
 import {
   getEvent,
   rsvpEvent,
   getEventRSVPs,
+  archiveEvent,
   type RSVP,
   type EventRSVP
 } from '@/services/events'
@@ -190,6 +193,31 @@ export default function EventDetailScreen() {
     } catch {
       showToast('error', 'Failed to share event')
     }
+  }
+
+  const handleArchive = () => {
+    if (!event) return
+
+    Alert.alert(
+      'Archive Event',
+      `Are you sure you want to archive "${event.title}"? It will be hidden from the events list.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Archive',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await archiveEvent(event.id)
+              showToast('success', 'Event archived')
+              router.back()
+            } catch (err) {
+              showToast('error', 'Failed to archive event')
+            }
+          },
+        },
+      ]
+    )
   }
 
   const handleLocationPress = () => {
@@ -517,6 +545,18 @@ export default function EventDetailScreen() {
 
           {/* RSVP List for Staff (only when no signup form) */}
           {!signupForm?.is_active && <RSVPList />}
+
+          {/* Archive Event (Staff only) */}
+          {isStaff && (
+            <TouchableOpacity
+              style={styles.archiveButton}
+              onPress={handleArchive}
+              testID="archive-event-btn"
+            >
+              <Archive size={18} color="#D97706" />
+              <Text style={styles.archiveButtonText}>Archive Event</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
     </View>
@@ -858,6 +898,24 @@ const styles = StyleSheet.create({
   createPotluckBtnText: {
     color: '#D97706',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  archiveButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#F59E0B',
+    backgroundColor: '#FFFBEB',
+    gap: 10,
+    marginTop: 24,
+  },
+  archiveButtonText: {
+    fontSize: 16,
+    color: '#D97706',
     fontWeight: '600',
   },
 })

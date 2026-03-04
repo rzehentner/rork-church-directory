@@ -287,3 +287,27 @@ export async function getEventRSVPs(eventId: string): Promise<EventRSVP[]> {
     return []
   }
 }
+
+export async function archiveEvent(eventId: string) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
+  const { data, error } = await supabase.rpc('archive_event', { p_event_id: eventId })
+  if (error) throw error
+  return data
+}
+
+export async function unarchiveEvent(eventId: string) {
+  if (!isValidUUID(eventId)) throw new Error('Invalid event ID')
+  const { data, error } = await supabase.rpc('unarchive_event', { p_event_id: eventId })
+  if (error) throw error
+  return data
+}
+
+export async function listArchivedEvents() {
+  const { data, error } = await supabase
+    .from('events')
+    .select('*, profiles!events_archived_by_fkey(id, persons(first_name, last_name))')
+    .eq('is_archived', true)
+    .order('archived_at', { ascending: false })
+  if (error) throw error
+  return data ?? []
+}

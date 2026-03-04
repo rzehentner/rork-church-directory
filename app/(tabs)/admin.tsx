@@ -17,16 +17,16 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/hooks/user-context';
 import { useToast } from '@/hooks/toast-context';
-import { 
-  Shield, 
-  User, 
-  Mail, 
-  Calendar, 
-  CheckCircle, 
-  XCircle, 
-  Tag as TagIcon, 
-  Plus, 
-  Trash2, 
+import {
+  Shield,
+  User,
+  Mail,
+  Calendar,
+  CheckCircle,
+  XCircle,
+  Tag as TagIcon,
+  Plus,
+  Trash2,
   X,
   RotateCcw,
   Edit3,
@@ -37,9 +37,12 @@ import {
   Eye,
   Filter,
   FileText,
-  Settings
+  Settings,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react-native';
 import { listTags, createTag, updateTag, deleteTag, reactivateTag, type Tag } from '@/services/tags';
+import { listArchivedEvents, unarchiveEvent } from '@/services/events';
 import { unpublishAnnouncement, publishAnnouncement } from '@/lib/announcements';
 import { router } from 'expo-router';
 import { useChurchSettings, type ServiceTime } from '@/hooks/church-settings-context';
@@ -96,7 +99,7 @@ export default function AdminScreen() {
   const { showSuccess, showError } = useToast();
   const { settings: churchSettings, updateSettings: updateChurchSettings, updateServiceTimes, isSaving: churchSaving } = useChurchSettings();
   const [localChurchSettings, setLocalChurchSettings] = useState(churchSettings);
-  const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements' | 'bulletin' | 'church'>('approvals');
+  const [activeTab, setActiveTab] = useState<'approvals' | 'tags' | 'announcements' | 'bulletin' | 'church' | 'events'>('approvals');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAllPending, setShowAllPending] = useState(false);
   const [showUnpublished, setShowUnpublished] = useState(false);
@@ -181,6 +184,13 @@ export default function AdminScreen() {
     },
     enabled: profile?.role === 'admin' || profile?.role === 'leader',
     staleTime: 30000, // 30 seconds
+  });
+
+  const { data: archivedEvents, isLoading: archivedLoading } = useQuery({
+    queryKey: ['admin-archived-events'],
+    queryFn: listArchivedEvents,
+    enabled: profile?.role === 'admin',
+    staleTime: 30000,
   });
 
   const approveMutation = useMutation({
@@ -615,6 +625,77 @@ export default function AdminScreen() {
       </SafeAreaView>
     );
   }
+
+  const handleUnarchiveEvent = async (eventId: string, title: string) => {
+    Alert.alert(
+      'Unarchive Event',
+      `Restore "${title}" to the active events list?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unarchive',
+          onPress: async () => {
+            try {
+              await unarchiveEvent(eventId);
+              queryClient.invalidateQueries({ queryKey: ['admin-archived-events'] });
+              showSuccess('Event restored');
+            } catch {
+              showError('Failed to unarchive event');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderArchivedEvents = () => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Archived Events</Text>
+        <Text style={styles.sectionCount}>{archivedEvents?.length ?? 0}</Text>
+      </View>
+
+      {archivedLoading ? (
+        <ActivityIndicator size="small" color="#7C3AED" />
+      ) : !archivedEvents?.length ? (
+        <View style={styles.emptyState}>
+          <Archive size={32} color="#9CA3AF" />
+          <Text style={styles.emptyText}>No archived events</Text>
+        </View>
+      ) : (
+        archivedEvents.map((event) => {
+          const archivedBy = event.profiles as any;
+          const archiverName = archivedBy?.persons
+            ? `${archivedBy.persons.first_name ?? ''} ${archivedBy.persons.last_name ?? ''}`.trim()
+            : null;
+
+          return (
+            <View key={event.id} style={styles.archivedEventItem}>
+              <View style={styles.archivedEventInfo}>
+                <Text style={styles.archivedEventTitle}>{event.title}</Text>
+                <Text style={styles.archivedEventMeta}>
+                  {new Date(event.start_at).toLocaleDateString()}
+                  {event.location ? ` \u2022 ${event.location}` : ''}
+                </Text>
+                <Text style={styles.archivedEventBy}>
+                  {archiverName ? `Archived by ${archiverName}` : 'Auto-archived'}
+                  {event.archived_at ? ` \u2022 ${new Date(event.archived_at).toLocaleDateString()}` : ''}
+                </Text>
+              </View>
+              {profile?.role === 'admin' && (
+                <TouchableOpacity
+                  style={styles.unarchiveButton}
+                  onPress={() => handleUnarchiveEvent(event.id, event.title)}
+                >
+                  <ArchiveRestore size={16} color="#7C3AED" />
+                </TouchableOpacity>
+              )}
+            </View>
+          );
+        })
+      )}
+    </View>
+  );
 
   const readyApprovals = pendingApprovals?.filter(a => a.has_person_record && a.first_name) || [];
   const incompleteApprovals = pendingApprovals?.filter(a => !a.has_person_record || !a.first_name) || [];
@@ -1149,6 +1230,17 @@ export default function AdminScreen() {
             Bulletin
           </Text>
         </TouchableOpacity>
+        {profile?.role === 'admin' && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'events' && styles.activeTab]}
+            onPress={() => setActiveTab('events')}
+          >
+            <Archive size={16} color={activeTab === 'events' ? '#7C3AED' : '#6B7280'} />
+            <Text style={[styles.tabText, activeTab === 'events' && styles.activeTabText]}>
+              Events
+            </Text>
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={[styles.tab, activeTab === 'church' && styles.activeTab]}
           onPress={() => {
@@ -1185,6 +1277,7 @@ export default function AdminScreen() {
             </View>
           </View>
         )}
+        {activeTab === 'events' && renderArchivedEvents()}
         {activeTab === 'church' && (
           <ChurchSettingsSection
             localSettings={localChurchSettings}

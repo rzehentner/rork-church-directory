@@ -977,4 +977,52 @@ export const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600' as const,
   },
+  sectionCount: {
+    fontSize: 14,
+    fontWeight: '600' as const,
+    color: '#6B7280',
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    gap: 8,
+  },
+  archivedEventItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  archivedEventInfo: {
+    flex: 1,
+  },
+  archivedEventTitle: {
+    fontSize: 16,
+    fontWeight: '600' as const,
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  archivedEventMeta: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  archivedEventBy: {
+    fontSize: 13,
+    color: '#9CA3AF',
+  },
+  unarchiveButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: '#EEF2FF',
+    marginLeft: 12,
+  },
 });

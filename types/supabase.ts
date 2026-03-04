@@ -51,21 +51,6 @@ export type Database = {
           },
         ]
       }
-      announcement_role_access: {
-        Row: {
-          announcement_id: string
-          role: string
-        }
-        Insert: {
-          announcement_id: string
-          role: string
-        }
-        Update: {
-          announcement_id?: string
-          role?: string
-        }
-        Relationships: []
-      }
       announcement_reads: {
         Row: {
           announcement_id: string
@@ -113,6 +98,36 @@ export type Database = {
           },
         ]
       }
+      announcement_role_access: {
+        Row: {
+          announcement_id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Insert: {
+          announcement_id: string
+          role: Database["public"]["Enums"]["user_role"]
+        }
+        Update: {
+          announcement_id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_role_access_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_role_access_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements_for_me"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       announcements: {
         Row: {
           body: string | null
@@ -123,7 +138,6 @@ export type Database = {
           is_public: boolean
           is_published: boolean
           published_at: string | null
-          roles_allowed: Database["public"]["Enums"]["user_role"][] | null
           title: string
           updated_at: string
         }
@@ -136,7 +150,6 @@ export type Database = {
           is_public?: boolean
           is_published?: boolean
           published_at?: string | null
-          roles_allowed?: Database["public"]["Enums"]["user_role"][] | null
           title: string
           updated_at?: string
         }
@@ -149,7 +162,6 @@ export type Database = {
           is_public?: boolean
           is_published?: boolean
           published_at?: string | null
-          roles_allowed?: Database["public"]["Enums"]["user_role"][] | null
           title?: string
           updated_at?: string
         }
@@ -339,20 +351,37 @@ export type Database = {
       event_role_access: {
         Row: {
           event_id: string
-          role: string
+          role: Database["public"]["Enums"]["user_role"]
         }
         Insert: {
           event_id: string
-          role: string
+          role: Database["public"]["Enums"]["user_role"]
         }
         Update: {
           event_id?: string
-          role?: string
+          role?: Database["public"]["Enums"]["user_role"]
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "event_role_access_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_role_access_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events_for_me"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       events: {
         Row: {
+          archived_at: string | null
+          archived_by: string | null
           created_at: string
           created_by: string
           description: string | null
@@ -360,14 +389,16 @@ export type Database = {
           id: string
           image_path: string | null
           is_all_day: boolean
+          is_archived: boolean
           is_public: boolean
           location: string | null
-          roles_allowed: Database["public"]["Enums"]["user_role"][] | null
           start_at: string
           title: string
           updated_at: string
         }
         Insert: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           created_by: string
           description?: string | null
@@ -375,14 +406,16 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_all_day?: boolean
+          is_archived?: boolean
           is_public?: boolean
           location?: string | null
-          roles_allowed?: Database["public"]["Enums"]["user_role"][] | null
           start_at: string
           title: string
           updated_at?: string
         }
         Update: {
+          archived_at?: string | null
+          archived_by?: string | null
           created_at?: string
           created_by?: string
           description?: string | null
@@ -390,14 +423,35 @@ export type Database = {
           id?: string
           image_path?: string | null
           is_all_day?: boolean
+          is_archived?: boolean
           is_public?: boolean
           location?: string | null
-          roles_allowed?: Database["public"]["Enums"]["user_role"][] | null
           start_at?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "events_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "_is_approved"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "events_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "pending_approvals"
+            referencedColumns: ["profile_id"]
+          },
+          {
+            foreignKeyName: "events_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "events_created_by_fkey"
             columns: ["created_by"]
@@ -1528,8 +1582,7 @@ export type Database = {
           is_read: boolean | null
           person_tags: string[] | null
           published_at: string | null
-          role_tags: Database["public"]["Enums"]["user_role"][] | null
-          roles_allowed: Database["public"]["Enums"]["user_role"][] | null
+          role_tags: string[] | null
           title: string | null
           updated_at: string | null
         }
@@ -1559,6 +1612,7 @@ export type Database = {
       }
       events_for_me: {
         Row: {
+          archived_at: string | null
           audience_tags: string[] | null
           author_name: string | null
           created_at: string | null
@@ -1568,12 +1622,12 @@ export type Database = {
           id: string | null
           image_path: string | null
           is_all_day: boolean | null
+          is_archived: boolean | null
           is_attending: boolean | null
           is_public: boolean | null
           location: string | null
           my_rsvp: Database["public"]["Enums"]["rsvp_status"] | null
           role_tags: string[] | null
-          roles_allowed: Database["public"]["Enums"]["user_role"][] | null
           start_at: string | null
           title: string | null
           updated_at: string | null
@@ -1908,6 +1962,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      approve_user: {
+        Args: {
+          p_role: Database["public"]["Enums"]["user_role"]
+          p_user_id: string
+        }
+        Returns: undefined
+      }
+      archive_event: { Args: { p_event_id: string }; Returns: Json }
       cancel_signup: { Args: { p_response_id: string }; Returns: Json }
       claim_potluck_item: {
         Args: {
@@ -2031,6 +2093,7 @@ export type Database = {
         Returns: boolean
       }
       mark_prayed: { Args: { p_prayer_id: string }; Returns: boolean }
+      process_event_archiving: { Args: never; Returns: Json }
       public_intake_family: {
         Args: {
           p_address_city?: string
@@ -2081,19 +2144,8 @@ export type Database = {
         }
         Returns: boolean
       }
+      unarchive_event: { Args: { p_event_id: string }; Returns: Json }
       unclaim_potluck_item: { Args: { p_claim_id: string }; Returns: Json }
-      update_signup_form: {
-        Args: {
-          p_form_id: string
-          p_title: string | null
-          p_description: string | null
-          p_max_signups: number | null
-          p_deadline: string | null
-          p_is_active: boolean | null
-          p_fields: Json
-        }
-        Returns: Json
-      }
       unmark_prayed_today: { Args: { p_prayer_id: string }; Returns: boolean }
       untag_subject: {
         Args: {
@@ -2103,6 +2155,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      update_signup_form:
+        | {
+            Args: {
+              p_deadline?: string
+              p_description?: string
+              p_fields: Json
+              p_form_id: string
+              p_is_active?: boolean
+              p_max_signups?: number
+              p_title?: string
+            }
+            Returns: Json
+          }
+        | {
+            Args: {
+              p_deadline?: string
+              p_description?: string
+              p_fields?: Json
+              p_form_id: string
+              p_is_active?: boolean
+              p_max_signups?: number
+              p_title?: string
+            }
+            Returns: Json
+          }
     }
     Enums: {
       family_role: "head" | "spouse" | "child" | "other"
