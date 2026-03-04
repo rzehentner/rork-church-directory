@@ -125,7 +125,7 @@ export function EditFamilyModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 200 }}>
           {editingFamily && activeTab === 'family' && (
             <>
               <View style={styles.modalSection}>
@@ -305,7 +305,7 @@ export function EditPersonModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 40 }}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 200 }}>
           {editingPerson && (
             <>
               <View style={styles.modalSection}>

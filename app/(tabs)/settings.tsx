@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Constants from 'expo-constants';
 import {
   View,
   Text,
@@ -303,7 +304,7 @@ export default function SettingsScreen() {
             />
             <Text style={styles.aboutAppName}>EBC Connect</Text>
             <Text style={styles.aboutChurch}>Edna Baptist Church</Text>
-            <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+            <Text style={styles.aboutVersion}>Version {Constants.expoConfig?.version ?? '1.0.2'}</Text>
             <View style={styles.aboutDivider} />
             <View style={styles.developerRow}>
               <Code size={16} color="#6B7280" />
