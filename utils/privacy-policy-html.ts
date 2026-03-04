@@ -1,0 +1,201 @@
+/**
+ * Generates a standalone HTML version of the EBC Connect privacy policy
+ * for hosting on the web portal (e.g., connect.ednabaptist.church/privacy).
+ */
+export function generatePrivacyPolicyHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy Policy — EBC Connect</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    color: #1A2744;
+    line-height: 1.6;
+    background: #FAFAF7;
+    padding: 0;
+  }
+  .header {
+    background: linear-gradient(135deg, #1A2744 0%, #2B4C7E 50%, #3E6BAF 100%);
+    color: #fff;
+    padding: 48px 24px 36px;
+    text-align: center;
+  }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 4px; }
+  .header p { font-size: 15px; opacity: 0.8; }
+  .content {
+    max-width: 720px;
+    margin: -20px auto 0;
+    padding: 32px 24px 48px;
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+  }
+  .effective { font-size: 13px; color: #9CA3AF; margin-bottom: 28px; }
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1A2744;
+    margin-top: 28px;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid #F5F1EB;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #2B4C7E;
+    margin-top: 16px;
+    margin-bottom: 6px;
+  }
+  p { font-size: 15px; margin-bottom: 12px; color: #1A2744; }
+  ul {
+    margin: 0 0 12px 0;
+    padding-left: 20px;
+  }
+  li {
+    font-size: 15px;
+    margin-bottom: 6px;
+    color: #1A2744;
+  }
+  li::marker { color: #6B8EBF; }
+  .footer {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px;
+    text-align: center;
+    font-size: 13px;
+    color: #9CA3AF;
+  }
+  @media (max-width: 600px) {
+    .content { padding: 24px 16px 40px; }
+    .header { padding: 40px 16px 28px; }
+    .header h1 { font-size: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Privacy Policy</h1>
+  <p>EBC Connect — Edna Baptist Church</p>
+</div>
+<div class="content">
+  <p class="effective">Effective date: February 25, 2026</p>
+
+  <h2>Introduction</h2>
+  <p>EBC Connect ("the App") is a private community application built for and operated by Edna Baptist Church ("the Church", "we", "us", "our"). This Privacy Policy explains what information we collect, how we use it, and your rights regarding your data.</p>
+  <p>By creating an account or using the App, you agree to the collection and use of information as described in this policy.</p>
+
+  <h2>Information We Collect</h2>
+  <p>We collect the following categories of personal information when you register and use the App:</p>
+
+  <h3>Account Information</h3>
+  <ul>
+    <li>Email address (used for login and account recovery)</li>
+    <li>Password (stored securely via Supabase Auth; we never have access to your plaintext password)</li>
+  </ul>
+
+  <h3>Profile Information</h3>
+  <ul>
+    <li>First and last name</li>
+    <li>Phone number (optional)</li>
+    <li>Mailing address (optional)</li>
+    <li>Profile photo (optional)</li>
+    <li>Family group membership</li>
+  </ul>
+
+  <h3>Content You Create</h3>
+  <ul>
+    <li>Prayer requests and prayer activity</li>
+    <li>Event RSVPs and attendance</li>
+    <li>Signup form responses</li>
+    <li>Potluck item commitments</li>
+    <li>Announcements (if you have posting privileges)</li>
+  </ul>
+
+  <h3>Device and Usage Information</h3>
+  <ul>
+    <li>Push notification tokens (for delivering notifications to your device)</li>
+    <li>Device platform (iOS, Android, or web) for platform-specific functionality</li>
+  </ul>
+
+  <h2>How We Use Your Information</h2>
+  <p>Your information is used exclusively to operate the App and serve the church community:</p>
+  <ul>
+    <li>Authenticate your identity and manage your account</li>
+    <li>Display your name and photo in the church directory (visible only to approved members)</li>
+    <li>Deliver push notifications about events, announcements, and prayer requests</li>
+    <li>Enable event management, RSVPs, and attendance tracking</li>
+    <li>Facilitate prayer request sharing within the church community</li>
+    <li>Manage family groups and household connections</li>
+    <li>Generate church bulletins and reports for church leadership</li>
+  </ul>
+
+  <h2>Who Can See Your Information</h2>
+  <p>EBC Connect is a private, membership-based application. Access to the App requires account approval by a church administrator.</p>
+  <ul>
+    <li>Your profile information (name, phone, address, photo) is visible to other approved church members through the directory</li>
+    <li>Prayer requests you submit are visible to other approved members</li>
+    <li>Church administrators and leaders have additional access to manage users, events, and content</li>
+    <li>Your email address is not displayed to other members</li>
+  </ul>
+
+  <h2>Data Storage and Security</h2>
+  <p>Your data is stored securely using Supabase, a cloud database platform with industry-standard security practices including:</p>
+  <ul>
+    <li>Encrypted data transmission (HTTPS/TLS)</li>
+    <li>Row-level security policies that restrict data access at the database level</li>
+    <li>Secure password hashing (bcrypt)</li>
+    <li>Biometric authentication support (Face ID / Touch ID) for additional device-level security</li>
+    <li>Photos and files are stored in Supabase Storage with access controls</li>
+  </ul>
+  <p>While we implement reasonable security measures, no method of electronic storage or transmission is 100% secure. We cannot guarantee absolute security of your data.</p>
+
+  <h2>Third-Party Services</h2>
+  <p>The App uses the following third-party services:</p>
+  <ul>
+    <li>Supabase — Authentication, database, and file storage</li>
+    <li>Expo / EAS — App distribution and over-the-air updates</li>
+    <li>Apple Push Notification Service (APNs) — Push notifications on iOS</li>
+    <li>Firebase Cloud Messaging (FCM) — Push notifications on Android</li>
+  </ul>
+  <p>These services have their own privacy policies governing how they handle data. We do not sell, rent, or share your personal information with third parties for marketing purposes.</p>
+
+  <h2>Data Retention</h2>
+  <p>We retain your personal data for as long as your account is active and you are a member of the church community. If you leave the church or request account deletion, we will delete your account and associated personal data within 30 days.</p>
+  <p>Some information may be retained in anonymized or aggregated form for church record-keeping purposes (e.g., event attendance counts).</p>
+
+  <h2>Your Rights</h2>
+  <p>You have the right to:</p>
+  <ul>
+    <li>Access the personal information we hold about you</li>
+    <li>Update or correct your profile information at any time through the App</li>
+    <li>Request deletion of your account and associated data</li>
+    <li>Opt out of push notifications through your device settings or the App's notification preferences</li>
+    <li>Request a copy of your data by contacting the church office</li>
+  </ul>
+  <p>To exercise any of these rights, please contact the church office or a church administrator through the App.</p>
+
+  <h2>Children's Privacy</h2>
+  <p>The App is intended for use by members of Edna Baptist Church and their families. We do not knowingly collect personal information from children under 13 without parental consent. Family accounts may include information about minors as part of family group membership, which is managed by a parent or guardian.</p>
+
+  <h2>Changes to This Policy</h2>
+  <p>We may update this Privacy Policy from time to time. When we make changes, we will update the "Effective date" at the top of this page and notify users through the App. Your continued use of the App after changes are posted constitutes your acceptance of the updated policy.</p>
+
+  <h2>Contact Us</h2>
+  <p>If you have questions or concerns about this Privacy Policy or your personal data, please contact us:</p>
+  <p>
+    Edna Baptist Church<br>
+    Email: office@ednabc.org<br>
+    Website: ednabaptist.church
+  </p>
+</div>
+<div class="footer">
+  &copy; ${new Date().getFullYear()} Edna Baptist Church. All rights reserved.
+</div>
+</body>
+</html>`;
+}

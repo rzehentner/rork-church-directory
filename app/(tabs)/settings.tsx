@@ -14,7 +14,7 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
-import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Code, ExternalLink } from 'lucide-react-native';
+import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Code, ExternalLink, FileText } from 'lucide-react-native';
 import { Image, Linking } from 'react-native';
 import { useMe } from '@/hooks/me-context';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
@@ -318,6 +318,15 @@ export default function SettingsScreen() {
               <Text style={styles.developerLinkText}>rob@pinebeltrides.com</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            style={styles.privacyLink}
+            onPress={() => router.push('/privacy-policy' as any)}
+          >
+            <FileText size={16} color="#6B7280" />
+            <Text style={styles.privacyLinkText}>Privacy Policy</Text>
+            <ChevronRight size={16} color="#94A3B8" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.bottomPadding} />
@@ -610,6 +619,27 @@ const styles = StyleSheet.create({
   },
   preferencesContainer: {
     marginTop: 16,
+  },
+  privacyLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  privacyLinkText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '500' as const,
+    color: '#6B7280',
+    marginLeft: 10,
   },
   adminRow: {
     flexDirection: 'row',

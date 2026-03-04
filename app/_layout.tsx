@@ -163,6 +163,7 @@ function RootLayoutNav() {
       <Stack.Screen name="potluck-sheet" options={{ title: "Potluck Sign-Up" }} />
       <Stack.Screen name="reset-password" options={{ title: "Reset Password", headerShown: false }} />
       <Stack.Screen name="developer-info" options={{ title: "Developer Info", headerShown: false }} />
+      <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
     </Stack>
   );
 }

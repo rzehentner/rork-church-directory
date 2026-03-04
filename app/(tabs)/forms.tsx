@@ -11,7 +11,8 @@ import {
 import { Stack, router } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
-import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed, ClipboardList } from 'lucide-react-native'
+import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed, ClipboardList, Eye } from 'lucide-react-native'
+import { useMe } from '@/hooks/me-context'
 import { getMySignupForms, getFormSummaries } from '@/services/signup-forms'
 import type { MySignupForm, SignupFormSummary } from '@/types/signup'
 
@@ -60,7 +61,23 @@ function SpotsIndicator({ confirmed, max }: { confirmed: number; max: number | n
   )
 }
 
-function PotluckFormCard({ form }: { form: MySignupForm }) {
+function ResponsesLink({ formId, formTitle }: { formId: string; formTitle: string }) {
+  return (
+    <TouchableOpacity
+      style={styles.responsesLink}
+      onPress={(e) => {
+        e.stopPropagation()
+        router.push(`/signup-responses?formId=${formId}&formTitle=${encodeURIComponent(formTitle)}` as any)
+      }}
+      hitSlop={8}
+    >
+      <Eye size={14} color="#4338CA" />
+      <Text style={styles.responsesText}>Responses</Text>
+    </TouchableOpacity>
+  )
+}
+
+function PotluckFormCard({ form, isAdminOrLeader }: { form: MySignupForm; isAdminOrLeader: boolean }) {
   const isPast = new Date(form.event_end) < new Date()
   const deadlinePassed = form.deadline ? new Date(form.deadline) < new Date() : false
   const totalItems = form.total_items ?? 0
@@ -145,15 +162,18 @@ function PotluckFormCard({ form }: { form: MySignupForm }) {
           <UtensilsCrossed size={14} color="#D97706" />
           <Text style={[styles.footerText, { color: '#D97706' }]}>View Items</Text>
         </View>
-        <ChevronRight size={18} color="#D97706" />
+        <View style={styles.footerRight}>
+          {isAdminOrLeader && <ResponsesLink formId={form.form_id} formTitle={form.form_title} />}
+          <ChevronRight size={18} color="#D97706" />
+        </View>
       </View>
     </TouchableOpacity>
   )
 }
 
-function FormCard({ form }: { form: MySignupForm }) {
+function FormCard({ form, isAdminOrLeader }: { form: MySignupForm; isAdminOrLeader: boolean }) {
   if (form.form_type === 'potluck') {
-    return <PotluckFormCard form={form} />
+    return <PotluckFormCard form={form} isAdminOrLeader={isAdminOrLeader} />
   }
 
   const badge = getStatusBadge(form.my_signup_status)
@@ -213,7 +233,10 @@ function FormCard({ form }: { form: MySignupForm }) {
           <Users size={14} color="#9CA3AF" />
           <Text style={styles.footerText}>{form.confirmed_count} signed up</Text>
         </View>
-        <ChevronRight size={18} color="#9CA3AF" />
+        <View style={styles.footerRight}>
+          {isAdminOrLeader && <ResponsesLink formId={form.form_id} formTitle={form.form_title} />}
+          <ChevronRight size={18} color="#9CA3AF" />
+        </View>
       </View>
     </TouchableOpacity>
   )
@@ -244,6 +267,7 @@ function summaryToMyForm(s: SignupFormSummary): MySignupForm {
 export default function FormsScreen() {
   const [refreshing, setRefreshing] = useState(false)
   const insets = useSafeAreaInsets()
+  const { isAdminOrLeader } = useMe()
 
   const { data: myForms, isLoading: myLoading, error: myError, refetch: refetchMy } = useQuery({
     queryKey: ['my-signup-forms'],
@@ -348,7 +372,7 @@ export default function FormsScreen() {
       <FlatList
         data={forms ?? []}
         keyExtractor={(item) => item.form_id}
-        renderItem={({ item }) => <FormCard form={item} />}
+        renderItem={({ item }) => <FormCard form={item} isAdminOrLeader={isAdminOrLeader} />}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmpty}
         refreshControl={
@@ -531,9 +555,28 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
   },
+  footerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   footerText: {
     fontSize: 13,
     color: '#9CA3AF',
+  },
+  responsesLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    backgroundColor: '#EEF2FF',
+    borderRadius: 8,
+  },
+  responsesText: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#4338CA',
   },
   emptyContainer: {
     alignItems: 'center',

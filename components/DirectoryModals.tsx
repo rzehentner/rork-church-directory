@@ -125,7 +125,7 @@ export function EditFamilyModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 40 }}>
           {editingFamily && activeTab === 'family' && (
             <>
               <View style={styles.modalSection}>
@@ -305,7 +305,7 @@ export function EditPersonModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" nestedScrollEnabled={true} contentContainerStyle={{ paddingBottom: 40 }}>
           {editingPerson && (
             <>
               <View style={styles.modalSection}>
@@ -429,7 +429,7 @@ export function TagManageModal({ visible, onClose, selectedPersonForTags }: TagM
           <Text style={styles.modalTitle}>Manage Tags</Text>
           <View style={styles.modalPlaceholder} />
         </View>
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {selectedPersonForTags && (
             <PersonTagPicker personId={selectedPersonForTags} testId="directory-tag-picker" />
           )}
@@ -473,7 +473,7 @@ export function TagFilterModal({
           </TouchableOpacity>
         </View>
 
-        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.modalSection}>
             <Text style={styles.modalSectionTitle}>Match Mode</Text>
             <Text style={styles.modalSectionDescription}>Choose how to match the selected tags</Text>

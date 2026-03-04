@@ -33,7 +33,20 @@
       "Bash(cd /f/Projects/ebcconnect && git stash pop 2>&1)",
       "Bash(cd /f/Projects/ebcconnect && git stash pop --index 2>&1 || git checkout stash -- hooks/auth-context.tsx hooks/user-context.tsx hooks/me-context.tsx 2>&1)",
       "Bash(tail:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(head:*)",
+      "WebFetch(domain:job-logs.eascdn.net)",
+      "Bash(echo EAS CLI not available or not logged in:*)",
+      "Bash(cd \"F:/Projects/ebcconnect\" && npx eas env:list 2>&1)",
+      "Bash(cd \"F:/Projects/ebcconnect\" && npx eas env:list --environment preview 2>&1)",
+      "Bash(where adb:*)",
+      "Bash(export:*)",
+      "Bash(\"C:/Users/rob/AppData/Local/Android/Sdk/platform-tools/adb.exe\" devices:*)",
+      "Bash(\"C:/Users/rob/AppData/Local/Android/Sdk/platform-tools/adb.exe\":*)",
+      "Bash(where eas:*)",
+      "Bash(npx eas:*)",
+      "Bash(wc:*)",
+      "Bash(cat:*)"
     ]
   }
 }

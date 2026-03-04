@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import type { Session, User, AuthChangeEvent } from '@supabase/supabase-js';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
+import * as SecureStore from 'expo-secure-store';
 
 const BIOMETRIC_KEY = 'biometric_credentials';
 
@@ -222,6 +223,7 @@ export const [AuthProvider, useAuth] = createContextHook<AuthState>(() => {
         return { error: new Error('No active session. Please sign in first.') };
       }
 
+      const LocalAuthentication = await import('expo-local-authentication');
       const result = await LocalAuthentication.authenticateAsync({
         promptMessage: 'Enable biometric authentication',
         fallbackLabel: 'Cancel',

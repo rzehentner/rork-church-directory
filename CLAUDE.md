@@ -216,6 +216,17 @@ All internal imports use the `@/` path alias (configured in `tsconfig.json` as `
 - DateTimePicker has separate `.web.tsx` implementation
 - AsyncStorage for auth persistence on native; default browser storage on web
 
+## Versioning & Changelog
+
+- **Changelog**: `CHANGELOG.md` in the project root tracks all notable changes, following [Keep a Changelog](https://keepachangelog.com) format
+- **Versioning**: Follows [Semantic Versioning](https://semver.org/) — MAJOR.MINOR.PATCH
+- When bumping a version, update **all three** values in `app.json`:
+  - `version` (e.g., "1.0.1")
+  - `android.versionCode` (increment by 1)
+  - `ios.buildNumber` (increment by 1)
+- Always add a new entry to `CHANGELOG.md` before creating a release build
+- Categories: `Added`, `Changed`, `Fixed`, `Removed`, `Deprecated`, `Security`
+
 ## Available Commands
 
 | Command | Description |

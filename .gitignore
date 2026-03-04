@@ -51,3 +51,6 @@ tmp/
 
 # Lock files (using bun.lock as primary)
 package-lock.json
+
+# IDE
+.idea/
