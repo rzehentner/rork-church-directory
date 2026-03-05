@@ -356,8 +356,24 @@ export default function VisitorProfileScreen() {
       </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Date Picker Modal */}
-      {showDatePicker && (
+      {/* Date Picker — Android: native dialog (no Modal), iOS: bottom sheet */}
+      {showDatePicker && Platform.OS !== 'ios' && (
+        <DateTimePicker
+          value={selectedDate}
+          mode="date"
+          display="default"
+          onChange={(_event, date) => {
+            setShowDatePicker(false);
+            if (date) {
+              setSelectedDate(date);
+              const dateString = date.toISOString().split('T')[0];
+              setProfileForm({ ...profileForm, date_of_birth: dateString });
+            }
+          }}
+          maximumDate={new Date()}
+        />
+      )}
+      {showDatePicker && Platform.OS === 'ios' && (
         <Modal
           transparent={true}
           animationType="slide"
@@ -385,17 +401,10 @@ export default function VisitorProfileScreen() {
                 <DateTimePicker
                   value={selectedDate}
                   mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
+                  display="spinner"
+                  onChange={(_event, date) => {
                     if (date) {
                       setSelectedDate(date);
-                    }
-                    if (Platform.OS !== 'ios') {
-                      setShowDatePicker(false);
-                      if (date) {
-                        const dateString = date.toISOString().split('T')[0];
-                        setProfileForm({ ...profileForm, date_of_birth: dateString });
-                      }
                     }
                   }}
                   maximumDate={new Date()}
