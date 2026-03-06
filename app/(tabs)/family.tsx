@@ -186,7 +186,7 @@ export default function FamilyScreen() {
   
   const handleCreateFamily = async () => {
     if (!familyName.trim()) {
-      Alert.alert('Error', 'Please enter a family name');
+      Alert.alert('Error', 'Please enter your last name');
       return;
     }
 
@@ -470,7 +470,7 @@ export default function FamilyScreen() {
                     <Text style={styles.formLabel}>Create New Family</Text>
                     <TextInput
                       style={styles.formInput}
-                      placeholder="Family Name"
+                      placeholder="Last Name (e.g. Zehentner)"
                       value={familyName}
                       onChangeText={setFamilyName}
                     />

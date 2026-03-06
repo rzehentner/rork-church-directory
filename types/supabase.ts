@@ -485,8 +485,7 @@ export type Database = {
           created_ip: unknown
           created_via: string | null
           family_join_token: string
-          family_last_name: string | null
-          family_name: string
+          family_name: string | null
           home_phone: string | null
           id: string
           last_name: string | null
@@ -502,8 +501,7 @@ export type Database = {
           created_ip?: unknown
           created_via?: string | null
           family_join_token?: string
-          family_last_name?: string | null
-          family_name: string
+          family_name?: string | null
           home_phone?: string | null
           id?: string
           last_name?: string | null
@@ -519,8 +517,7 @@ export type Database = {
           created_ip?: unknown
           created_via?: string | null
           family_join_token?: string
-          family_last_name?: string | null
-          family_name?: string
+          family_name?: string | null
           home_phone?: string | null
           id?: string
           last_name?: string | null
@@ -2105,10 +2102,6 @@ export type Database = {
           p_members?: Json
         }
         Returns: Json
-      }
-      refresh_computed_family_name: {
-        Args: { p_family_id: string }
-        Returns: undefined
       }
       rsvp_event: {
         Args: {
