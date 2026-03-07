@@ -67,7 +67,7 @@ export default function JoinFamilyScreen() {
       const { data: directoryData, error: directoryError } = await supabase
         .from('family_directory_display')
         .select('*')
-        .order('family_name_display', { nullsFirst: false });
+        .order('last_name', { nullsFirst: false });
 
       if (directoryError) {
         Alert.alert('Error', 'Failed to load families. Please contact your administrator.');
@@ -80,12 +80,13 @@ export default function JoinFamilyScreen() {
         
         for (const entry of directoryData) {
           if (!entry.family_id) continue; // Skip unassigned entries
+          if (entry.directory_hidden) continue; // Skip hidden entries
           
           if (!familyMap.has(entry.family_id)) {
             familyMap.set(entry.family_id, {
               id: entry.family_id,
               family_name: entry.family_name || 'Unknown Family',
-              family_name_display: entry.family_name_display || entry.family_name || 'Unknown Family',
+              family_name_display: entry.last_name || entry.family_name || 'Unknown Family',
               address_street: entry.address_street || undefined,
               address_city: entry.address_city || undefined,
               address_state: entry.address_state || undefined,
@@ -98,17 +99,19 @@ export default function JoinFamilyScreen() {
           const family = familyMap.get(entry.family_id)!;
           family.members.push({
             id: entry.person_id!,
-            user_id: entry.user_id,
+            user_id: null,
             family_id: entry.family_id,
             first_name: entry.first_name || '',
-            last_name: entry.last_name || '',
+            last_name: entry.person_last_name || '',
             email: entry.email,
             phone: entry.phone,
-            date_of_birth: entry.date_of_birth,
-            is_head_of_family: entry.is_head_of_family || false,
-            is_spouse: entry.is_spouse || false,
-            family_role: entry.family_role || (entry.is_head_of_family ? 'head' as const : entry.is_spouse ? 'spouse' as const : 'other' as const),
-            photo_path: entry.photo_path,
+            date_of_birth: null,
+            is_head_of_family: entry.family_role === 'head',
+            is_spouse: entry.family_role === 'spouse',
+            family_role: entry.family_role || 'other' as const,
+            photo_path: entry.person_photo_path,
+            directory_hidden: entry.directory_hidden ?? false,
+            directory_hide_details: entry.directory_hide_details ?? false,
             created_at: '',
             updated_at: '',
             created_ip: null,
@@ -117,6 +120,24 @@ export default function JoinFamilyScreen() {
           });
         }
         
+        // Enrich with user_id to determine which persons have accounts
+        const allPersonIds = Array.from(familyMap.values()).flatMap(f => f.members.map(m => m.id));
+        if (allPersonIds.length > 0) {
+          const { data: linkedPersons } = await supabase
+            .from('persons')
+            .select('id,user_id')
+            .in('id', allPersonIds)
+            .not('user_id', 'is', null);
+          const linkedIds = new Set(linkedPersons?.map(p => p.id) || []);
+          for (const family of familyMap.values()) {
+            for (const member of family.members) {
+              if (linkedIds.has(member.id)) {
+                member.user_id = 'linked';
+              }
+            }
+          }
+        }
+
         setFamilies(Array.from(familyMap.values()));
       }
     } catch {

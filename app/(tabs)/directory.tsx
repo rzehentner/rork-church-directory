@@ -49,6 +49,8 @@ interface DirectoryEntry {
   family_photo_path: string | null;
   user_id?: string | null;
   user_role?: string | null;
+  directory_hidden?: boolean | null;
+  directory_hide_details?: boolean | null;
 }
 
 interface FamilyImages {
@@ -175,7 +177,7 @@ export default function DirectoryScreen() {
         let { data: viewData, error: viewError } = await supabase
           .from('family_directory_display')
           .select('*')
-          .order('family_name_display', { ascending: true });
+          .order('last_name', { ascending: true });
 
         if (viewError) {
           const baseFields = 'id,first_name,last_name,email,phone,photo_path,is_head_of_family,is_spouse,family_id,user_id,families!inner(id,name,photo_path,address_street,address_city,address_state,address_zip,home_phone)';
@@ -214,6 +216,16 @@ export default function DirectoryScreen() {
             family_photo_path: p.families?.photo_path,
           })) || [];
         } else {
+          // Remap view column names to match DirectoryEntry interface
+          viewData = viewData?.map((e: any) => ({
+            ...e,
+            family_name_display: e.last_name,        // view's last_name = family display name
+            last_name: e.person_last_name,            // view's person_last_name = person's last name
+            photo_path: e.person_photo_path,          // view's person_photo_path = person's photo
+            is_head_of_family: e.family_role === 'head',
+            is_spouse: e.family_role === 'spouse',
+          })) || [];
+
           const familyIds = [...new Set(viewData?.map(e => e.family_id).filter(Boolean))];
           if (familyIds.length > 0) {
             const { data: familyPhotos } = await supabase.from('families').select('id, photo_path').in('id', familyIds);
@@ -225,7 +237,8 @@ export default function DirectoryScreen() {
             if (personIds.length > 0) {
               const { data: userRoles } = await supabase.from('persons').select('id,user_id,profiles(id,role)').in('id', personIds).not('user_id', 'is', null);
               const roleMap = new Map(userRoles?.map(ur => [ur.id, (ur.profiles as any)?.role]) || []);
-              viewData = viewData.map((e: any) => ({ ...e, user_role: roleMap.get(e.person_id) || null }));
+              const userIdMap = new Map(userRoles?.map(ur => [ur.id, ur.user_id]) || []);
+              viewData = viewData.map((e: any) => ({ ...e, user_role: roleMap.get(e.person_id) || null, user_id: userIdMap.get(e.person_id) || null }));
             }
           }
         }
@@ -287,11 +300,15 @@ export default function DirectoryScreen() {
     loadImages();
   }, [directoryData]);
 
+  const isVisitor = myRole === 'visitor';
+
   const filteredData = useMemo(() => {
     if (!directoryData) return [];
     const searchLower = searchQuery.toLowerCase();
     return directoryData.filter((entry) => {
       if (!entry?.person_id) return false;
+      // Hide directory_hidden entries for non-admin users
+      if (!isAdmin && entry.directory_hidden) return false;
       if (selectedTagIds.length > 0 && !filteredPersonIds.includes(entry.person_id)) return false;
       if (selectedUserRole && isAdmin && !adminUsersList.some(u => u.person_id === entry.person_id)) return false;
       return (
@@ -905,7 +922,7 @@ export default function DirectoryScreen() {
                     </TouchableOpacity>
                   )}
                 </View>
-                {!isUnassigned && (
+                {!isUnassigned && !isVisitor && (
                   <>
                     {familyInfo.address_city && (
                       <View style={styles.familyLocation}>
@@ -974,7 +991,7 @@ export default function DirectoryScreen() {
                         </View>
                       );
                     })()}
-                    {member.email && (
+                    {!isVisitor && !(member.directory_hide_details && !isAdmin) && member.email && (
                       <TouchableOpacity
                         style={styles.memberDetail}
                         onPress={() => handleEmailPress(member.email!)}
@@ -984,7 +1001,7 @@ export default function DirectoryScreen() {
                         <Text style={[styles.memberDetailText, styles.memberDetailLink]}>{member.email}</Text>
                       </TouchableOpacity>
                     )}
-                    {member.phone && (
+                    {!isVisitor && !(member.directory_hide_details && !isAdmin) && member.phone && (
                       <TouchableOpacity
                         style={styles.memberDetail}
                         onPress={() => handlePhonePress(member.phone!)}
@@ -1104,7 +1121,7 @@ export default function DirectoryScreen() {
                   </Text>
                 </View>
               )}
-              {person.email && (
+              {!isVisitor && !(person.directory_hide_details && !isAdmin) && person.email && (
                 <TouchableOpacity
                   style={styles.personDetail}
                   onPress={() => handleEmailPress(person.email!)}
@@ -1114,7 +1131,7 @@ export default function DirectoryScreen() {
                   <Text style={[styles.personDetailText, styles.personDetailLink]}>{person.email}</Text>
                 </TouchableOpacity>
               )}
-              {person.phone && (
+              {!isVisitor && !(person.directory_hide_details && !isAdmin) && person.phone && (
                 <TouchableOpacity
                   style={styles.personDetail}
                   onPress={() => handlePhonePress(person.phone!)}
@@ -1124,7 +1141,7 @@ export default function DirectoryScreen() {
                   <Text style={[styles.personDetailText, styles.personDetailLink]}>{person.phone}</Text>
                 </TouchableOpacity>
               )}
-              {person.address_city && (
+              {!isVisitor && person.address_city && (
                 <View style={styles.personDetail}>
                   <MapPin size={14} color="#9CA3AF" />
                   <Text style={styles.personDetailText}>

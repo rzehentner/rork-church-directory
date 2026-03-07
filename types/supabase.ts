@@ -86,6 +86,13 @@ export type Database = {
             foreignKeyName: "announcement_reads_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "person_with_tags"
             referencedColumns: ["id"]
           },
@@ -294,6 +301,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "events_for_me"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_attendees_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
           },
           {
             foreignKeyName: "event_attendees_person_id_fkey"
@@ -526,6 +540,33 @@ export type Database = {
         }
         Relationships: []
       }
+      hero_images: {
+        Row: {
+          alt_text: string | null
+          created_at: string
+          id: string
+          image_path: string
+          is_active: boolean
+          sort_order: number
+        }
+        Insert: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          image_path: string
+          is_active?: boolean
+          sort_order?: number
+        }
+        Update: {
+          alt_text?: string | null
+          created_at?: string
+          id?: string
+          image_path?: string
+          is_active?: boolean
+          sort_order?: number
+        }
+        Relationships: []
+      }
       notification_endpoints: {
         Row: {
           created_at: string
@@ -706,6 +747,8 @@ export type Database = {
           created_ip: unknown
           created_via: string | null
           date_of_birth: string | null
+          directory_hidden: boolean
+          directory_hide_details: boolean
           email: string | null
           family_id: string | null
           family_role: Database["public"]["Enums"]["family_role"]
@@ -725,6 +768,8 @@ export type Database = {
           created_ip?: unknown
           created_via?: string | null
           date_of_birth?: string | null
+          directory_hidden?: boolean
+          directory_hide_details?: boolean
           email?: string | null
           family_id?: string | null
           family_role?: Database["public"]["Enums"]["family_role"]
@@ -744,6 +789,8 @@ export type Database = {
           created_ip?: unknown
           created_via?: string | null
           date_of_birth?: string | null
+          directory_hidden?: boolean
+          directory_hide_details?: boolean
           email?: string | null
           family_id?: string | null
           family_role?: Database["public"]["Enums"]["family_role"]
@@ -765,6 +812,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "families"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persons_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["family_id"]
           },
         ]
       }
@@ -888,6 +942,13 @@ export type Database = {
             foreignKeyName: "prayer_requests_for_person_id_fkey"
             columns: ["for_person_id"]
             isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "prayer_requests_for_person_id_fkey"
+            columns: ["for_person_id"]
+            isOneToOne: false
             referencedRelation: "person_with_tags"
             referencedColumns: ["id"]
           },
@@ -935,6 +996,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
           {
             foreignKeyName: "profiles_person_id_fkey"
             columns: ["person_id"]
@@ -1171,6 +1239,13 @@ export type Database = {
             foreignKeyName: "signup_item_claims_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "signup_item_claims_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "person_with_tags"
             referencedColumns: ["id"]
           },
@@ -1377,6 +1452,13 @@ export type Database = {
             foreignKeyName: "signup_responses_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "signup_responses_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "person_with_tags"
             referencedColumns: ["id"]
           },
@@ -1553,6 +1635,75 @@ export type Database = {
           },
         ]
       }
+      website_content: {
+        Row: {
+          content_type: string
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: string
+        }
+        Insert: {
+          content_type?: string
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Update: {
+          content_type?: string
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: string
+        }
+        Relationships: []
+      }
+      website_pages: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          is_published: boolean
+          meta_description: string | null
+          show_in_nav: boolean
+          slug: string
+          sort_order: number
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          meta_description?: string | null
+          show_in_nav?: boolean
+          slug: string
+          sort_order?: number
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          is_published?: boolean
+          meta_description?: string | null
+          show_in_nav?: boolean
+          slug?: string
+          sort_order?: number
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       _is_approved: {
@@ -1659,19 +1810,20 @@ export type Database = {
           address_state: string | null
           address_street: string | null
           address_zip: string | null
-          date_of_birth: string | null
+          directory_hidden: boolean | null
+          directory_hide_details: boolean | null
           email: string | null
           family_id: string | null
-          family_name_display: string | null
+          family_name: string | null
+          family_photo_path: string | null
           family_role: Database["public"]["Enums"]["family_role"] | null
           first_name: string | null
           home_phone: string | null
-          is_head_of_family: boolean | null
-          is_spouse: boolean | null
           last_name: string | null
           person_id: string | null
+          person_last_name: string | null
+          person_photo_path: string | null
           phone: string | null
-          photo_path: string | null
         }
         Relationships: []
       }
@@ -1704,6 +1856,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "families"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persons_family_id_fkey"
+            columns: ["family_id"]
+            isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["family_id"]
           },
         ]
       }
@@ -1793,6 +1952,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prayer_requests_for_person_id_fkey"
+            columns: ["for_person_id"]
+            isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
           },
           {
             foreignKeyName: "prayer_requests_for_person_id_fkey"
@@ -1901,6 +2067,13 @@ export type Database = {
             foreignKeyName: "signup_responses_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "signup_responses_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
             referencedRelation: "person_with_tags"
             referencedColumns: ["id"]
           },
@@ -1983,8 +2156,8 @@ export type Database = {
           p_address_state?: string
           p_address_street?: string
           p_address_zip?: string
-          p_family_name: string
           p_home_phone?: string
+          p_last_name: string
         }
         Returns: string
       }

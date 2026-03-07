@@ -68,6 +68,8 @@ interface DirectoryEntry {
   person_id: string;
   family_id: string | null;
   family_name_display: string | null;
+  directory_hidden?: boolean | null;
+  directory_hide_details?: boolean | null;
   [key: string]: any;
 }
 

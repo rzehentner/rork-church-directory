@@ -15,7 +15,7 @@ import { useUser } from '@/hooks/user-context';
 import { useAuth } from '@/hooks/auth-context';
 import { useNotifications } from '@/hooks/notification-context';
 import { supabase } from '@/lib/supabase';
-import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Code, ExternalLink, FileText } from 'lucide-react-native';
+import { User, Bell, Shield, LogOut, AlertCircle, Fingerprint, ChevronRight, Code, ExternalLink, FileText, EyeOff } from 'lucide-react-native';
 import { Image, Linking } from 'react-native';
 import { useMe } from '@/hooks/me-context';
 import { NotificationPreferencesSection } from '@/components/NotificationPreferences';
@@ -24,7 +24,7 @@ import { useRouter } from 'expo-router';
 import { Colors } from '@/constants/colors';
 
 export default function SettingsScreen() {
-  const { profile } = useUser();
+  const { profile, person } = useUser();
   const { myRole } = useMe();
   const { user, isBiometricAvailable, isBiometricEnabled, enableBiometric, disableBiometric } = useAuth();
   const isAdmin = myRole === 'admin' || myRole === 'leader';
@@ -34,8 +34,35 @@ export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   const [isEnablingBiometric, setIsEnablingBiometric] = useState(false);
-  
+  const [hideDetails, setHideDetails] = useState(person?.directory_hide_details ?? false);
+  const [hiddenFromDirectory, setHiddenFromDirectory] = useState(person?.directory_hidden ?? false);
+  const [isSavingPrivacy, setIsSavingPrivacy] = useState(false);
+
   const isPending = profile?.role === 'pending';
+
+  const updateDirectoryPrivacy = async (newHideDetails: boolean, newHidden: boolean) => {
+    if (!person) return;
+    setIsSavingPrivacy(true);
+    try {
+      const { error } = await supabase
+        .from('persons')
+        .update({
+          directory_hide_details: newHideDetails,
+          directory_hidden: newHidden,
+        })
+        .eq('id', person.id);
+      if (error) {
+        Alert.alert('Error', 'Failed to update privacy settings. Contact an administrator.');
+        setHideDetails(person.directory_hide_details ?? false);
+        setHiddenFromDirectory(person.directory_hidden ?? false);
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to update privacy settings');
+      setHideDetails(person.directory_hide_details ?? false);
+      setHiddenFromDirectory(person.directory_hidden ?? false);
+    }
+    setIsSavingPrivacy(false);
+  };
 
   const handleSignOut = async () => {
     Alert.alert(
@@ -260,6 +287,61 @@ export default function SettingsScreen() {
             </View>
           )}
         </View>
+
+        {/* Directory Privacy Section */}
+        {person && profile?.role !== 'pending' && profile?.role !== 'visitor' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Directory Privacy</Text>
+
+            <View style={styles.card}>
+              <View style={styles.notificationRow}>
+                <View style={styles.notificationInfo}>
+                  <EyeOff size={20} color="#6B7280" />
+                  <View style={styles.settingContent}>
+                    <Text style={styles.settingLabel}>Hide my contact info</Text>
+                    <Text style={styles.settingDescription}>
+                      Your email, phone, and address won't be visible to other members
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={hideDetails}
+                  onValueChange={(val) => {
+                    setHideDetails(val);
+                    updateDirectoryPrivacy(val, hiddenFromDirectory);
+                  }}
+                  trackColor={{ false: Colors.switch.trackOff, true: Colors.switch.trackOn }}
+                  thumbColor={hideDetails ? Colors.switch.thumbOn : Colors.switch.thumbOff}
+                  disabled={isSavingPrivacy}
+                />
+              </View>
+            </View>
+
+            <View style={[styles.card, { marginTop: 8 }]}>
+              <View style={styles.notificationRow}>
+                <View style={styles.notificationInfo}>
+                  <EyeOff size={20} color="#6B7280" />
+                  <View style={styles.settingContent}>
+                    <Text style={styles.settingLabel}>Hide me from the directory</Text>
+                    <Text style={styles.settingDescription}>
+                      You won't appear in the church directory at all
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={hiddenFromDirectory}
+                  onValueChange={(val) => {
+                    setHiddenFromDirectory(val);
+                    updateDirectoryPrivacy(hideDetails, val);
+                  }}
+                  trackColor={{ false: Colors.switch.trackOff, true: Colors.switch.trackOn }}
+                  thumbColor={hiddenFromDirectory ? Colors.switch.thumbOn : Colors.switch.thumbOff}
+                  disabled={isSavingPrivacy}
+                />
+              </View>
+            </View>
+          </View>
+        )}
 
         {/* Admin Section */}
         {isAdmin && (
