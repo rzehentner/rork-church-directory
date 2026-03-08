@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { Users, Home, Settings, Zap, Shield } from "lucide-react-native";
+import { Users, Home, Settings, Zap, Shield, Briefcase } from "lucide-react-native";
 import React from "react";
 import { useUser } from "@/hooks/user-context";
 import { Colors } from "@/constants/colors";
@@ -41,6 +41,13 @@ export default function TabLayout() {
         options={{
           title: "Activity",
           tabBarIcon: ({ color, size }) => <Zap size={size} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="staff"
+        options={{
+          title: "Staff",
+          tabBarIcon: ({ color, size }) => <Briefcase size={size} color={color} />,
         }}
       />
       <Tabs.Screen
