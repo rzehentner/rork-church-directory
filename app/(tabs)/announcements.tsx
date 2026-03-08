@@ -31,6 +31,7 @@ import {
   X
 } from 'lucide-react-native';
 import { router } from 'expo-router';
+import HeaderBackButton from '@/components/HeaderBackButton';
 
 interface Announcement {
   id: string;
@@ -453,6 +454,7 @@ export default function AnnouncementsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <HeaderBackButton />
           <Bell size={28} color="#7C3AED" />
           <Text style={styles.title}>Announcements</Text>
         </View>

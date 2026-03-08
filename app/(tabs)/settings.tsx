@@ -44,13 +44,10 @@ export default function SettingsScreen() {
     if (!person) return;
     setIsSavingPrivacy(true);
     try {
-      const { error } = await supabase
-        .from('persons')
-        .update({
-          directory_hide_details: newHideDetails,
-          directory_hidden: newHidden,
-        })
-        .eq('id', person.id);
+      const { error } = await supabase.rpc('update_my_directory_privacy', {
+        p_hide_details: newHideDetails,
+        p_hidden: newHidden,
+      });
       if (error) {
         Alert.alert('Error', 'Failed to update privacy settings. Contact an administrator.');
         setHideDetails(person.directory_hide_details ?? false);

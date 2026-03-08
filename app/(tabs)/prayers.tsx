@@ -42,6 +42,7 @@ import { useMe } from '@/hooks/me-context';
 import { supabase } from '@/lib/supabase';
 import { formatDistanceToNow } from 'date-fns';
 import { styles } from '@/styles/prayers.styles';
+import HeaderBackButton from '@/components/HeaderBackButton';
 
 type TabStatus = 'open' | 'answered' | 'archived';
 type SortMode = 'date_desc' | 'date_asc' | 'subject_asc' | 'subject_desc';
@@ -317,6 +318,7 @@ export default function PrayersScreen() {
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <HeaderBackButton />
             <Heart size={28} color="#7C3AED" />
             <Text style={styles.headerTitle}>Prayer List</Text>
           </View>
@@ -345,6 +347,7 @@ export default function PrayersScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <HeaderBackButton />
           <Heart size={26} color="#7C3AED" />
           <Text style={styles.headerTitle}>Prayers</Text>
         </View>

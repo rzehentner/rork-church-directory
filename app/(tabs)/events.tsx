@@ -13,6 +13,7 @@ import { Stack, router } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search, ClipboardList, UtensilsCrossed, AlertCircle } from 'lucide-react-native'
+import HeaderBackButton from '@/components/HeaderBackButton'
 import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
 import { eventImageUrl } from '@/services/event-images'
 import { addEventToDevice } from '@/utils/calendar'
@@ -450,6 +451,7 @@ export default function EventsScreen() {
 
       <View style={styles.header}>
         <View style={styles.headerLeft}>
+          <HeaderBackButton />
           <CalendarIcon size={28} color="#7C3AED" />
           <Text style={styles.title}>Events</Text>
         </View>

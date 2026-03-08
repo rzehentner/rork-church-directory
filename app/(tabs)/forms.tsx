@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useQuery } from '@tanstack/react-query'
 import { Calendar, MapPin, Users, Clock, ChevronRight, UtensilsCrossed, ClipboardList, Eye } from 'lucide-react-native'
 import { useMe } from '@/hooks/me-context'
+import HeaderBackButton from '@/components/HeaderBackButton'
 import { getMySignupForms, getFormSummaries } from '@/services/signup-forms'
 import type { MySignupForm, SignupFormSummary } from '@/types/signup'
 
@@ -320,6 +321,7 @@ export default function FormsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <HeaderBackButton />
             <ClipboardList size={28} color="#4338CA" />
             <Text style={styles.headerTitle}>Signups</Text>
           </View>
@@ -338,6 +340,7 @@ export default function FormsScreen() {
         <Stack.Screen options={{ headerShown: false }} />
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <HeaderBackButton />
             <ClipboardList size={28} color="#4338CA" />
             <Text style={styles.headerTitle}>Signups</Text>
           </View>

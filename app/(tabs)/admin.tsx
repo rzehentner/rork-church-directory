@@ -45,6 +45,7 @@ import { listTags, createTag, updateTag, deleteTag, reactivateTag, type Tag } fr
 import { listArchivedEvents, unarchiveEvent } from '@/services/events';
 import { unpublishAnnouncement, publishAnnouncement } from '@/lib/announcements';
 import { router } from 'expo-router';
+import HeaderBackButton from '@/components/HeaderBackButton';
 import { useChurchSettings, type ServiceTime } from '@/hooks/church-settings-context';
 import { CreateTagModal, EditTagModal } from '@/components/AdminTagModals';
 import { ChurchSettingsSection } from '@/components/AdminChurchSettings';
@@ -1176,7 +1177,10 @@ export default function AdminScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Admin Dashboard</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <HeaderBackButton />
+          <Text style={styles.title}>Admin Dashboard</Text>
+        </View>
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <Text style={styles.statNumber}>{pendingApprovals?.length || 0}</Text>

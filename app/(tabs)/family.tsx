@@ -39,6 +39,7 @@ import {
 } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
+import HeaderBackButton from '@/components/HeaderBackButton';
 import ImageUploader from '@/components/ImageUploader';
 import PersonTagPicker from '@/components/PersonTagPicker';
 import TagPill from '@/components/TagPill';
@@ -388,6 +389,7 @@ export default function FamilyScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerLeft}>
+            <HeaderBackButton />
             <Users size={28} color="#7C3AED" />
             <Text style={styles.title}>My Family</Text>
           </View>
