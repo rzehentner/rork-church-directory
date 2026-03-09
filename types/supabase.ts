@@ -196,17 +196,62 @@ export type Database = {
           },
         ]
       }
+      choir_director_notes: {
+        Row: {
+          archived: boolean
+          body: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          service_date: string | null
+          song_source: string | null
+          song_title: string | null
+          song_url: string | null
+          tagged_members: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          archived?: boolean
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          service_date?: string | null
+          song_source?: string | null
+          song_title?: string | null
+          song_url?: string | null
+          tagged_members?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          archived?: boolean
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          service_date?: string | null
+          song_source?: string | null
+          song_title?: string | null
+          song_url?: string | null
+          tagged_members?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       church_settings: {
         Row: {
           address_city: string | null
           address_state: string | null
           address_street: string | null
           address_zip: string | null
+          choir_drive_url: string | null
           email: string | null
           id: string
           is_singleton: boolean
           name: string | null
-          pastor: string | null
           phone: string | null
           service_times: Json | null
           updated_at: string
@@ -217,11 +262,11 @@ export type Database = {
           address_state?: string | null
           address_street?: string | null
           address_zip?: string | null
+          choir_drive_url?: string | null
           email?: string | null
           id?: string
           is_singleton?: boolean
           name?: string | null
-          pastor?: string | null
           phone?: string | null
           service_times?: Json | null
           updated_at?: string
@@ -232,11 +277,11 @@ export type Database = {
           address_state?: string | null
           address_street?: string | null
           address_zip?: string | null
+          choir_drive_url?: string | null
           email?: string | null
           id?: string
           is_singleton?: boolean
           name?: string | null
-          pastor?: string | null
           phone?: string | null
           service_times?: Json | null
           updated_at?: string
@@ -1492,6 +1537,79 @@ export type Database = {
           },
         ]
       }
+      staff: {
+        Row: {
+          bio: string | null
+          created_at: string
+          first_name: string
+          id: string
+          is_active: boolean
+          is_public: boolean
+          last_name: string
+          person_id: string | null
+          photo_path: string | null
+          public_email: string | null
+          public_phone: string | null
+          sort_order: number
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          bio?: string | null
+          created_at?: string
+          first_name: string
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          last_name: string
+          person_id?: string | null
+          photo_path?: string | null
+          public_email?: string | null
+          public_phone?: string | null
+          sort_order?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bio?: string | null
+          created_at?: string
+          first_name?: string
+          id?: string
+          is_active?: boolean
+          is_public?: boolean
+          last_name?: string
+          person_id?: string | null
+          photo_path?: string | null
+          public_email?: string | null
+          public_phone?: string | null
+          sort_order?: number
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "family_directory_display"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "staff_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "person_with_tags"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: true
+            referencedRelation: "persons"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       taggings: {
         Row: {
           assigned_at: string
@@ -1976,6 +2094,20 @@ export type Database = {
           },
         ]
       }
+      public_staff: {
+        Row: {
+          bio: string | null
+          first_name: string | null
+          id: string | null
+          last_name: string | null
+          photo_path: string | null
+          public_email: string | null
+          public_phone: string | null
+          sort_order: number | null
+          title: string | null
+        }
+        Relationships: []
+      }
       signup_form_summary: {
         Row: {
           confirmed_count: number | null
@@ -2320,6 +2452,10 @@ export type Database = {
           p_tag_name: string
         }
         Returns: boolean
+      }
+      update_my_directory_privacy: {
+        Args: { p_hidden: boolean; p_hide_details: boolean }
+        Returns: undefined
       }
       update_signup_form:
         | {

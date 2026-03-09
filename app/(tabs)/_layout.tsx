@@ -66,6 +66,10 @@ export default function TabLayout() {
       />
       {/* Hidden tabs - accessible via hub navigation */}
       <Tabs.Screen
+        name="choir"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
         name="family"
         options={{ href: null }}
       />

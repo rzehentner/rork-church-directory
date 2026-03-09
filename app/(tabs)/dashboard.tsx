@@ -31,6 +31,7 @@ import {
   Zap,
   BookOpen,
   Cake,
+  Music,
 } from 'lucide-react-native';
 import TagPill from '@/components/TagPill';
 import { Skeleton } from '@/components/Skeleton';
@@ -124,6 +125,7 @@ export default function DashboardScreen() {
   const [birthdays, setBirthdays] = useState<BirthdayPerson[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isChoirMember, setIsChoirMember] = useState(false);
 
   const isPending = profile?.role === 'pending';
   const isAdmin = myRole === 'admin' || myRole === 'leader';
@@ -134,6 +136,7 @@ export default function DashboardScreen() {
       const personWithTags = await getPersonWithTags(myPersonId);
       const userTags = personWithTags.tags;
       const userTagNames = userTags.map(tag => tag.name);
+      setIsChoirMember(userTagNames.includes('choir'));
       if (userTagNames.length === 0) { setTaggedEvents([]); return; }
 
       const { data: allEvents, error: eventsError } = await supabase
@@ -350,6 +353,12 @@ export default function DashboardScreen() {
     { id: 'family', label: 'My Family', icon: <Home size={22} color={Colors.navy} />, route: '/(tabs)/family', color: Colors.navy, bgColor: '#E8EDF4', count: stats.familyMembersCount },
     { id: 'directory', label: 'Directory', icon: <Users size={22} color="#0891B2" />, route: '/(tabs)/directory', color: '#0891B2', bgColor: '#ECFEFF', count: stats.totalDirectoryMembers },
   ];
+
+  if (isChoirMember || isAdmin) {
+    quickActions.push({
+      id: 'choir', label: 'Choir', icon: <Music size={22} color="#7C3AED" />, route: '/(tabs)/choir', color: '#7C3AED', bgColor: '#F5F3FF',
+    });
+  }
 
   if (isAdmin) {
     quickActions.push({
