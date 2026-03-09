@@ -14,7 +14,9 @@ import {
   Platform,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
-import * as DocumentPicker from 'expo-document-picker';
+// Lazy import — native module may not be in current binary (added via OTA)
+let DocumentPicker: typeof import('expo-document-picker') | null = null;
+try { DocumentPicker = require('expo-document-picker'); } catch { /* not available in this build */ }
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Calendar, Music, Link, Upload, X, Check, Users, FileText } from 'lucide-react-native';
 import { Colors } from '@/constants/colors';
@@ -52,6 +54,10 @@ export default function CreateChoirNoteScreen() {
 
   const handlePickFile = async () => {
     try {
+      if (!DocumentPicker) {
+        Alert.alert('Not Available', 'File upload requires a newer app build. Please update the app.');
+        return;
+      }
       const result = await DocumentPicker.getDocumentAsync({
         type: ['audio/*', 'application/pdf'],
       });
