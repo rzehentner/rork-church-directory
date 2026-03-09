@@ -162,6 +162,9 @@ function RootLayoutNav() {
       <Stack.Screen name="create-potluck-form" options={{ title: "Create Potluck Form" }} />
       <Stack.Screen name="potluck-sheet" options={{ title: "Potluck Sign-Up" }} />
       <Stack.Screen name="reset-password" options={{ title: "Reset Password", headerShown: false }} />
+      <Stack.Screen name="create-choir-note" options={{ title: "New Director's Note" }} />
+      <Stack.Screen name="edit-choir-note" options={{ title: "Edit Director's Note" }} />
+      <Stack.Screen name="edit-staff" options={{ title: "Edit Staff" }} />
       <Stack.Screen name="developer-info" options={{ title: "Developer Info", headerShown: false }} />
       <Stack.Screen name="privacy-policy" options={{ title: "Privacy Policy" }} />
     </Stack>
