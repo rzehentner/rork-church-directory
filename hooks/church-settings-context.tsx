@@ -20,6 +20,7 @@ export interface ChurchSettings {
   email: string;
   website: string;
   serviceTimes: ServiceTime[];
+  choirDriveUrl: string;
 }
 
 interface DbServiceTime {
@@ -40,6 +41,7 @@ interface DbChurchSettings {
   email: string | null;
   website: string | null;
   service_times: DbServiceTime[] | null;
+  choir_drive_url: string | null;
   updated_at: string | null;
 }
 
@@ -54,6 +56,7 @@ const DEFAULT_SETTINGS: ChurchSettings = {
   email: '',
   website: '',
   serviceTimes: [],
+  choirDriveUrl: '',
 };
 
 function mapDbToSettings(row: DbChurchSettings): ChurchSettings & { _id: string } {
@@ -77,6 +80,7 @@ function mapDbToSettings(row: DbChurchSettings): ChurchSettings & { _id: string 
     email: row.email || '',
     website: row.website || '',
     serviceTimes,
+    choirDriveUrl: (row as any).choir_drive_url || '',
   };
 }
 
@@ -96,6 +100,7 @@ function mapSettingsToDb(settings: ChurchSettings): Record<string, unknown> {
       time: st.time,
       label: st.activity,
     })),
+    choir_drive_url: settings.choirDriveUrl || null,
   };
 }
 

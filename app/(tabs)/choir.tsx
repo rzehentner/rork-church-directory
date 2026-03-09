@@ -26,8 +26,8 @@ import {
   FileText,
 } from 'lucide-react-native';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
-import { supabase } from '@/lib/supabase';
 import { useMe } from '@/hooks/me-context';
+import { useChurchSettings } from '@/hooks/church-settings-context';
 import { listChoirNotes, deleteChoirNote, checkIsChoirMember } from '@/services/choir';
 import type { ChoirNote } from '@/services/choir';
 import { Colors } from '@/constants/colors';
@@ -257,20 +257,9 @@ export default function ChoirScreen() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // Choir drive URL from church_settings
-  const { data: choirDriveUrl } = useQuery({
-    queryKey: ['church-settings-choir-drive'],
-    queryFn: async () => {
-      const { data, error } = await (supabase
-        .from('church_settings' as any)
-        .select('choir_drive_url')
-        .limit(1)
-        .maybeSingle() as any);
-      if (error) return null;
-      return (data as any)?.choir_drive_url as string | null ?? null;
-    },
-    staleTime: 10 * 60 * 1000,
-  });
+  // Choir drive URL from church settings context
+  const { settings: churchSettings } = useChurchSettings();
+  const choirDriveUrl = churchSettings.choirDriveUrl || null;
 
   // Delete mutation
   const deleteMutation = useMutation({

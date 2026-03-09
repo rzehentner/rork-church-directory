@@ -6,7 +6,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { Building2, MapPin, Phone as PhoneIcon, Globe, Save, Clock, Plus, Trash2 } from 'lucide-react-native';
+import { Building2, MapPin, Phone as PhoneIcon, Globe, Save, Clock, Plus, Trash2, Music } from 'lucide-react-native';
 import { type ServiceTime } from '@/hooks/church-settings-context';
 import { styles } from '@/styles/admin.styles';
 
@@ -21,6 +21,7 @@ interface ChurchSettingsData {
   email: string;
   website: string;
   serviceTimes: ServiceTime[];
+  choirDriveUrl: string;
 }
 
 interface ChurchSettingsSectionProps {
@@ -133,6 +134,17 @@ export function ChurchSettingsSection({ localSettings, setLocalSettings, onSave,
           <Plus size={16} color="#7C3AED" />
           <Text style={styles.addServiceTimeText}>Add Service Time</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={styles.churchCard}>
+        <View style={styles.churchCardHeader}>
+          <Music size={20} color="#7C3AED" />
+          <Text style={styles.churchCardTitle}>Choir</Text>
+        </View>
+        <View style={styles.churchField}>
+          <Text style={styles.churchFieldLabel}>Song Library URL (Google Drive)</Text>
+          <TextInput style={styles.churchInput} value={localSettings.choirDriveUrl} onChangeText={(v) => setLocalSettings(prev => ({ ...prev, choirDriveUrl: v }))} placeholder="https://drive.google.com/drive/folders/..." placeholderTextColor="#9CA3AF" keyboardType="url" autoCapitalize="none" />
+        </View>
       </View>
 
       <TouchableOpacity style={[styles.saveChurchButton, isSaving && styles.saveChurchButtonDisabled]} onPress={onSave} disabled={isSaving} activeOpacity={0.7}>
