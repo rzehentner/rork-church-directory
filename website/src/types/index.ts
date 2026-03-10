@@ -1,7 +1,6 @@
 export interface ChurchSettings {
   id: string;
   name: string | null;
-  pastor: string | null;
   address_street: string | null;
   address_city: string | null;
   address_state: string | null;

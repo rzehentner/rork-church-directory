@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <AdminGuard>
       <div className="min-h-[60vh]">
-        <div className="bg-navy-dark text-white">
+        <div className="bg-navy-dark text-white sticky top-0 z-50">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-6 h-12 text-sm">
             {NAV_ITEMS.map(item => (
               <Link

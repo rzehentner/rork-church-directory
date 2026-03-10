@@ -12,7 +12,6 @@ interface ServiceTime {
 interface ChurchSettingsData {
   id: string;
   name: string;
-  pastor: string;
   address_street: string;
   address_city: string;
   address_state: string;
@@ -48,7 +47,6 @@ export default function AdminSettingsPage() {
         setSettings({
           id: settingsData.id,
           name: settingsData.name || '',
-          pastor: settingsData.pastor || '',
           address_street: settingsData.address_street || '',
           address_city: settingsData.address_city || '',
           address_state: settingsData.address_state || '',
@@ -106,7 +104,6 @@ export default function AdminSettingsPage() {
       .from('church_settings')
       .update({
         name: settings.name.trim() || null,
-        pastor: settings.pastor.trim() || null,
         address_street: settings.address_street.trim() || null,
         address_city: settings.address_city.trim() || null,
         address_state: settings.address_state.trim() || null,
@@ -186,10 +183,6 @@ export default function AdminSettingsPage() {
           <div>
             <label className={labelClass}>Church Name</label>
             <input type="text" value={settings.name} onChange={e => updateField('name', e.target.value)} className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>Pastor</label>
-            <input type="text" value={settings.pastor} onChange={e => updateField('pastor', e.target.value)} className={inputClass} />
           </div>
           <div>
             <label className={labelClass}>Phone</label>

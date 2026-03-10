@@ -62,7 +62,7 @@ export default async function AboutPage() {
         <section className="bg-cream py-16">
           <div className="max-w-3xl mx-auto px-4 sm:px-6">
             <SectionHeading
-              title={settings?.pastor ? `Meet ${settings.pastor}` : 'Our Pastor'}
+              title="Our Pastor"
             />
             <div
               className="prose prose-lg max-w-none text-navy-dark/80"
