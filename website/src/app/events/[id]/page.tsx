@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 import { getEvent, getUpcomingEvents } from '@/lib/data';
 import { storageUrl, formatEventDate } from '@/lib/utils';
 
+const SITE_URL = 'https://ednabaptist.church';
+
 export const revalidate = 600;
 
 interface Props {
@@ -15,9 +17,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const event = await getEvent(id);
   if (!event) return { title: 'Event Not Found' };
+
+  const description = event.description?.substring(0, 160) || 'Event at Edna Baptist Church';
+  const imageUrl = storageUrl(event.image_path);
+
   return {
     title: event.title,
-    description: event.description?.substring(0, 160) || `Event at Edna Baptist Church`,
+    description,
+    openGraph: {
+      title: event.title,
+      description,
+      type: 'article',
+      url: `${SITE_URL}/events/${id}`,
+      ...(imageUrl && {
+        images: [{ url: imageUrl, width: 1200, height: 630, alt: event.title }],
+      }),
+    },
+    twitter: {
+      card: imageUrl ? 'summary_large_image' : 'summary',
+      title: event.title,
+      description,
+      ...(imageUrl && { images: [imageUrl] }),
+    },
   };
 }
 
