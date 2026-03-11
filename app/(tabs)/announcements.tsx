@@ -9,6 +9,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   TextInput,
+  Share,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,7 +30,8 @@ import {
   Calendar,
   Globe,
   Search,
-  X
+  X,
+  Share2,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import HeaderBackButton from '@/components/HeaderBackButton';
@@ -236,6 +239,26 @@ export default function AnnouncementsScreen() {
     router.push('/create-announcement' as any);
   };
 
+  const handleShare = async (announcement: Announcement) => {
+    const url = 'https://ednabaptist.church/announcements';
+    const message = `${announcement.title}\n\n${announcement.body}\n\n${url}`;
+
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share({ title: announcement.title, text: message, url });
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(message);
+          showSuccess('Announcement copied to clipboard');
+        }
+      } else {
+        await Share.share({ message, title: announcement.title });
+      }
+    } catch {
+      // User cancelled share — not an error
+    }
+  };
+
   const clearSearch = () => {
     setSearchQuery('');
   };
@@ -375,20 +398,32 @@ export default function AnnouncementsScreen() {
             </View>
           )}
 
-          {!announcement.is_read && (
-            <TouchableOpacity
-              style={styles.markReadButton}
-              onPress={() => handleMarkAsRead(announcement.id)}
-              disabled={markReadMutation.isPending}
-            >
-              {markReadMutation.isPending ? (
-                <ActivityIndicator size={14} color="#7C3AED" />
-              ) : (
-                <CheckCircle size={14} color="#7C3AED" />
-              )}
-              <Text style={styles.markReadButtonText}>Mark as read</Text>
-            </TouchableOpacity>
-          )}
+          <View style={styles.cardActions}>
+            {!announcement.is_read && (
+              <TouchableOpacity
+                style={styles.markReadButton}
+                onPress={() => handleMarkAsRead(announcement.id)}
+                disabled={markReadMutation.isPending}
+              >
+                {markReadMutation.isPending ? (
+                  <ActivityIndicator size={14} color="#7C3AED" />
+                ) : (
+                  <CheckCircle size={14} color="#7C3AED" />
+                )}
+                <Text style={styles.markReadButtonText}>Mark as read</Text>
+              </TouchableOpacity>
+            )}
+
+            {announcement.is_public && (
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={() => handleShare(announcement)}
+              >
+                <Share2 size={14} color="#7C3AED" />
+                <Text style={styles.shareButtonText}>Share</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     );
@@ -920,18 +955,38 @@ const styles = StyleSheet.create({
   expiredText: {
     color: '#EF4444',
   },
+  cardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
   markReadButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 6,
     backgroundColor: '#F3F4F6',
     gap: 6,
-    marginTop: 4,
   },
   markReadButtonText: {
+    fontSize: 12,
+    color: '#7C3AED',
+    fontWeight: '500' as const,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    backgroundColor: '#F5F3FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    gap: 6,
+  },
+  shareButtonText: {
     fontSize: 12,
     color: '#7C3AED',
     fontWeight: '500' as const,

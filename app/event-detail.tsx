@@ -9,6 +9,8 @@ import {
   ActivityIndicator,
   Linking,
   Alert,
+  Share,
+  Platform,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -179,19 +181,22 @@ export default function EventDetailScreen() {
   const handleShare = async () => {
     if (!event) return
 
-    try {
-      const message = `Check out this event: ${event.title}\n\n${formatEventTime(event)}${event.location ? `\nLocation: ${event.location}` : ''}${event.description ? `\n\n${event.description}` : ''}`
+    const url = `https://ednabaptist.church/events/${event.id}`
+    const message = `${event.title}\n\n${formatEventTime(event)}${event.location ? `\nLocation: ${event.location}` : ''}${event.description ? `\n\n${event.description}` : ''}\n\n${url}`
 
-      // For web, copy to clipboard
-      if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        await navigator.clipboard.writeText(message)
-        showToast('success', 'Event details copied to clipboard')
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share({ title: event.title, text: message, url })
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(message)
+          showToast('success', 'Event details copied to clipboard')
+        }
       } else {
-        // For mobile, use native sharing if available
-        showToast('info', 'Sharing not available')
+        await Share.share({ message, title: event.title })
       }
     } catch {
-      showToast('error', 'Failed to share event')
+      // User cancelled share — not an error
     }
   }
 

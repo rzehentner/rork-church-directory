@@ -193,6 +193,23 @@ export const styles = StyleSheet.create({
     color: '#7C3AED',
     fontWeight: '500' as const,
   },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#7C3AED',
+    backgroundColor: '#F5F3FF',
+    gap: 8,
+  },
+  shareButtonText: {
+    fontSize: 14,
+    color: '#7C3AED',
+    fontWeight: '500' as const,
+  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',

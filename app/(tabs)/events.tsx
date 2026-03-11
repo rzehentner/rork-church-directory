@@ -7,12 +7,14 @@ import {
   RefreshControl,
   ScrollView,
   TextInput,
+  Share,
+  Platform,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { Stack, router } from 'expo-router'
 import { useIsFocused } from '@react-navigation/native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search, ClipboardList, UtensilsCrossed, AlertCircle } from 'lucide-react-native'
+import { Plus, MapPin, Clock, Calendar as CalendarIcon, Filter, X, Search, ClipboardList, UtensilsCrossed, AlertCircle, Share2 } from 'lucide-react-native'
 import HeaderBackButton from '@/components/HeaderBackButton'
 import { listEventsForDateRange, rsvpEvent, type RSVP } from '@/services/events'
 import { eventImageUrl } from '@/services/event-images'
@@ -38,6 +40,7 @@ type Event = {
   image_path: string | null
   my_rsvp: RSVP | null
   audience_tags: string[]
+  is_public: boolean | null
 }
 
 type EventFilter = {
@@ -149,6 +152,27 @@ export default function EventsScreen() {
       showToast('success', 'Event added to calendar')
     } catch {
       showToast('error', 'Failed to add to calendar')
+    }
+  }
+
+  const handleShare = async (event: Event) => {
+    const timeStr = formatEventTime(event)
+    const url = `https://ednabaptist.church/events/${event.id}`
+    const message = `${event.title}\n\n${timeStr}${event.location ? `\nLocation: ${event.location}` : ''}${event.description ? `\n\n${event.description}` : ''}\n\n${url}`
+
+    try {
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          await navigator.share({ title: event.title, text: message, url })
+        } else if (navigator.clipboard) {
+          await navigator.clipboard.writeText(message)
+          showToast('success', 'Event details copied to clipboard')
+        }
+      } else {
+        await Share.share({ message, title: event.title })
+      }
+    } catch {
+      // User cancelled share — not an error
     }
   }
 
@@ -436,6 +460,19 @@ export default function EventsScreen() {
             <CalendarIcon size={16} color="#7C3AED" />
             <Text style={styles.calendarButtonText}>Add to Calendar</Text>
           </TouchableOpacity>
+
+          {event.is_public && (
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={(e) => {
+                e.stopPropagation()
+                handleShare(event)
+              }}
+            >
+              <Share2 size={16} color="#7C3AED" />
+              <Text style={styles.shareButtonText}>Share</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </TouchableOpacity>
