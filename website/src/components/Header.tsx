@@ -43,9 +43,17 @@ export default async function Header() {
                 {link.label}
               </Link>
             ))}
+            <a
+              href="https://connect.ednabaptist.church"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 px-4 py-1.5 rounded-md text-sm font-semibold bg-gold text-navy-dark hover:bg-gold/90 transition-colors"
+            >
+              EBC Connect
+            </a>
           </nav>
 
-          <MobileNav links={allLinks} />
+          <MobileNav links={allLinks} connectUrl="https://connect.ednabaptist.church" />
         </div>
       </div>
     </header>

@@ -42,6 +42,10 @@ export default function AdminStaffPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<Omit<StaffRow, 'id' | 'sort_order' | 'persons'>>(EMPTY_FORM);
 
+  // Photo upload
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Person search
   const [personSearch, setPersonSearch] = useState('');
   const [personResults, setPersonResults] = useState<
@@ -232,6 +236,41 @@ export default function AdminStaffPage() {
     setPersonResults([]);
   }
 
+  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setError('');
+
+    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+    const name = [form.first_name, form.last_name].filter(Boolean).join('-').toLowerCase().replace(/[^a-z0-9-]/g, '') || 'staff';
+    const path = `${name}-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabaseRef.current.storage
+      .from('staff-photos')
+      .upload(path, file, { upsert: true });
+
+    if (uploadError) {
+      setError(`Upload failed: ${uploadError.message}`);
+      setUploading(false);
+      return;
+    }
+
+    setForm(prev => ({ ...prev, photo_path: path }));
+    setUploading(false);
+
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function handleRemovePhoto() {
+    if (form.photo_path) {
+      await supabaseRef.current.storage.from('staff-photos').remove([form.photo_path]);
+    }
+    setForm(prev => ({ ...prev, photo_path: '' }));
+  }
+
   function handleUnlinkPerson() {
     setForm(prev => ({ ...prev, person_id: null }));
   }
@@ -330,16 +369,53 @@ export default function AdminStaffPage() {
               />
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-navy-dark mb-1">
-                Photo Path
-                <span className="text-steel font-normal ml-1">(relative path in staff-photos bucket)</span>
-              </label>
+              <label className="block text-sm font-medium text-navy-dark mb-1">Photo</label>
+              {form.photo_path ? (
+                <div className="flex items-center gap-4">
+                  <div className="w-20 h-20 rounded-lg overflow-hidden bg-cream/60 shrink-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={photoUrl(form.photo_path)!}
+                      alt="Staff photo"
+                      className="w-full h-full object-cover object-top"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <span className="text-xs text-steel break-all">{form.photo_path}</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs text-navy hover:text-navy-light transition-colors"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleRemovePhoto}
+                        className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full border-2 border-dashed border-cream rounded-lg px-4 py-6 text-sm text-steel hover:border-navy/30 hover:text-navy-dark transition-colors disabled:opacity-50"
+                >
+                  {uploading ? 'Uploading...' : 'Click to upload a photo'}
+                </button>
+              )}
               <input
-                type="text"
-                value={form.photo_path ?? ''}
-                onChange={e => setForm(prev => ({ ...prev, photo_path: e.target.value }))}
-                className="w-full border border-cream rounded-lg px-3 py-2 text-sm text-navy-dark focus:outline-none focus:ring-2 focus:ring-navy/20"
-                placeholder="john-smith.jpg"
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
               />
             </div>
 
@@ -578,9 +654,7 @@ export default function AdminStaffPage() {
           /staff
         </a>{' '}
         page. The <span className="font-medium text-navy-dark">Active</span> flag controls whether the record
-        is considered active at all. Photos are served from the{' '}
-        <code className="bg-cream rounded px-1">staff-photos</code> storage bucket — upload photos there
-        and enter the file path here.
+        is considered active at all.
       </div>
     </div>
   );

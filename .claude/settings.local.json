@@ -46,7 +46,16 @@
       "Bash(where eas:*)",
       "Bash(npx eas:*)",
       "Bash(wc:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(source .env:*)",
+      "Bash(npm run:*)",
+      "Bash(rm:*)",
+      "Bash(ssh:*)",
+      "Bash(rsync:*)",
+      "Bash(tar:*)",
+      "Bash(scp:*)",
+      "Bash(curl:*)",
+      "Bash(grep:*)"
     ]
   }
 }

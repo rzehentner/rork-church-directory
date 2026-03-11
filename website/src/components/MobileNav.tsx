@@ -5,9 +5,10 @@ import Link from 'next/link';
 
 interface MobileNavProps {
   links: { href: string; label: string }[];
+  connectUrl?: string;
 }
 
-export default function MobileNav({ links }: MobileNavProps) {
+export default function MobileNav({ links, connectUrl }: MobileNavProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -39,6 +40,17 @@ export default function MobileNav({ links }: MobileNavProps) {
                 {link.label}
               </Link>
             ))}
+            {connectUrl && (
+              <a
+                href={connectUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setIsOpen(false)}
+                className="mx-4 mt-2 px-4 py-3 rounded-md text-center font-semibold bg-gold text-navy-dark hover:bg-gold/90 transition-colors text-base"
+              >
+                EBC Connect
+              </a>
+            )}
           </nav>
         </div>
       )}
