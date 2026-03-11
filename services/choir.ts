@@ -99,7 +99,7 @@ export async function checkIsChoirMember(personId: string): Promise<boolean> {
     .from('taggings')
     .select('id, tags!inner(name)')
     .eq('person_id', personId)
-    .eq('tags.name', 'choir')
+    .ilike('tags.name', 'choir')
     .limit(1)
 
   if (error) throw error
@@ -254,7 +254,7 @@ export async function listChoirMembers(): Promise<ChoirMember[]> {
   const { data, error } = await supabase
     .from('taggings')
     .select('persons!inner(id, first_name, last_name, user_id), tags!inner(name)')
-    .eq('tags.name', 'choir')
+    .ilike('tags.name', 'choir')
 
   if (error) throw error
 
