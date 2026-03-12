@@ -1,7 +1,29 @@
-import { format, isToday, isTomorrow, parseISO } from 'date-fns';
-import { TZDate } from 'date-fns/tz';
+import { format, isToday, isTomorrow } from 'date-fns';
 
 const CHURCH_TZ = 'America/Chicago';
+
+/** Parse an ISO string and return a Date adjusted to Central Time for formatting */
+function parseCentral(iso: string): Date {
+  const utc = new Date(iso);
+  // Format the UTC date in Central Time to get the local components
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: CHURCH_TZ,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+    hour12: false,
+  }).formatToParts(utc);
+
+  const get = (type: string) => parts.find(p => p.type === type)?.value || '0';
+  // Build a Date using the Central Time components (treated as local for formatting)
+  return new Date(
+    parseInt(get('year')),
+    parseInt(get('month')) - 1,
+    parseInt(get('day')),
+    parseInt(get('hour')),
+    parseInt(get('minute')),
+    parseInt(get('second'))
+  );
+}
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const BUCKET = 'event-images';
@@ -12,8 +34,8 @@ export function storageUrl(path: string | null): string | null {
 }
 
 export function formatEventDate(startAt: string, endAt: string, isAllDay: boolean): string {
-  const start = new TZDate(parseISO(startAt), CHURCH_TZ);
-  const end = new TZDate(parseISO(endAt), CHURCH_TZ);
+  const start = parseCentral(startAt);
+  const end = parseCentral(endAt);
 
   if (isAllDay) {
     if (isToday(start)) return 'Today — All Day';
@@ -34,7 +56,7 @@ export function formatEventDate(startAt: string, endAt: string, isAllDay: boolea
 }
 
 export function formatShortDate(dateStr: string): { month: string; day: string } {
-  const date = new TZDate(parseISO(dateStr), CHURCH_TZ);
+  const date = parseCentral(dateStr);
   return {
     month: format(date, 'MMM').toUpperCase(),
     day: format(date, 'd'),
