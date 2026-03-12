@@ -1,4 +1,7 @@
 import { format, isToday, isTomorrow, parseISO } from 'date-fns';
+import { TZDate } from 'date-fns/tz';
+
+const CHURCH_TZ = 'America/Chicago';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const BUCKET = 'event-images';
@@ -9,8 +12,8 @@ export function storageUrl(path: string | null): string | null {
 }
 
 export function formatEventDate(startAt: string, endAt: string, isAllDay: boolean): string {
-  const start = parseISO(startAt);
-  const end = parseISO(endAt);
+  const start = new TZDate(parseISO(startAt), CHURCH_TZ);
+  const end = new TZDate(parseISO(endAt), CHURCH_TZ);
 
   if (isAllDay) {
     if (isToday(start)) return 'Today — All Day';
@@ -31,7 +34,7 @@ export function formatEventDate(startAt: string, endAt: string, isAllDay: boolea
 }
 
 export function formatShortDate(dateStr: string): { month: string; day: string } {
-  const date = parseISO(dateStr);
+  const date = new TZDate(parseISO(dateStr), CHURCH_TZ);
   return {
     month: format(date, 'MMM').toUpperCase(),
     day: format(date, 'd'),
